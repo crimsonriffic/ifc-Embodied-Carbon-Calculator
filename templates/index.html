@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IFC Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ifcjs/viewer@1.0.268/dist/index.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        #dropzone {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            margin: 20px auto;
+            width: 50%;
+        }
+        #viewer {
+            width: 100%;
+            height: 500px;
+        }
+    </style>
+</head>
+<body>
+    <h1>IFC Viewer</h1>
+    <div id="dropzone">Drop your .ifc file here or click to upload</div>
+    <canvas id="viewer"></canvas>
+
+    <script src="/static/viewer.js"></script>
+</body>
+</html>
