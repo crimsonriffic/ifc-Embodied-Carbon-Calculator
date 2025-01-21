@@ -1,11 +1,11 @@
 import Navbar from "../components/NavBar";
-function ProjectPage() {
+function ECBreakdownPage() {
   return (
     <div>
       <Navbar />
-      <h1>project page</h1>
+      <h1>EC Breakdown page</h1>
     </div>
   );
 }
 
-export default ProjectPage;
+export default ECBreakdownPage;
