@@ -14,6 +14,8 @@ def calculate_beams(beams):
     total_ec = 0
     quantities = {}
     materials = []
+    current_quantity = None # in volume
+    current_material = None
     for beam in beams:
 
         if hasattr(beam, "IsDefinedBy"):
@@ -30,6 +32,7 @@ def calculate_beams(beams):
                         if current_quantity is not None:
                             break
 
+        # Note that it takes the first occurance of a material, subsequent materials will be ignored.
         if hasattr(beam, "HasAssociations"):
             for association in beam.HasAssociations:
                 if association.is_a("IfcRelAssociatesMaterial"):
@@ -52,14 +55,15 @@ def calculate_beams(beams):
                             current_material = material.Name
                             break
 
-        current_material_ec = MaterialList.get(current_material, None)
+        current_material_ec = MaterialList.get(current_material, None) if current_material else None
 
         if current_material_ec is None:
             # handle with default value?
             # ai?
             raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
         
-        current_ec = current_material_ec[0] * current_material_ec[1] * current_quantity
+        material_ec_perkg, material_density = current_material_ec
+        current_ec = material_ec_perkg * material_density * current_quantity
 
         logger.debug(f"EC for {beam.Name} is {current_ec}")
         total_ec += current_ec
@@ -74,8 +78,10 @@ def calculate_columns(columns):
     total_ec = 0
     quantities = {}
     materials = []
-    for column in columns:
+    current_quantity = None
+    current_material = None
 
+    for column in columns:
         if hasattr(column, "IsDefinedBy"):
             for definition in column.IsDefinedBy:
                 if definition.is_a('IfcRelDefinesByProperties'):
@@ -112,14 +118,15 @@ def calculate_columns(columns):
                             current_material = material.Name
                             break
 
-        current_material_ec = MaterialList.get(current_material, None)
+        current_material_ec = MaterialList.get(current_material, None) if current_material else None
 
         if current_material_ec is None:
             # handle with default value?
             # ai?
             raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
         
-        current_ec = current_material_ec[0] * current_material_ec[1] * current_quantity
+        material_ec_perkg, material_density = current_material_ec
+        current_ec = material_ec_perkg * material_density * current_quantity
 
         logger.debug(f"EC for {column.Name} is {current_ec}")
         total_ec += current_ec
@@ -133,6 +140,9 @@ def calculate_slabs(slabs):
     total_ec = 0
     quantities = {}
     materials = []
+    current_quantity = None
+    current_material = None
+
     for slab in slabs:
 
         if hasattr(slab, "IsDefinedBy"):
@@ -171,14 +181,15 @@ def calculate_slabs(slabs):
                             current_material = material.Name
                             break
 
-        current_material_ec = MaterialList.get(current_material, None)
+        current_material_ec = MaterialList.get(current_material, None) if current_material else None
 
         if current_material_ec is None:
             # handle with default value?
             # ai?
             raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
         
-        current_ec = current_material_ec[0] * current_material_ec[1] * current_quantity
+        material_ec_perkg, material_density = current_material_ec
+        current_ec = material_ec_perkg * material_density * current_quantity
 
         logger.debug(f"EC for {slab.Name} is {current_ec}")
         total_ec += current_ec
@@ -192,6 +203,9 @@ def calculate_walls(walls):
     total_ec = 0
     quantities = {}
     materials = []
+    current_quantity = None
+    current_material = None
+
     for wall in walls:
 
         if hasattr(wall, "IsDefinedBy"):
@@ -230,14 +244,15 @@ def calculate_walls(walls):
                             current_material = material.Name
                             break
 
-        current_material_ec = MaterialList.get(current_material, None)
+        current_material_ec = MaterialList.get(current_material, None) if current_material else None
 
         if current_material_ec is None:
             # handle with default value?
             # ai?
             raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
         
-        current_ec = current_material_ec[0] * current_material_ec[1] * current_quantity
+        material_ec_perkg, material_density = current_material_ec
+        current_ec = material_ec_perkg * material_density * current_quantity
 
         logger.debug(f"EC for {wall.Name} is {current_ec}")
         total_ec += current_ec
@@ -245,6 +260,11 @@ def calculate_walls(walls):
     logger.debug(f"Total EC for walls is {total_ec}")
 
     return total_ec
+
+# TODO
+# To wait for the ifc test file.
+def calculate_windows():
+    pass
 
 def calculate_embodied_carbon(filepath):
     ifc_file = ifcopenshell.open(filepath)
@@ -288,4 +308,4 @@ def calculate_embodied_carbon(filepath):
 
 
 if __name__ == "__main__":
-    calculate_embodied_carbon("Window 1.ifc")
+    calculate_embodied_carbon("Column&Beam 1.ifc")
