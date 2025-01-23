@@ -33,15 +33,7 @@ function Navbar() {
                 isActive ? "underline font-semibold" : "hover:underline"
               }
             >
-              Project Summary
-            </NavLink>
-            <NavLink
-              to="/ecbreakdown"
-              className={({ isActive }) =>
-                isActive ? "underline font-semibold" : "hover:underline"
-              }
-            >
-              EC Breakdown
+              Project Details
             </NavLink>
           </nav>
         </div>

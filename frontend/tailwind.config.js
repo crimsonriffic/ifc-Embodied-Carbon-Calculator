@@ -8,6 +8,7 @@ export default {
     "./src/pages/IfcDialog.jsx",
     "./src/pages/ProjectPage.jsx",
     "./src/pages/ProjectErrorDialog.jsx",
+    "./src/components/BuildingInfoCard.jsx",
   ],
   theme: {
     extend: {},

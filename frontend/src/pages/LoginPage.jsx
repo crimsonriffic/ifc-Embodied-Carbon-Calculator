@@ -49,7 +49,7 @@ function LoginPage() {
                   value={inputUsername}
                   onChange={(e) => setInputUsername(e.target.value)}
                   className="w-full px-4 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded text-white placeholder-white focus:outline-none"
-                  placeholder="inputUsername"
+                  placeholder="USERNAME"
                   required
                 />
               </div>

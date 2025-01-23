@@ -79,3 +79,18 @@ export function uploadIfc({ updateType, inputComment, file }) {
     `Calling uploadIfc API where updateType: "${updateType}" and inputComment: "${inputComment} and file: ${file}"`
   );
 }
+
+export async function getProjectDetails({ projectId }) {
+  console.log("Project id is ", projectId);
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        total_ec: "5000",
+        gfa: "1",
+        typology: "Cool",
+        phase: "A",
+        cost: "$2000",
+      });
+    }, 1000);
+  });
+}
