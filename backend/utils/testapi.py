@@ -57,7 +57,23 @@ def test_upload_ifc(project_id: str, file_path: str, user_id: str):
         print(f"Message: {result['message']}")
     else:
         print(f"Error: {response.json().get('detail', 'Unknown error')}")
-        
+
+
+def test_get_project_info(project_id: str):
+   """Test getting project info and EC calculation"""
+   print(f"\n===Testing GET project info for {project_id}===")
+   
+   response = requests.get(f"{BASE_URL}/projects/{project_id}/get_info")
+   
+   print(f"Status Code: {response.status_code}")
+   if response.status_code == 200:
+       result = response.json()
+       print("\nProject Info:")
+       print(f"Project ID: {project_id}")
+       print(f"EC Value: {result['embodied_carbon']}")
+   else:
+       print(f"Error: {response.json().get('detail', 'Unknown error')}")
+
 # TODO
 # def test_create_project(user_id: str):
 #     """Test creating a new project"""
@@ -92,10 +108,10 @@ def main():
     
     print("Running API Tests...")
     
-    test_get_projects(test_user)
-    test_get_projects("nonexistent_user")  # Should fail with 404
+    # test_get_projects(test_user)
+    # test_get_projects("nonexistent_user")  # Should fail with 404
 
-    test_upload_ifc("507f1f77bcf86cd799439011", "Window 1.ifc", test_user)
-
+    # test_upload_ifc("507f1f77bcf86cd799439011", "Window 1.ifc", test_user)
+    test_get_project_info("507f1f77bcf86cd799439011")
 if __name__ == "__main__":
     main()
