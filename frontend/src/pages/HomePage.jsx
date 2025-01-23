@@ -5,8 +5,8 @@ function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Navbar />
-      <div className="overflow-x-auto bg-white shadow-md rounded-lg p-4 mt-20">
+      <Navbar username="carina" />
+      <div className="overflow-x-auto bg-white shadow-md rounded-lg p-4 mt-16">
         <table className="table-auto w-full border-collapse border border-gray-300">
           <thead>
             <tr className="bg-gray-200">

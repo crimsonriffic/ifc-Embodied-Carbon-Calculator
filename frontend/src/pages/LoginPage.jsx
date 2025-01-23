@@ -1,16 +1,23 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../context/UserContext";
 
 function LoginPage() {
-  const [username, setUsername] = useState("");
+  const [inputUsername, setInputUsername] = useState("");
+  const { setUsername } = useUser();
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
   const handleLogin = (e) => {
     e.preventDefault();
-    console.log("Username:", username);
-    console.log("Password:", password);
-    navigate("/home");
+    if (inputUsername.trim()) {
+      setUsername(inputUsername);
+      console.log("inputUsername:", inputUsername);
+      console.log("Password:", password);
+      navigate("/home");
+    } else {
+      alert("Please enter a username");
+    }
   };
 
   return (
@@ -34,15 +41,15 @@ function LoginPage() {
           {/* Login Form */}
           <div className="w-full max-w-xs">
             <form onSubmit={handleLogin} className="space-y-4">
-              {/* Username Input */}
+              {/* inputUsername Input */}
               <div>
                 <input
                   type="text"
-                  id="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  id="inputUsername"
+                  value={inputUsername}
+                  onChange={(e) => setInputUsername(e.target.value)}
                   className="w-full px-4 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded text-white placeholder-white focus:outline-none"
-                  placeholder="USERNAME"
+                  placeholder="inputUsername"
                   required
                 />
               </div>

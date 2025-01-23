@@ -1,6 +1,8 @@
 import { NavLink } from "react-router-dom";
+import { useUser } from "../context/UserContext";
 
-function Navbar({ username }) {
+function Navbar() {
+  const { username } = useUser();
   return (
     <div className="bg-[#5B9130] text-white fixed top-0 left-0 w-full z-10 shadow-md">
       <div className=" mx-auto px-4 flex justify-between items-center h-16">
@@ -47,7 +49,7 @@ function Navbar({ username }) {
         {/* Right section: Username */}
         <div className="flex items-center">
           <div className="bg-white text-[#5B9130] px-4 py-2 rounded-md shadow-md">
-            {username || "Guest"}
+            Hi {username || "Guest"}!
           </div>
         </div>
       </div>
