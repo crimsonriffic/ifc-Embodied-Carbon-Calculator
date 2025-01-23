@@ -1,4 +1,5 @@
 from fastapi import FastAPI, UploadFile, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -10,6 +11,8 @@ from pymongo import AsyncMongoClient
 from bson import ObjectId
 from pydantic import BaseModel, Field
 from pydantic_core import core_schema
+from pymongo.errors import ServerSelectionTimeoutError
+
 dotenv.load_dotenv()
 
 # AWS Configuration
@@ -26,6 +29,16 @@ app = FastAPI(title="Project Management API")
 
 app.mongodb_client = AsyncMongoClient(MONGODB_URL)
 app.mongodb = app.mongodb_client[DB_NAME]
+
+# CORS middleware configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow requests from your frontend
+    allow_credentials=True,                  # Allow cookies and authentication headers
+    allow_methods=["*"],                     # Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],                     # Allow all headers (e.g., Authorization)
+)
+
 
 # S3 Client
 s3_client = boto3.client(
@@ -103,13 +116,23 @@ class ProjectUpdate(BaseModel):
         arbitrary_types_allowed = True
 
 
+@app.get("/test_db_connection")
+async def test_db_connection():
+    try:
+        # List collections in the database to verify connectivity
+        collections = await app.mongodb.list_collection_names()
+        return {"success": True, "collections": collections}
+    except ServerSelectionTimeoutError as e:
+        return {"success": False, "error": str(e)}
+
 @app.get("/projects", response_model=List[Project])
 async def get_projects(user_id: str = Query(..., description="User ID to fetch projects for")):
     """Get all projects accessible by a user"""
+    print("User id ",user_id)
     projects = await app.mongodb.projects.find(
         {f"access_control.{user_id}": {"$exists": True}}
     ).to_list(1000)
-    
+    print("Projects: ", projects)
     if not projects:
         raise HTTPException(
             status_code=404,

@@ -1,4 +1,4 @@
-import { getProjectsByUsername } from "../api/api";
+import { getProjectsByUsername } from "../api/api.jsx";
 import Navbar from "../components/NavBar";
 import IfcDialog from "./IfcDialog";
 import { useState, useEffect } from "react";
@@ -13,8 +13,13 @@ import {
 function HomePage() {
   const [projects, setProjects] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [error, setError] = useState(null); // State to store any errors
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
+
   const navigate = useNavigate();
-  const handleUploadClick = () => {
+
+  const handleUploadClick = (projectId) => {
+    setSelectedProjectId(projectId);
     setIsDialogOpen(true);
   };
   const handleCloseDialog = () => {
@@ -30,10 +35,14 @@ function HomePage() {
     const fetchProjects = async () => {
       if (!isDialogOpen) {
         try {
-          const data = await getProjectsByUsername();
-          setProjects(data);
-        } catch (error) {
-          console.error("Failed to fetch projects: ", error);
+          const username = "user123";
+          const response = await getProjectsByUsername(username);
+          console.log("Response data is ", response.data);
+          setProjects(response.data);
+          setError(null);
+        } catch (err) {
+          setError(err.response?.data?.detail || "Failed to fetch projects");
+          console.error("Failed to fetch projects: ", err);
         }
       }
     };
@@ -68,19 +77,19 @@ function HomePage() {
             {projects.map((project, index) => (
               <tr key={index} className="hover:bg-gray-100">
                 <td className="border border-gray-300 px-4 py-2">
-                  {project.projectName}
+                  {project.project_name}
                 </td>
                 <td className="border border-gray-300 px-4 py-2">
-                  {project.clientName}
+                  {project.client_name}
                 </td>
                 <td className="border border-gray-300 px-4 py-2">
-                  {project.latestUpdate}
+                  {project.last_edited_date}
                 </td>
                 <td className="border border-gray-300 px-4 py-2 text-center">
                   {/*Conditional upload icon rendering */}
                   <button
                     className="text-gray-600 hover:text-blue-500"
-                    onClick={handleUploadClick}
+                    onClick={() => handleUploadClick(project._id)} // Pass the project ID
                   >
                     {project.filepath === "" ? (
                       <ArrowUpTrayIcon className="w-6 h-6 text-gray-500" />
@@ -103,7 +112,12 @@ function HomePage() {
         </table>
 
         {/*Conditional Rendering for IfcDialog*/}
-        {isDialogOpen && <IfcDialog onClose={handleCloseDialog} />}
+        {isDialogOpen && (
+          <IfcDialog
+            onClose={handleCloseDialog}
+            projectId={selectedProjectId}
+          />
+        )}
       </div>
     </div>
   );

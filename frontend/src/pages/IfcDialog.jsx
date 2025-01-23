@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { uploadIfc } from "../api/api";
-function IfcDialog({ onClose }) {
+import { uploadIfc } from "../api/api.jsx";
+function IfcDialog({ onClose, projectId }) {
   const [inputComment, setInputComment] = useState("");
   const [updateType, setUpdateType] = useState("Master File");
   const [selectedFile, setSelectedFile] = useState("null");
+  const [uploadError, setUploadError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -16,20 +18,25 @@ function IfcDialog({ onClose }) {
     setUpdateType(e.target.value);
   };
 
-  const handleUpload = (e) => {
+  const handleUpload = async (e) => {
     e.preventDefault();
+    console.log("Uploading for project ID:", projectId);
+    console.log("Project id type ", typeof projectId);
     if (!selectedFile) {
       alert("Please select a file to upload!");
       return;
     }
-    uploadIfc({ updateType, inputComment, file: selectedFile });
-    alert(`File uploaded!
-        Update Type: ${updateType}
-        Comment: ${inputComment}
-        File Name: ${selectedFile.name}`);
-
-    // Close the dialog
-    onClose();
+    try {
+      const userId = "user123";
+      const response = await uploadIfc(projectId, selectedFile, userId);
+      setSuccessMessage(response.message);
+      setUploadError(null);
+      onClose();
+    } catch (err) {
+      setUploadError(
+        err.response?.data?.detail || "An error occurred during upload."
+      );
+    }
   };
 
   return (

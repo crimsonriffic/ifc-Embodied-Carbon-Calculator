@@ -1,96 +1,34 @@
-export async function getProjectsByUsername() {
-  return new Promise((resolve) => {
-    console.log("Calling getProjects api");
-    setTimeout(() => {
-      resolve([
-        {
-          projectName: "The Pinnacle @Duxton",
-          clientName: "HDB",
-          latestUpdate: "16/01/2025, John (Archi)",
-          filepath: "",
-        },
-        {
-          projectName: "The Interlace",
-          clientName: "Capitaland Residential Limited",
-          latestUpdate: "11/01/2025, Dave (C&S)",
-          filepath: "dfasf",
-        },
-        {
-          projectName: "Jewel Changi Airport",
-          clientName: "Changi Airport Group",
-          latestUpdate: "10/01/2025, Alice (Archi)",
-          filepath: "",
-        },
-        {
-          projectName: "Habitat 67",
-          clientName: "Expo 67",
-          latestUpdate: "09/01/2025, Jane (ESD)",
-          filepath: "",
-        },
-        {
-          projectName: "The Eden Project",
-          clientName: "Eden Trust",
-          latestUpdate: "06/01/2025, KW (C&S)",
-          filepath: "",
-        },
-        {
-          projectName: "Surbana Jurong Campus",
-          clientName: "Surbana Jurong",
-          latestUpdate: "04/01/2025, Sarah (Archi)",
-          filepath: "",
-        },
-        {
-          projectName: "DUO Tower",
-          clientName: "M+S Pte Ltd",
-          latestUpdate: "03/01/2025, Phoebe (C&S)",
-          filepath: "",
-        },
-        {
-          projectName: "NEX",
-          clientName: "Gold Ridge Pte Ltd",
-          latestUpdate: "03/01/2025, Sean (M&E)",
-          filepath: "",
-        },
-        {
-          projectName: "Punggol Waterway Terraces",
-          clientName: "HDB",
-          latestUpdate: "02/01/2025, Ray (ESD)",
-          filepath: "",
-        },
-        {
-          projectName: "Neptune Court",
-          clientName: "SAF NCO Club",
-          latestUpdate: "30/12/2024, JK (M&E)",
-          filepath: "",
-        },
-        {
-          projectName: "Tengah Garden Vines",
-          clientName: "HDB",
-          latestUpdate: "29/12/2024, JJ (Archi)",
-          filepath: "",
-        },
-      ]);
-    }, 1000); // Simulate a 1-second delay
-  });
-}
+import axios from "axios";
 
-export function uploadIfc({ updateType, inputComment, file }) {
-  console.log(
-    `Calling uploadIfc API where updateType: "${updateType}" and inputComment: "${inputComment} and file: ${file}"`
-  );
-}
+const api = axios.create({
+  baseURL: "http://localhost:8000", // Replace with your backend's base URL
+});
+export const getProjectsByUsername = (user_id) => {
+  return api.get("/projects", { params: { user_id } });
+};
+export const uploadIfc = async (projectId, file, userId) => {
+  try {
+    // Create FormData to send the file
+    const formData = new FormData();
+    formData.append("file", file);
+    console.log("The uploadIFC inputs are", projectId, file, userId);
+    // Upload file using Axios
+    const response = await axios.post(
+      `http://localhost:8000/projects/${projectId}/upload_ifc`, // Dynamically add project ID
+      formData, // Form data with the file
+      {
+        params: {
+          user_id: userId, // Add user ID as a query parameter
+        },
+        headers: {
+          "Content-Type": "multipart/form-data", // Set the correct content type for file uploads
+        },
+      }
+    );
 
-export async function getProjectDetails({ projectId }) {
-  console.log("Project id is ", projectId);
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        total_ec: "5000",
-        gfa: "1",
-        typology: "Cool",
-        phase: "A",
-        cost: "$2000",
-      });
-    }, 1000);
-  });
-}
+    return response.data; // Return response from the backend
+  } catch (err) {
+    console.error("Failed to upload IFC file: ", err);
+    throw err; // Re-throw the error for handling in the calling function
+  }
+};

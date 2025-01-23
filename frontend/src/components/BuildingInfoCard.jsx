@@ -1,4 +1,4 @@
-import { getProjectDetails } from "../api/api";
+import { getProjectDetails } from "../api/apiPlaceholder";
 import { useEffect, useState } from "react";
 export default function BuildingInfoCard() {
   const [buildingInfo, setBuildingInfo] = useState([]);
