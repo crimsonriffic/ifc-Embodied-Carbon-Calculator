@@ -6,6 +6,7 @@ export default {
     "./src/pages/ProjectPage.jsx",
     "./src/components/NavBar.jsx",
     "./src/pages/HomePage.jsx",
+    "./src/pages/IfcDialog.jsx",
   ],
   theme: {
     extend: {},

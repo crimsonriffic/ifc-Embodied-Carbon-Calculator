@@ -1,7 +1,33 @@
-import getProjectsByUsername from "../api/api";
+import { getProjectsByUsername } from "../api/api";
 import Navbar from "../components/NavBar";
+import IfcDialog from "./IfcDialog";
+import { useState, useEffect } from "react";
+
+import { ArrowUpTrayIcon, DocumentIcon } from "@heroicons/react/24/solid";
+
 function HomePage() {
-  const projects = getProjectsByUsername();
+  const [projects, setProjects] = useState([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const handleUploadClick = () => {
+    setIsDialogOpen(true);
+  };
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+  };
+  // Re-fetch files whenever the dialog is closed
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (!isDialogOpen) {
+        try {
+          const data = await getProjectsByUsername();
+          setProjects(data);
+        } catch (error) {
+          console.error("Failed to fetch projects: ", error);
+        }
+      }
+    };
+    fetchProjects();
+  }, [isDialogOpen]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -40,21 +66,16 @@ function HomePage() {
                   {project.latestUpdate}
                 </td>
                 <td className="border border-gray-300 px-4 py-2 text-center">
-                  <button className="text-gray-600 hover:text-blue-500">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6 inline"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
+                  {/*Conditional upload icon rendering */}
+                  <button
+                    className="text-gray-600 hover:text-blue-500"
+                    onClick={handleUploadClick}
+                  >
+                    {project.filepath === "" ? (
+                      <ArrowUpTrayIcon className="w-6 h-6 text-gray-500" />
+                    ) : (
+                      <DocumentIcon className="w-6 h-6 text-blue-500" />
+                    )}
                   </button>
                 </td>
                 <td className="border border-gray-300 px-4 py-2 text-center">
@@ -79,6 +100,9 @@ function HomePage() {
             ))}
           </tbody>
         </table>
+
+        {/*Conditional Rendering for IfcDialog*/}
+        {isDialogOpen && <IfcDialog onClose={handleCloseDialog} />}
       </div>
     </div>
   );
