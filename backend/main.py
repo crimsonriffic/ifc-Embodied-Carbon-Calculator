@@ -11,6 +11,9 @@ from pymongo import AsyncMongoClient
 from bson import ObjectId
 from pydantic import BaseModel, Field
 from pydantic_core import core_schema
+from utils import calculator, utils
+from io import BytesIO
+
 from pymongo.errors import ServerSelectionTimeoutError
 
 dotenv.load_dotenv()
@@ -106,15 +109,11 @@ class Project(BaseModel):
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
-class ProjectUpdate(BaseModel):
-    project_name: Optional[str] = None
-    client_name: Optional[str] = None
-    user_job_role: Optional[str] = None
-    access_control: Optional[Dict[str, UserPermissions]] = None
-
-    class Config:
-        arbitrary_types_allowed = True
-
+class ProjectInfo(BaseModel):
+    project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    embodied_carbon: float
+    last_calculated: datetime
+    version: str
 
 @app.get("/test_db_connection")
 async def test_db_connection():
@@ -222,6 +221,28 @@ async def upload_ifc(
             status_code=500,
             detail=f"Failed to upload file: {str(e)}"
         )
+
+# only EC included in the info for now.
+@app.get("/projects/{project_id}/get_info", response_model=ProjectInfo)
+async def get_project_info(project_id: str):
+    project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)}) 
+   
+    if not project:
+       raise HTTPException(status_code=404, detail="Project not found")
+       
+    latest_version = str(project.get("current_version"))
+    file_path = project["ifc_versions"][latest_version]["file_path"].replace(f"s3://{S3_BUCKET}/", "")
+    ifc_bytes = utils.get_ifc_by_filepath(s3_client, S3_BUCKET, file_path)
+
+    with utils.temp_ifc_file(ifc_bytes) as tmp_path:
+        ec = calculator.calculate_embodied_carbon(tmp_path)
+
+    return ProjectInfo(
+       project_id=project["_id"],
+       embodied_carbon=ec,
+       last_calculated=datetime.now(),
+       version=latest_version
+    )
 
 # TODO
 # @app.post("/projects", response_model=Project)
