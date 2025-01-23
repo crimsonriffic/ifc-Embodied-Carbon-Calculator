@@ -32,3 +32,8 @@ export const uploadIfc = async (projectId, file, userId) => {
     throw err; // Re-throw the error for handling in the calling function
   }
 };
+
+export const getBuildingInfo = async (projectId) => {
+  console.log("Projectid at api.jsx is ", projectId);
+  return api.get(`/projects/${projectId}/get_info`);
+};

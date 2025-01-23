@@ -26,9 +26,11 @@ function HomePage() {
     setIsDialogOpen(false);
   };
 
-  const handleGoToProject = (projectName) => {
+  const handleGoToProject = (projectId, projectName) => {
     console.log("HandleGoToProject called");
-    navigate(`/project/${encodeURIComponent(projectName)}`);
+    navigate(`/project/${encodeURIComponent(projectName)}`, {
+      state: { projectId },
+    });
   };
   // Re-fetch files whenever the dialog is closed
   useEffect(() => {
@@ -100,7 +102,9 @@ function HomePage() {
                 </td>
                 <td className="border border-gray-300 px-4 py-2 text-center">
                   <button
-                    onClick={() => handleGoToProject(project.projectName)}
+                    onClick={() =>
+                      handleGoToProject(project._id, project.project_name)
+                    }
                     className="text-gray-600 hover:text-blue-500"
                   >
                     <ArrowRightIcon className="w-6 h-6 text-gray-500" />
