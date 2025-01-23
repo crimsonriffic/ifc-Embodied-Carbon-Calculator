@@ -6,7 +6,7 @@ import IfcDialog from "./pages/IfcDialog";
 const routes = [
   { path: "/", element: <LoginPage /> },
   { path: "/home", element: <HomePage /> },
-  { path: "/project", element: <ProjectPage /> },
+  { path: "/project/:projectName?", element: <ProjectPage /> },
   { path: "/ecbreakdown", element: <ECBreakdownPage /> },
   { path: "/ifc", element: <IfcDialog /> },
 ];
