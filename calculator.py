@@ -2,7 +2,7 @@ import ifcopenshell
 from ifcopenshell.util.element import get_psets
 from loguru import logger
 import sys
-MaterialList = {"Concrete, Cast In Situ": [0.090, 220] , "Concrete, Grade 25": [0.09, 220], "Concrete, General": [0.09,220]}  # kgCO2e per kg, kg per m^3 (Gen 1)
+MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] , "Concrete, Grade 25": [0.13, 2350], "Concrete, General": [0.112,2350]}  # kgCO2e per kg, kg per m^3 (Gen 1)
 
 LOGGING_LEVEL = "DEBUG" 
 logger.remove()  
