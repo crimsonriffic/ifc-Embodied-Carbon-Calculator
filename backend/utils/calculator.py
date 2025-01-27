@@ -2,7 +2,7 @@ import ifcopenshell
 from ifcopenshell.util.element import get_psets
 from loguru import logger
 import sys
-MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] , "Concrete, Grade 25": [0.13, 2350], "Concrete, General": [0.112,2350]}  # kgCO2e per kg, kg per m^3 (Gen 1)
+MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] , "Concrete, Cast-in-Place gray": [0.103, 2350] , "Concrete, Grade 40": [0.170, 2400], "Concrete, Grade 25": [0.13, 2350], "Concrete, General": [0.112,2350]}  # kgCO2e per kg, kg per m^3 (Gen 1)
 
 LOGGING_LEVEL = "DEBUG" 
 logger.remove()  
@@ -235,13 +235,13 @@ def calculate_walls(walls):
                         for layer in material.ForLayerSet.MaterialLayers:
                             logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
                             materials.append(layer.Material.Name)
-                            current_material = material.Name
+                            current_material = layer.Material.Name
                             break
                     elif material.is_a("IfcMaterialLayerSet"):
                         for layer in material.MaterialLayers:
                             logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
                             materials.append(layer.Material.Name)
-                            current_material = material.Name
+                            current_material = layer.Material.Name
                             break
 
         current_material_ec = MaterialList.get(current_material, None) if current_material else None
