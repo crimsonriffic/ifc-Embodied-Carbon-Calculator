@@ -12,8 +12,6 @@ from bson import ObjectId
 from pydantic import BaseModel, Field
 from pydantic_core import core_schema
 from utils import calculator, utils
-from io import BytesIO
-
 from pymongo.errors import ServerSelectionTimeoutError
 
 dotenv.load_dotenv()

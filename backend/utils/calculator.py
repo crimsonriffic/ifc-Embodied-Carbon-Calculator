@@ -2,7 +2,12 @@ import ifcopenshell
 from ifcopenshell.util.element import get_psets
 from loguru import logger
 import sys
-MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] , "Concrete, Cast-in-Place gray": [0.103, 2350] , "Concrete, Grade 40": [0.170, 2400], "Concrete, Grade 25": [0.13, 2350], "Concrete, General": [0.112,2350]}  # kgCO2e per kg, kg per m^3 (Gen 1)
+MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] , "Concrete, Cast-in-Place gray": [0.103, 2350] , "Concrete, Grade 40": [0.170, 2400], "Concrete, Grade 25": [0.13, 2350], "Concrete, General": [0.112,2350], # kgCO2e per kg, kg per m^3 (Gen 1)
+                'Wood_aluminium fixed window 3-glass (SF 2010)' : 54.6, # kgCO2 per 1m^2
+                'Wood_aluminium sidehung window 3-glass (SF 2010)' : 72.4,
+                'Wooden doors T10-T25 with wooden frame' : 30.4,
+                'Wooden doors T10-T25 with steel frame' : 49.4,
+                }  
 
 LOGGING_LEVEL = "DEBUG" 
 logger.remove()  
@@ -268,7 +273,8 @@ def calculate_walls(walls):
     current_material = None
 
     for wall in walls:
-
+        # psets = ifcopenshell.util.element.get_psets(wall)
+        # print(psets)
         if hasattr(wall, "IsDefinedBy"):
             for definition in wall.IsDefinedBy:
                 if definition.is_a('IfcRelDefinesByProperties'):
@@ -285,8 +291,10 @@ def calculate_walls(walls):
 
         if hasattr(wall, "HasAssociations"):
             for association in wall.HasAssociations:
+                print(association)
                 if association.is_a("IfcRelAssociatesMaterial"):
                     material = association.RelatingMaterial
+                    print(material)
                     if material.is_a("IfcMaterial"):
                         logger.debug(f"Found material '{material.Name}', as IfcMaterial")
                         materials.append(material.Name)
@@ -322,10 +330,68 @@ def calculate_walls(walls):
 
     return total_ec
 
-# TODO
-# To wait for the ifc test file.
-def calculate_windows():
-    pass
+
+def calculate_windows(windows):
+
+    total_ec = 0
+    quantities = {}
+    materials = []
+    current_quantity = None
+    current_material = None
+
+    for window in windows:
+
+        if hasattr(window, "IsDefinedBy"):
+            for definition in window.IsDefinedBy:
+                if definition.is_a('IfcRelDefinesByProperties'):
+                    property_def = definition.RelatingPropertyDefinition
+                    if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_WindowBaseQuantities':
+                        for quantity in property_def.Quantities:
+                            if quantity.is_a('IfcQuantityArea') and quantity.Name == 'Area':
+                                logger.debug(f'Found Area for {window.Name}')
+                                quantities[quantity.Name] = quantity.AreaValue
+                                current_quantity = quantity.AreaValue
+                                break
+                        if current_quantity is not None:
+                            break
+
+        psets = get_psets(window)
+        current_material = psets['Pset_WindowCommon']['Reference']
+
+        current_material_ec = MaterialList.get(current_material, None) if current_material else None
+
+        if current_material_ec is None:
+            # handle with default value?
+            # ai?
+            raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+        
+        material_ec_per_m2 = current_material_ec
+        current_ec = material_ec_per_m2 *  current_quantity 
+
+        logger.debug(f"EC for {window.Name} is {current_ec}")
+        total_ec += current_ec
+    
+    logger.debug(f"Total EC for windows is {total_ec}")
+
+    return total_ec
+
+def calculate_element_area(element):
+    area = 0
+    
+    # Get the area from quantities
+    if hasattr(element, "IsDefinedBy"):
+        for definition in element.IsDefinedBy:
+            if definition.is_a('IfcRelDefinesByProperties'):
+                property_def = definition.RelatingPropertyDefinition
+                if property_def.is_a('IfcElementQuantity'):
+                    quantity_list = [ (quantity, quantity.Name) for quantity in property_def.Quantities]
+                    for i in ['NetArea','NetSideArea', 'OuterSurfaceArea', 'NetSurfaceArea']:
+                        for quantity, name in quantity_list:
+                            if i == name:
+                                logger.info(f"{element} has area: {quantity.AreaValue}")
+                                area += quantity.AreaValue
+    
+    return area
 
 def calculate_embodied_carbon(filepath):
     ifc_file = ifcopenshell.open(filepath)
@@ -369,11 +435,22 @@ def calculate_embodied_carbon(filepath):
         windows_ec = calculate_windows(windows)
         total_ec += windows_ec
     logger.info(f"Total EC calculated: {total_ec}")
+
+    total_area = 0
+    for elements in [walls, slabs, columns,beams]:
+        for element in elements:
+            area = calculate_element_area(element)
+            if area:
+                total_area += area
+
+
+    print(total_area)
     return total_ec
 
 import os 
 
 
 if __name__ == "__main__":
-    ifcpath = os.path.join("C:\Users\dczqd\Documents\SUTD\Capstone-calc\ifc-Embodied-Carbon-Calculator", "Window 1.ifc")
+    ifcpath = os.path.join(r"C:\Users\dczqd\Documents\SUTD\Capstone-calc", "Window 1.ifc")
+    logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
