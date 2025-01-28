@@ -197,7 +197,68 @@ def calculate_slabs(slabs):
     logger.debug(f"Total EC for slabs is {total_ec}")
 
     return total_ec
+def calculate_windows(windows):
 
+    total_ec = 0
+    quantities = {}
+    materials = []
+    current_quantity = None
+    current_material = None
+
+    for window in windows:
+
+        if hasattr(window, "IsDefinedBy"):
+            for definition in window.IsDefinedBy:
+                if definition.is_a('IfcRelDefinesByProperties'):
+                    property_def = definition.RelatingPropertyDefinition
+                    if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_windowBaseQuantities':
+                        for quantity in property_def.Quantities:
+                            if quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
+                                logger.debug(f'Found NetVolume  for {window.Name}')
+                                quantities[quantity.Name] = quantity.VolumeValue
+                                current_quantity = quantity.VolumeValue
+                                break
+                        if current_quantity is not None:
+                            break
+
+        if hasattr(window, "HasAssociations"):
+            for association in window.HasAssociations:
+                if association.is_a("IfcRelAssociatesMaterial"):
+                    material = association.RelatingMaterial
+                    if material.is_a("IfcMaterial"):
+                        logger.debug(f"Found material '{material.Name}', as IfcMaterial")
+                        materials.append(material.Name)
+                        current_material = material.Name
+                        break
+                    elif material.is_a("IfcMaterialLayerSetUsage"):
+                        for layer in material.ForLayerSet.MaterialLayers:
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
+                            materials.append(layer.Material.Name)
+                            current_material = material.Name
+                            break
+                    elif material.is_a("IfcMaterialLayerSet"):
+                        for layer in material.MaterialLayers:
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
+                            materials.append(layer.Material.Name)
+                            current_material = material.Name
+                            break
+
+        current_material_ec = MaterialList.get(current_material, None) if current_material else None
+
+        if current_material_ec is None:
+            # handle with default value?
+            # ai?
+            raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+        
+        material_ec_perkg, material_density = current_material_ec
+        current_ec = material_ec_perkg * material_density * current_quantity
+
+        logger.debug(f"EC for {window.Name} is {current_ec}")
+        total_ec += current_ec
+    
+    logger.debug(f"Total EC for windows is {total_ec}")
+
+    return total_ec
 def calculate_walls(walls):
 
     total_ec = 0
@@ -284,6 +345,9 @@ def calculate_embodied_carbon(filepath):
     walls = ifc_file.by_type('IfcWall')
     logger.info(f"Total walls found {len(walls)}")
 
+    # stairs = ifc_file.by_type('IfcStairFlight') # or IfcStair?
+    # logger.info(f"Total stairs found {len(stairs)}")
+
     total_ec = 0
     if columns:
         columns_ec= calculate_columns(columns)
@@ -301,11 +365,15 @@ def calculate_embodied_carbon(filepath):
         walls_ec = calculate_walls(walls)
         total_ec += walls_ec
 
+    if windows:
+        windows_ec = calculate_windows(windows)
+        total_ec += windows_ec
     logger.info(f"Total EC calculated: {total_ec}")
     return total_ec
 
-   
+import os 
 
 
 if __name__ == "__main__":
-    calculate_embodied_carbon("Column&Beam 1.ifc")
+    ifcpath = os.path.join("C:\Users\dczqd\Documents\SUTD\Capstone-calc\ifc-Embodied-Carbon-Calculator", "Window 1.ifc")
+    calculate_embodied_carbon(ifcpath)
