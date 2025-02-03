@@ -1,8 +1,22 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useUser } from "../context/UserContext";
+import { ChevronDownIcon } from "@heroicons/react/24/solid";
+import React from "react";
 
 function Navbar() {
-  const { username } = useUser();
+  const { username, setUsername } = useUser();
+  const navigate = useNavigate();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleLogout = () => {
+    setUsername(null);
+    navigate("/");
+  };
+
+  const handleSettingsClick = () => {
+    setIsOpen(true);
+  };
   return (
     <div className="bg-white text-gray-500 fixed top-0 left-0 w-full z-10 shadow-md ">
       <div className=" mx-auto px-4 flex justify-between items-center h-16">
@@ -35,24 +49,34 @@ function Navbar() {
             >
               Create Project
             </NavLink>
-            <NavLink
-              to="/project"
-              className={({ isActive }) =>
-                isActive ? "underline font-semibold" : "hover:underline"
-              }
-            >
-              Project Details
-            </NavLink>
           </nav>
         </div>
 
         {/* Right section: Username */}
-        <div className="flex items-center">
-          <div className="bg-white text-[#5B9130] px-4 py-2 rounded-md shadow-md">
-            Hi {username || "Guest"}!
+        <button
+          onClick={handleSettingsClick}
+          className="flex items-center border rounded-lg shadow-md"
+        >
+          <div className="bg-white text-[#5B9130] px-2 py-2 rounded-lg">
+            {username || "Guest"}
           </div>
-        </div>
+          <ChevronDownIcon className="w-5 h-5 text-[#5B9130] mr-1" />
+        </button>
       </div>
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg z-10">
+          <div className="p-4 text-gray-700">
+            <p className="font-semibold">{username || "Guest"}</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full text-left px-4 py-2 text-gray-500 border hover:bg-red-100"
+          >
+            Logout
+          </button>
+        </div>
+      )}
     </div>
   );
 }

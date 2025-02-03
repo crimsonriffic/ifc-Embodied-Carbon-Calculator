@@ -3,7 +3,7 @@ import Navbar from "../components/NavBar";
 import IfcDialog from "./IfcDialog";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
+import { useUser } from "../context/UserContext.jsx";
 import {
   ArrowUpTrayIcon,
   DocumentIcon,
@@ -15,8 +15,12 @@ function HomePage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [error, setError] = useState(null); // State to store any errors
   const [selectedProjectId, setSelectedProjectId] = useState(null);
-
+  const { username } = useUser();
   const navigate = useNavigate();
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB"); // 'en-GB' ensures DD/MM/YYYY format
+  };
 
   const handleUploadClick = (projectId) => {
     setSelectedProjectId(projectId);
@@ -40,7 +44,6 @@ function HomePage() {
     const fetchProjects = async () => {
       if (!isDialogOpen) {
         try {
-          const username = "user123";
           const response = await getProjectsByUsername(username);
           console.log("Response data is ", response.data);
           setProjects(response.data);
@@ -106,7 +109,8 @@ function HomePage() {
                   {project.client_name}
                 </td>
                 <td className="border border-gray-300 px-4 py-2">
-                  {project.last_edited_date}
+                  {formatDate(project.last_edited_date)},{" "}
+                  {project.last_edited_user}
                 </td>
                 <td className="border border-gray-300 px-4 py-2 text-center">
                   {/*Conditional upload icon rendering */}

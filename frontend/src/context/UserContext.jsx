@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from "react";
-const UserContext = createContext();
+const UserContext = createContext(); // creates a context that acts as a global state
 
 // Create a custom hook to acess the usercontext
 export const useUser = () => useContext(UserContext);

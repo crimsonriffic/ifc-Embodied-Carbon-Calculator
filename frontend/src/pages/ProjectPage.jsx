@@ -4,6 +4,7 @@ import ProjectErrorDialog from "./ProjectErrorDialog";
 import BuildingInfoCard from "../components/BuildingInfoCard";
 function ProjectPage() {
   const location = useLocation();
+  const { projectName } = useParams();
   console.log("Location state is ", location.state);
 
   // Check if location.state is null or undefined
@@ -30,7 +31,7 @@ function ProjectPage() {
     );
   }
   const { projectId } = location.state;
-  const { projectName } = useParams();
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
