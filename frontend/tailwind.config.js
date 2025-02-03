@@ -9,6 +9,7 @@ export default {
     "./src/pages/ProjectPage.jsx",
     "./src/pages/ProjectErrorDialog.jsx",
     "./src/components/BuildingInfoCard.jsx",
+    "./src/pages/CreatePage.jsx",
   ],
   theme: {
     extend: {},

@@ -25,6 +25,9 @@ function HomePage() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
   };
+  const handleCreateButton = () => {
+    navigate("/createProject");
+  };
 
   const handleGoToProject = (projectId, projectName) => {
     console.log("HandleGoToProject called");
@@ -52,9 +55,27 @@ function HomePage() {
   }, [isDialogOpen]);
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="px-6">
       <Navbar />
-      <div className="overflow-x-auto bg-white shadow-md rounded-lg p-4 mt-16">
+
+      {/* Banner Section */}
+      <div className="bg-[#5B9130] text-white mx-8 mt-20 w-full mr-4 py-10 px-6 rounded-lg shadow-md text-left ml-0">
+        <h1 className="text-3xl font-bold">Welcome to IFC Carbon Calculator</h1>
+        <p className="mt-2 text-lg">
+          Collaborate with stakeholders to analyze the embodied carbon of your
+          projects.
+        </p>
+        <button
+          className="mt-4 bg-white text-[#5B9130] font-semibold py-2 px-4 rounded-lg shadow hover:bg-gray-200"
+          onClick={handleCreateButton}
+        >
+          Create a Project
+        </button>
+      </div>
+
+      {/** Active projects table  */}
+      <div className="overflow-x-auto bg-white shadow-md rounded-lg p-4 w-full mt-10">
+        <h1 className="text-2xl font-bold mb-4">Active Projects</h1>
         <table className="table-auto w-full border-collapse border border-gray-300">
           <thead>
             <tr className="bg-gray-200">
