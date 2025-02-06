@@ -375,6 +375,51 @@ def calculate_windows(windows):
 
     return total_ec
 
+def calculate_doors(doors):
+
+    total_ec = 0
+    quantities = {}
+    materials = []
+    current_quantity = None
+    current_material = None
+
+    for door in doors:
+
+        if hasattr(door, "IsDefinedBy"):
+            for definition in door.IsDefinedBy:
+                if definition.is_a('IfcRelDefinesByProperties'):
+                    property_def = definition.RelatingPropertyDefinition
+                    if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_DoorBaseQuantities':
+                        for quantity in property_def.Quantities:
+                            if quantity.is_a('IfcQuantityArea') and quantity.Name == 'Area':
+                                logger.debug(f'Found Area for {door.Name}')
+                                quantities[quantity.Name] = quantity.AreaValue
+                                current_quantity = quantity.AreaValue
+                                break
+                        if current_quantity is not None:
+                            break
+
+        psets = get_psets(door)
+        current_material = psets['Pset_DoorCommon']['Reference']
+
+        current_material_ec = MaterialList.get(current_material, None) if current_material else None
+
+        if current_material_ec is None:
+            # handle with default value?
+            # ai?
+            raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+        
+        material_ec_per_m2 = current_material_ec
+        current_ec = material_ec_per_m2 *  current_quantity 
+
+        logger.debug(f"EC for {door.Name} is {current_ec}")
+        total_ec += current_ec
+    
+    logger.debug(f"Total EC for doors is {total_ec}")
+
+    return total_ec
+    pass
+                    
 def calculate_element_area(element):
     area = 0
     
@@ -388,7 +433,7 @@ def calculate_element_area(element):
                     for i in ['NetArea','NetSideArea', 'OuterSurfaceArea', 'NetSurfaceArea']:
                         for quantity, name in quantity_list:
                             if i == name:
-                                logger.info(f"{element} has area: {quantity.AreaValue}")
+                                # logger.info(f"{element} has area: {quantity.AreaValue}")
                                 area += quantity.AreaValue
     
     return area
@@ -410,6 +455,9 @@ def calculate_embodied_carbon(filepath):
 
     walls = ifc_file.by_type('IfcWall')
     logger.info(f"Total walls found {len(walls)}")
+
+    doors = ifc_file.by_type('IfcDoor')
+    logger.info(f"Total doors found {len(doors)}")
 
     # stairs = ifc_file.by_type('IfcStairFlight') # or IfcStair?
     # logger.info(f"Total stairs found {len(stairs)}")
@@ -434,6 +482,10 @@ def calculate_embodied_carbon(filepath):
     if windows:
         windows_ec = calculate_windows(windows)
         total_ec += windows_ec
+
+    if doors:
+        doors_ec = calculate_doors(doors)
+        total_ec += doors_ec
     logger.info(f"Total EC calculated: {total_ec}")
 
     total_area = 0
@@ -451,6 +503,6 @@ import os
 
 
 if __name__ == "__main__":
-    ifcpath = os.path.join(r"C:\Users\dczqd\Documents\SUTD\Capstone-calc", "Window 1.ifc")
+    ifcpath = os.path.join(r"C:\Users\dczqd\Documents\SUTD\Capstone-calc", "IFC Test model_Stairs 1.ifc")
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
