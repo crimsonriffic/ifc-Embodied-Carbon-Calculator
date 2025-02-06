@@ -243,7 +243,7 @@ async def get_project_info(project_id: str):
     )
 
 # TODO
-@app.post("/projects", response_model=Project)
+@app.post("/create_project", response_model=Project)
 async def create_project(project: Project):
     new_project = await app.mongodb.projects.insert_one(
         project.dict(by_alias=True, exclude={"id"})

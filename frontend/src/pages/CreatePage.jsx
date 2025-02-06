@@ -1,20 +1,34 @@
 import Navbar from "../components/NavBar";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../context/UserContext";
 
 import { ArrowUpTrayIcon } from "@heroicons/react/24/solid";
 import { Navigate } from "react-router-dom";
+import { createProject } from "../api/api";
 export default function CreatePage() {
   const [projectName, setProjectName] = useState("");
   const [client, setClient] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false); // State for IfcDialog
-  const [selectedFile, setSelectedFile] = useState("null");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const { username } = useUser();
   const navigate = useNavigate();
   const handleUpload = async (e) => {
     e.preventDefault();
-    console.log("Handle Upload");
-    alert("Successfully created project!");
-    navigate("/home");
+    console.log("Handle Upload with user:", username);
+    try {
+      const response = await createProject(
+        projectName,
+        client,
+        selectedFile,
+        username
+      );
+      console.log("Successfully created project: ", response.data);
+      navigate("/home");
+    } catch (err) {
+      console.error("Faild to create project", err);
+      alert("Failed to create projec!");
+    }
   };
   const handleFileChange = (e) => {
     const file = e.target.files[0];

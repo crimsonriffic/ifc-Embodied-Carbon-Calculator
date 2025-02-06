@@ -80,7 +80,7 @@ def test_create_project(user_id: str):
     print(f"\n===Testing CREATE project===")
     
     project_data = {
-        "project_name": "Test Project",
+        "project_name": "Test Project 2",
         "client_name": "Test Client",
         "user_job_role": "Test Engineer",
         "last_edited_date":"2024-01-21T00:00:00.000+00:00",
@@ -114,7 +114,7 @@ def test_create_project(user_id: str):
     }
     
     response = requests.post(
-        f"{BASE_URL}/projects",
+        f"{BASE_URL}/create_project",
         json=project_data,
         params={"user_id": user_id}  # Using query parameter for user_id
     )
@@ -140,7 +140,7 @@ def main():
     # test_get_projects("nonexistent_user")  # Should fail with 404
 
     # test_upload_ifc("507f1f77bcf86cd799439011", "Window 1.ifc", test_user)
-    test_get_project_info("507f1f77bcf86cd799439011")
+    # test_get_project_info("507f1f77bcf86cd799439011")
     test_create_project(test_user)
 if __name__ == "__main__":
     main()
