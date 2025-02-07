@@ -719,7 +719,7 @@ def calculate_stairs(stairs):
             if current_quantity is None:
                 current_quantity = get_element_volume(stair)
             current_material = MaterialList_filtered[0]
-            logger.debug(f"Using material {current_material}")
+            logger.debug(f"Using material {current_material} with volume {current_quantity}")
             current_material_ec = MaterialList.get(current_material, None) if current_material else None
             if current_material_ec is None:
                 # handle with default value?
