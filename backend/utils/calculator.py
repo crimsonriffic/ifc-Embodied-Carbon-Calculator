@@ -5,7 +5,7 @@ import sys
 import ifcopenshell
 import ifcopenshell.geom
 import numpy as np
-from math import fabs
+from numpy import abs as np_abs
 
  # kgCO2e per kg, kg per m^3 (Gen 1)
 MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] , 
@@ -609,28 +609,20 @@ def get_element_volume(element):
     try:
         shape = ifcopenshell.geom.create_shape(settings, element)
         vertices = np.array(shape.geometry.verts).reshape((-1, 3))
-        faces = shape.geometry.faces
+        faces = np.array(shape.geometry.faces).reshape(-1, 3)
         
-        volume = 0
-        # Process triangulated faces
-        for i in range(0, len(faces), 3):
-            # Get triangle vertices
-            v1 = vertices[faces[i]]
-            v2 = vertices[faces[i + 1]]
-            v3 = vertices[faces[i + 2]]
-            
-            # Calculate signed volume of tetrahedron formed by triangle and origin
-            # This is based on the divergence theorem
-            v321 = v3[0] * v2[1] * v1[2]
-            v231 = v2[0] * v3[1] * v1[2]
-            v312 = v3[0] * v1[1] * v2[2]
-            v132 = v1[0] * v3[1] * v2[2]
-            v213 = v2[0] * v1[1] * v3[2]
-            v123 = v1[0] * v2[1] * v3[2]
-            
-            volume += (-v321 + v231 + v312 - v132 - v213 + v123) / 6.0
-            
-        return fabs(volume)  
+        # Get all triangle vertices at once
+        v1 = vertices[faces[:, 0]]
+        v2 = vertices[faces[:, 1]]
+        v3 = vertices[faces[:, 2]]
+        
+        # Calculate volume using cross product method
+        # Volume = sum(v1 · (v2 × v3)) / 6
+        cross_products = np.cross(v2, v3)
+        dot_products = np.sum(v1 * cross_products, axis=1)
+        volume = np.sum(dot_products) / 6.0
+        
+        return np_abs(volume)
         
     except RuntimeError as e:
         print(f"Error processing geometry: {e}")
@@ -890,7 +882,6 @@ import os
 
 
 if __name__ == "__main__":
-    ifcpath = "/Users/jk/Downloads/G. Stairs/IFC Test model_Stairs 1.ifc"
-
+    ifcpath = os.path.join(r"/mnt/c/Users/dczqd/Documents/SUTD/Capstone-calc/", "IFC Test model_Stairs 1.ifc")
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
