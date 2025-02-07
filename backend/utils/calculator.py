@@ -10,8 +10,10 @@ from math import fabs
  # kgCO2e per kg, kg per m^3 (Gen 1)
 MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] , 
                 "Concrete, Cast-in-Place gray": [0.103, 2350] , 
+                "Concrete, C12/15": [0.097, 2350],
                 "Concrete, Grade 40": [0.170, 2400], 
                 "Concrete, Grade 25": [0.13, 2350], 
+                "Concrete, C25/30": [0.119, 2350],
                 "Concrete, General": [0.112,2350],
                 "Concrete, Precast, Ordinary Portland Cement": [0.148, 2400],
                 'Wood_aluminium fixed window 3-glass (SF 2010)' : 54.6, # kgCO2 per 1m^2
@@ -335,8 +337,6 @@ def calculate_walls(walls):
                     property_def = definition.RelatingPropertyDefinition
                     if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_WallBaseQuantities':
                         for quantity in property_def.Quantities:
-                            logger.debug(quantity)
-                            # logger.debug(quantity.Name)
                             # For material constituent
                             if quantity.Name in MaterialList.keys(): 
                                 for sub_quantity in quantity.HasQuantities:
@@ -507,6 +507,83 @@ def calculate_doors(doors):
     return total_ec
     pass
                     
+
+def calculate_roofs(roofs):
+
+    total_ec = 0
+    quantities = {}
+    materials = []
+    slabs = []
+
+    for roof in roofs:
+        current_ec = 0
+        current_quantity = None
+        current_material = None
+        if hasattr(roof, "IsDecomposedBy"):
+            for rel in roof.IsDecomposedBy:
+                if rel.is_a("IfcRelAggregates"):
+                    for slab in rel.RelatedObjects:
+                        if slab.is_a("IfcSlab"):
+                            #print(f"Found Slab: {slab.Name}")
+                            slabs.append(slab)
+        
+        for slab in slabs:
+            if hasattr(slab, "IsDefinedBy"):
+                for definition in slab.IsDefinedBy:
+                    #logger.debug(definition)
+                    if definition.is_a('IfcRelDefinesByProperties'):
+                        property_def = definition.RelatingPropertyDefinition
+                        if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_SlabBaseQuantities':
+                            for quantity in property_def.Quantities:
+                                if quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
+                                    volume = quantity.VolumeValue / len(slabs)
+                                    logger.debug(f'Found NetVolume  for {roof.Name}: {volume}')
+                                    quantities[quantity.Name] = volume
+                                    current_quantity = volume
+                                    break
+                            if current_quantity is not None:
+                                break
+
+            if hasattr(slab, "HasAssociations"):
+                for association in slab.HasAssociations:
+                    if association.is_a("IfcRelAssociatesMaterial"):
+                        material = association.RelatingMaterial
+                        if material.is_a("IfcMaterial"):
+                            logger.debug(f"Found material '{material.Name}', as IfcMaterial")
+                            materials.append(material.Name)
+                            current_material = material.Name
+                            break
+                        elif material.is_a("IfcMaterialLayerSetUsage"):
+                            for layer in material.ForLayerSet.MaterialLayers:
+                                logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
+                                materials.append(layer.Material.Name)
+                                current_material = material.Name
+                                break
+                        elif material.is_a("IfcMaterialLayerSet"):
+                            for layer in material.MaterialLayers:
+                                logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
+                                materials.append(layer.Material.Name)
+                                current_material = material.Name
+                                break
+
+                current_material_ec = MaterialList.get(current_material, None) if current_material else None
+
+                if current_material_ec is None:
+                    # handle with default value?
+                    # ai?
+                    raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+            
+            material_ec_perkg, material_density = current_material_ec
+            slab_ec = material_ec_perkg * material_density * current_quantity
+            current_ec += slab_ec
+
+        logger.debug(f"EC for {roof.Name} is {current_ec}")
+        total_ec += current_ec
+    
+    logger.debug(f"Total EC for roofs is {total_ec}")
+
+    return total_ec
+
 def calculate_element_area(element):
     area = 0
     
@@ -792,6 +869,10 @@ def calculate_embodied_carbon(filepath):
     if railings:
         railings_ec = calculate_railings(railings)
         total_ec += railings_ec
+    
+    if roofs:
+        roofs_ec = calculate_roofs(roofs)
+        total_ec += roofs_ec
     logger.info(f"Total EC calculated: {total_ec}")
 
 
@@ -809,7 +890,7 @@ import os
 
 
 if __name__ == "__main__":
-    ifcpath = os.path.join(r"/mnt/c/Users/dczqd/Documents/SUTD/Capstone-calc/", "IFC Test model_Stairs 1.ifc")
+    ifcpath = "/Users/jk/Downloads/G. Stairs/IFC Test model_Stairs 1.ifc"
 
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
