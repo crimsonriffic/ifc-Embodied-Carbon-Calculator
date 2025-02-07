@@ -10,8 +10,10 @@ from math import fabs
  # kgCO2e per kg, kg per m^3 (Gen 1)
 MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] , 
                 "Concrete, Cast-in-Place gray": [0.103, 2350] , 
+                "Concrete, C12/15": [0.097, 2350],
                 "Concrete, Grade 40": [0.170, 2400], 
                 "Concrete, Grade 25": [0.13, 2350], 
+                "Concrete, C25/30": [0.119, 2350],
                 "Concrete, General": [0.112,2350],
                 "Concrete, Precast, Ordinary Portland Cement": [0.148, 2400],
                 'Wood_aluminium fixed window 3-glass (SF 2010)' : 54.6, # kgCO2 per 1m^2
@@ -888,7 +890,7 @@ import os
 
 
 if __name__ == "__main__":
-    ifcpath = "/Users/jk/Downloads/z. Complex Models/Complex 1.ifc"
+    ifcpath = "/Users/jk/Downloads/G. Stairs/IFC Test model_Stairs 1.ifc"
 
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
