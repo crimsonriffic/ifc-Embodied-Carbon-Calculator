@@ -19,7 +19,8 @@ MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] ,
                 'Wooden doors T10-T25 with wooden frame' : 30.4,
                 'Wooden doors T10-T25 with steel frame' : 49.4,
                 'Aluminium, General': [13.100, 2700],
-                
+                'Tiles, Granite'	:[0.700,	2650],
+                'Plywood':[0.910,	600]
                 }  
 MaterialsToIgnore  = ["Travertine","<Unnamed>"]
 LOGGING_LEVEL = "DEBUG" 
@@ -163,14 +164,14 @@ def calculate_slabs(slabs, to_ignore=[]):
                     if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_SlabBaseQuantities':
                         for quantity in property_def.Quantities:
                             # For material constituent
-                            if quantity.Name in MaterialList.keys(): 
+                            if quantity.is_a("IfcPhysicalComplexQuantity"):
                                 for sub_quantity in quantity.HasQuantities:
                                     logger.debug(f'Found subquantity {sub_quantity.Name} for {quantity.Name}: {sub_quantity.LengthValue}')
                                     # logger.debug(sub_quantity.LengthValue)
                                     layer_thicknesses[quantity.Name] = sub_quantity.LengthValue
 
-                            elif quantity.is_a('IfcQuantityArea') and quantity.Name == 'NetSideArea':
-                                logger.debug(f'Found NetSideArea for {slab.Name}')
+                            elif quantity.is_a('IfcQuantityArea') and quantity.Name == 'NetArea':
+                                logger.debug(f'Found NetArea for {slab.Name}')
                                 current_area = quantity.AreaValue
 
                             elif quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
@@ -729,16 +730,6 @@ def calculate_embodied_carbon(filepath):
     roofs = ifc_file.by_type('IfcRoof')
     logger.info(f"Total roofs found {len(roofs)}")
 
-    aggregated_by = roofs[0].IsDecomposedBy
-    for rel in aggregated_by:
-        if rel.is_a('IfcRelAggregates'):
-            print(rel)
-            for part in rel.RelatedObjects:
-                print(f"child : {part.is_a()}")
-                if part.is_a('IfcSlab'):
-                    slabs_to_ignore.append(part.id())
-                    
-    print(slabs_to_ignore)
     windows = ifc_file.by_type('IfcWindow')
     logger.info(f"Total windows found {len(windows)}")
 
@@ -754,7 +745,21 @@ def calculate_embodied_carbon(filepath):
     railings = ifc_file.by_type('IfcRailing')
     logger.info(f"Total railings found {len(railings)}")
 
+    if roofs:
+        for roof in roofs:
+            aggregated_by = roof.IsDecomposedBy
+            for rel in aggregated_by:
+                if rel.is_a('IfcRelAggregates'):
+                    print(rel)
+                    for part in rel.RelatedObjects:
+                        print(f"child : {part.is_a()}")
+                        if part.is_a('IfcSlab'):
+                            slabs_to_ignore.append(part.id())
+                    
+    # print(slabs_to_ignore)
+
     total_ec = 0
+
     if columns:
         columns_ec= calculate_columns(columns)
         total_ec += columns_ec
@@ -804,7 +809,7 @@ import os
 
 
 if __name__ == "__main__":
-    ifcpath = os.path.join(r"C:\Users\dczqd\Documents\SUTD\Capstone-calc", "IFC Test model_Stairs 1.ifc")
+    ifcpath = os.path.join(r"/mnt/c/Users/dczqd/Documents/SUTD/Capstone-calc/", "IFC Test model_Stairs 1.ifc")
 
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
