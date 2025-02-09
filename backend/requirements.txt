@@ -7,3 +7,5 @@ python-multipart
 python-dotenv
 pydantic
 requests
+pytest
+pandas
