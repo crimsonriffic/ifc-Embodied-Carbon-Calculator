@@ -78,19 +78,9 @@ def calculate_superstructure_ec(filepath):
     
     return superstructure_ec
 
-## Calculate EC given elements - in progress
+## Calculate EC, given elements 
 def calculate_elements_ec(elements, slabs_to_ignore=[] ,**kwargs):
-    """
-    Given a mixed list of IFC elements, calculates and returns the total EC sum.
-    
-    Args:
-        elements (list): A list of IFC elements of different types.
-        ec_functions (dict): A dictionary mapping IFC element types to their EC calculation functions.
-        **kwargs: Additional arguments required by EC calculation functions.
-
-    Returns:
-        float: Total embodied carbon (EC) sum.
-    """
+   
     total_ec = 0
      # Dictionary of element types mapped to their EC calculation functions
     ec_functions = {
@@ -115,6 +105,50 @@ def calculate_elements_ec(elements, slabs_to_ignore=[] ,**kwargs):
 
 
 ## EC Breakdown by materials - concrete, window, wood, aluminium, plywood, granite 
+def extract_material_type(material_name):
+    material_name = material_name.lower()
+
+    if "concrete" in material_name:
+        return "concrete"
+    elif "window" in material_name:
+        return "window"
+    elif "wood" in material_name:
+        return "wood"
+    elif "aluminium" in material_name:
+        return "aluminium"
+    elif "granite" in material_name:
+        return "granite"
+    elif "plywood" in material_name:
+        return "plywood"
+    
+    return None  # Ignore materials that don't match the categories
+
+
+def breakdown_by_materials(filepath):
+    ifc_file = ifcopenshell.open(filepath)
+
+    # Stores elements categorized by material type
+    elements_by_material = {key: [] for key in ["concrete", "window", "wood", "aluminium", "granite", "plywood"]}
+
+    # Fetch all elements in the IFC file
+    all_elements = ifc_file.by_type("IfcElement")
+
+    for element in all_elements:
+        material_sets = element.HasAssociations  # Extract materials associated with the element
+        for rel in material_sets:
+            if rel.is_a("IfcRelAssociatesMaterial") and rel.RelatingMaterial:
+                material_name = rel.RelatingMaterial.Name  # Extract material name
+                category = extract_material_type(material_name)
+                if category:
+                    elements_by_material[category].append(element)  # Categorize the element
+
+    # Compute EC for each material category
+    ec_breakdown = {}
+    for material, elements in elements_by_material.items():
+        if elements:
+            ec_breakdown[material] = calculate_elements_ec(elements)
+    
+    return ec_breakdown
 
 ## EC Breakdown by building elements 
 def breakdown_by_elements(filepath):
@@ -223,6 +257,9 @@ if __name__ == "__main__":
     sum_total_ec = calculate_total_ec(ifcpath)
     total_ec = calculate_embodied_carbon(ifcpath)
     ec_by_elements = breakdown_by_elements(ifcpath)
-    logger.info(f"Breakdown by materials = {ec_by_elements}")
+    ec_by_materials = breakdown_by_materials(ifcpath)
+    logger.info(f"Breakdown by elements = {ec_by_elements}")
+
+    logger.info(f"Breakdown by materials = {ec_by_materials}")
 
     logger.info(f"Validation: Substructure EC + Superstructure EC = {sub_ec + super_ec}, Total EC = {sum_total_ec}, Total EC from calculator.py = {total_ec}")
