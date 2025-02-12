@@ -8,9 +8,9 @@ import ifcopenshell.geom
 import numpy as np
 from numpy import abs as np_abs
 
-from calculator import calculate_beams, calculate_columns, calculate_embodied_carbon, calculate_slabs, calculate_walls,calculate_roofs
+from calculator import calculate_beams, calculate_columns, calculate_doors, calculate_embodied_carbon, calculate_railings, calculate_slabs, calculate_stairs, calculate_walls,calculate_roofs, calculate_windows
 
-## Substructure elements - Level 0 
+## EC Breakdown by building system substructure and superstructure 
 def get_elements_on_storey(ifc_file_path, storey_name="Level 0"): 
     """ Returns all elements associated with a given storey name. """
     model = ifcopenshell.open(ifc_file_path)
@@ -34,15 +34,7 @@ def get_elements_on_storey(ifc_file_path, storey_name="Level 0"):
     logger.info(f"Elements found in {storey_name}: {[e.is_a() for e in elements]}")
     return elements
 
-def get_nested_elements(element):
-    """ Recursively get nested elements inside an aggregated structure """
-    nested_elements = []
-    for rel in element.IsDecomposedBy:
-        if rel.is_a("IfcRelAggregates"):
-            nested_elements.extend(rel.RelatedObjects)
-            for sub_element in rel.RelatedObjects:
-                nested_elements.extend(get_nested_elements(sub_element))
-    return nested_elements
+
 def calculate_substructure_ec(filepath):
     ## Calcuate the embodied carbon for elements on level 0 
     elements = get_elements_on_storey(filepath, "Level 0")
@@ -106,6 +98,81 @@ def calculate_superstructure_ec(filepath):
     
     return total_ec
 
+## Calculate EC given elements 
+
+
+## EC Breakdown by materials - concrete, window, wood, aluminium, plywood, granite 
+
+## EC Breakdown by building elements 
+def breakdown_by_elements(filepath):
+    slabs_to_ignore = []
+    ifc_file = ifcopenshell.open(filepath)
+
+    # Store element types dynamically
+    elements = {
+        "column": ifc_file.by_type("IfcColumn"),
+        "beam": ifc_file.by_type("IfcBeam"),
+        "slab": ifc_file.by_type("IfcSlab"),
+        "wall": ifc_file.by_type("IfcWall"),
+        "roof": ifc_file.by_type("IfcRoof"),
+        "window": ifc_file.by_type("IfcWindow"),
+        "door": ifc_file.by_type("IfcDoor"),
+        "stair": ifc_file.by_type("IfcStairFlight"),
+        "railing": ifc_file.by_type("IfcRailing"),
+    }
+
+    # Logging element counts
+    for key, value in elements.items():
+        logger.info(f"Total {key}s found: {len(value)}")
+
+    # Identify slabs to ignore (those aggregated under roofs)
+    for roof in elements["roof"]:
+        for rel in roof.IsDecomposedBy:
+            if rel.is_a("IfcRelAggregates"):
+                for part in rel.RelatedObjects:
+                    if part.is_a("IfcSlab"):
+                        slabs_to_ignore.append(part.id())
+
+    # Function mapping (instead of using `globals()`)
+    calculation_functions = {
+        "column": calculate_columns,
+        "beam": calculate_beams,
+        "slab": lambda slabs: calculate_slabs(slabs, to_ignore=slabs_to_ignore),
+        "wall": calculate_walls,
+        "roof": calculate_roofs,
+        "window": calculate_windows,
+        "door": calculate_doors,
+        "stair": calculate_stairs,
+        "railing": calculate_railings,
+    }
+
+    # Calculate total embodied carbon
+    total_ec = 0
+    breakdown = {}
+
+    for key, elements_list in elements.items():
+        if elements_list:
+            func = calculation_functions.get(key)
+            if func:
+                ec = func(elements_list)
+                total_ec += ec
+                breakdown[key] = ec  # Store breakdown by element type
+
+    logger.info(f"Total EC calculated: {total_ec}")
+    
+    return {
+        "total_ec": total_ec,
+        "by_element": breakdown  # Example output: {"beam": 500, "column": 600, "slab": 700}
+    }
+
+
+## Calulate total EC 
+def calculate_total_ec(filepath):
+    total_ec = calculate_substructure_ec(filepath)+calculate_superstructure_ec(filepath)
+    return total_ec
+
+## Debugging functions 
+
 def check_slab_assignments(filepath):
     """ Checks where each slab is assigned (or unassigned) """
     model = ifcopenshell.open(filepath)
@@ -140,7 +207,9 @@ if __name__ == "__main__":
     logger.info(f"{ifcpath=}")
     sub_ec = calculate_substructure_ec(ifcpath)
     super_ec = calculate_superstructure_ec(ifcpath)
-    
+    sum_total_ec = calculate_total_ec(ifcpath)
     total_ec = calculate_embodied_carbon(ifcpath)
+    ec_by_elements = breakdown_by_elements(ifcpath)
+    logger.info(f"Breakdown by materials = {ec_by_elements}")
 
-    logger.info(f"Validation: Substructure EC + Superstructure EC = {sub_ec + super_ec}, Total EC = {total_ec}")
+    logger.info(f"Validation: Substructure EC + Superstructure EC = {sub_ec + super_ec}, Total EC = {sum_total_ec}, Total EC from calculator.py = {total_ec}")
