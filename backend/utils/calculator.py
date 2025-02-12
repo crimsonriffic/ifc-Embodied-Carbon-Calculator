@@ -16,7 +16,6 @@ MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] ,
                 "Concrete, C25/30": [0.119, 2350],
                 "Concrete, General": [0.112,2350],
                 "Concrete, Precast, Ordinary Portland Cement": [0.148, 2400],
-MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] , "Concrete, Cast-in-Place gray": [0.103, 2350] , "Concrete, Grade 40": [0.170, 2400], "Concrete, Grade 25": [0.13, 2350], "Concrete, General": [0.112,2350],"Concrete, Precast, Ordinary Portland Cement": [0.148,2400], # kgCO2e per kg, kg per m^3 (Gen 1)
                 'Wood_aluminium fixed window 3-glass (SF 2010)' : 54.6, # kgCO2 per 1m^2
                 'Wood_aluminium sidehung window 3-glass (SF 2010)' : 72.4,
                 'Wooden doors T10-T25 with wooden frame' : 30.4,
@@ -232,19 +231,6 @@ def calculate_slabs(slabs, to_ignore=[]):
                 total_ec += current_ec
 
         elif current_material:
-                    elif material.is_a("IfcMaterialLayerSetUsage"):
-                        for layer in material.ForLayerSet.MaterialLayers:
-                            #logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
-                            materials.append(layer.Material.Name)
-                            current_material = material.Name
-                            break
-                    elif material.is_a("IfcMaterialLayerSet"):
-                        for layer in material.MaterialLayers:
-                            #logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
-                            materials.append(layer.Material.Name)
-                            current_material = material.Name
-                            break
-
             current_material_ec = MaterialList.get(current_material, None) if current_material else None
 
             if current_material_ec is None:
