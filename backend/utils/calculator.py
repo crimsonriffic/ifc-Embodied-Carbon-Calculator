@@ -35,9 +35,9 @@ def calculate_beams(beams):
     total_ec = 0
     quantities = {}
     materials = []
-    current_quantity = None # in volume
-    current_material = None
     for beam in beams:
+        current_quantity = None # in volume
+        current_material = None
 
         if hasattr(beam, "IsDefinedBy"):
             for definition in beam.IsDefinedBy:
@@ -70,7 +70,8 @@ def calculate_beams(beams):
             # handle with default value?
             # ai?
             raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
-        
+        if current_quantity is None:
+            continue
         material_ec_perkg, material_density = current_material_ec
         current_ec = material_ec_perkg * material_density * current_quantity
 
@@ -584,22 +585,38 @@ def calculate_roofs(roofs):
 
     return total_ec
 
-def calculate_element_area(element):
-    area = 0
-    
+def calculate_gfa(spaces):
+    total_area = 0
+    for space in spaces:
     # Get the area from quantities
-    if hasattr(element, "IsDefinedBy"):
-        for definition in element.IsDefinedBy:
-            if definition.is_a('IfcRelDefinesByProperties'):
-                property_def = definition.RelatingPropertyDefinition
-                if property_def.is_a('IfcElementQuantity'):
-                    quantity_list = [ (quantity, quantity.Name) for quantity in property_def.Quantities]
-                    for i in ['NetArea','NetSideArea', 'OuterSurfaceArea', 'NetSurfaceArea']:
-                        for quantity, name in quantity_list:
-                            if i == name:
-                                # logger.info(f"{element} has area: {quantity.AreaValue}")
-                                area += quantity.AreaValue
-    
+        total_area += get_element_area(space)
+    return total_area
+
+def get_element_area(element):
+    settings = ifcopenshell.geom.settings()
+    try:
+        shape = ifcopenshell.geom.create_shape(settings, element)
+        vertices = np.array(shape.geometry.verts).reshape((-1, 3))
+        faces = np.array(shape.geometry.faces).reshape(-1, 3)
+        
+        # Get all triangle vertices at once
+        v1 = vertices[faces[:, 0]]
+        v2 = vertices[faces[:, 1]]  
+        v3 = vertices[faces[:, 2]]
+        
+        # Calculate area using cross product method
+        # Area of a triangle = magnitude of cross product / 2
+        cross_products = np.cross(v2 - v1, v3 - v1)
+        # Calculate magnitude of cross products
+        areas = np.sqrt(np.sum(cross_products**2, axis=1)) / 2.0
+        
+        # Sum all triangle areas
+        total_area = np.sum(areas)
+        return np.abs(total_area)
+        
+    except RuntimeError as e:
+        print(f"Error processing geometry: {e}")
+        return None
     return area
 
 
@@ -814,6 +831,9 @@ def calculate_embodied_carbon(filepath):
     railings = ifc_file.by_type('IfcRailing')
     logger.info(f"Total railings found {len(railings)}")
 
+    spaces = ifc_file.by_type('IfcSpace')
+    logger.info(f"Total spaces found {len(spaces)}")
+
     if roofs:
         for roof in roofs:
             aggregated_by = roof.IsDecomposedBy
@@ -867,14 +887,13 @@ def calculate_embodied_carbon(filepath):
         total_ec += roofs_ec
     logger.info(f"Total EC calculated: {total_ec}")
 
+    total_area = 0
+    if spaces:
+        total_area = calculate_gfa(spaces)
+    else:
+        logger.warning("No spaces found.")
+    logger.info(f"Total GFA calculated: {total_area}")
 
-    # total_area = 0
-    # for elements in [walls, slabs, columns,beams]:
-    #     for element in elements:
-    #         area = calculate_element_area(element)
-    #         if area:
-    #             total_area += area
-    # print(total_area)
 
     return total_ec
 
@@ -882,6 +901,6 @@ import os
 
 
 if __name__ == "__main__":
-    ifcpath = os.path.join(r"/mnt/c/Users/dczqd/Documents/SUTD/Capstone-calc/", "IFC Test model_Stairs 1.ifc")
+    ifcpath = os.path.join("/home/davis/Downloads/GFA IFC Test Model_Complex 2b.ifc")
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
