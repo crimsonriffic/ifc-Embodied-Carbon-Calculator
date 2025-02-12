@@ -75,32 +75,60 @@ def test_get_project_info(project_id: str):
        print(f"Error: {response.json().get('detail', 'Unknown error')}")
 
 # TODO
-# def test_create_project(user_id: str):
-#     """Test creating a new project"""
-#     print(f"\n===Testing CREATE project===")
+def test_create_project(user_id: str):
+    """Test creating a new project"""
+    print(f"\n===Testing CREATE project===")
     
-#     project_data = {
-#         "project_name": "Test Project",
-#         "client_name": "Test Client",
-#         "user_job_role": "Test Engineer"
-#     }
+    project_data = {
+        "project_name": "Test Project 2",
+        "client_name": "Test Client",
+        "user_job_role": "Test Engineer",
+        "last_edited_date":"2024-01-21T00:00:00.000+00:00",
+        "last_edited_user": user_id,
+        "current_version": 1,
+        "access_control": {
+        "user789": {
+            "role": "owner",
+            "permissions": ["read", "write", "execute", "delete", "admin"]  # Example permissions
+        },
+        "user123": {
+            "role": "viewer",
+            "permissions": ["read"]  # Example permissions
+        }
+    },
+        "edit_history": [
+            {"timestamp": "2024-01-21T00:00:00.000+00:00",
+            "user": "Mike Johnson",
+            "action": "created_project",
+            "description": "Project initialization"
+        }
+    ],
+        "ifc_versions":{
+        1: {
+            "total_ec": 3000,
+            "date_uploaded": "2024-01-21T00:00:00.000+00:00",
+            "uploaded_by": user_id,
+            "file_path": "s3://bucket/proj_789/v1.ifc"
+        }
+    },
+    }
     
-#     response = requests.post(
-#         f"{BASE_URL}/projects",
-#         json=project_data,
-#         params={"user_id": user_id}  # Using query parameter for user_id
-#     )
+    response = requests.post(
+        f"{BASE_URL}/create_project",
+        json=project_data,
+        params={"user_id": user_id}  # Using query parameter for user_id
+    )
     
-#     print(f"Status Code: {response.status_code}")
-#     if response.status_code == 200:
-#         result = response.json()
-#         print("\nProject Created:")
-#         print(f"Project ID: {result['_id']}")
-#         print(f"Project Name: {result['project_name']}")
-#         return result['_id']  # Return the ID for use in other tests
-#     else:
-#         print(f"Error: {response.json().get('detail', 'Unknown error')}")
-#         return None
+    print(f"Status Code: {response.status_code}")
+    if response.status_code == 200:
+        result = response.json()
+        print("\nProject Created:")
+        print(f"Project ID: {result['_id']}")
+        print(f"Project Name: {result['project_name']}")
+        return result['_id']  # Return the ID for use in other tests
+    else:
+        print(f"Error: {response.json().get('detail', 'Unknown error')}")
+        return None
 
 def main():
     # Test user data
@@ -112,6 +140,7 @@ def main():
     # test_get_projects("nonexistent_user")  # Should fail with 404
 
     # test_upload_ifc("507f1f77bcf86cd799439011", "Window 1.ifc", test_user)
-    test_get_project_info("507f1f77bcf86cd799439011")
+    # test_get_project_info("507f1f77bcf86cd799439011")
+    test_create_project(test_user)
 if __name__ == "__main__":
     main()

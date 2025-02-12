@@ -1,0 +1,7 @@
+name,ifc_path,expected_ec,
+Column&Beam 1,test_files/Column&Beam 1.ifc,2970.12848
+Column&Beam 2,test_files/Column&Beam 2.ifc,2763.5593
+Slabs layers 1,test_files/IFC Test model_Slabs layers 1.ifc,31849.2
+Slabs layers 2,test_files/IFC Test model_Slabs layers 2.ifc,17500.86
+Window 1,test_files/Window 1.ifc,1924.3
+Door 1,test_files/Door 1.ifc,1870.5632

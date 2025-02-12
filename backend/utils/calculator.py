@@ -2,13 +2,29 @@ import ifcopenshell
 from ifcopenshell.util.element import get_psets
 from loguru import logger
 import sys
-MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] , "Concrete, Cast-in-Place gray": [0.103, 2350] , "Concrete, Grade 40": [0.170, 2400], "Concrete, Grade 25": [0.13, 2350], "Concrete, General": [0.112,2350], # kgCO2e per kg, kg per m^3 (Gen 1)
+import ifcopenshell
+import ifcopenshell.geom
+import numpy as np
+from numpy import abs as np_abs
+
+ # kgCO2e per kg, kg per m^3 (Gen 1)
+MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] , 
+                "Concrete, Cast-in-Place gray": [0.103, 2350] , 
+                "Concrete, C12/15": [0.097, 2350],
+                "Concrete, Grade 40": [0.170, 2400], 
+                "Concrete, Grade 25": [0.13, 2350], 
+                "Concrete, C25/30": [0.119, 2350],
+                "Concrete, General": [0.112,2350],
+                "Concrete, Precast, Ordinary Portland Cement": [0.148, 2400],
                 'Wood_aluminium fixed window 3-glass (SF 2010)' : 54.6, # kgCO2 per 1m^2
                 'Wood_aluminium sidehung window 3-glass (SF 2010)' : 72.4,
                 'Wooden doors T10-T25 with wooden frame' : 30.4,
                 'Wooden doors T10-T25 with steel frame' : 49.4,
+                'Aluminium, General': [13.100, 2700],
+                'Tiles, Granite'	:[0.700,	2650],
+                'Plywood':[0.910,	600]
                 }  
-
+MaterialsToIgnore  = ["Travertine","<Unnamed>"]
 LOGGING_LEVEL = "DEBUG" 
 logger.remove()  
 logger.add(sys.stderr, level=LOGGING_LEVEL) 
@@ -30,7 +46,7 @@ def calculate_beams(beams):
                     if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_BeamBaseQuantities':
                         for quantity in property_def.Quantities:
                             if quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
-                                logger.debug(f'Found NetVolume  for {beam.Name}')
+                                logger.debug(f'Found NetVolume  for {beam.Name}: {quantity.VolumeValue}')
                                 quantities[quantity.Name] = quantity.VolumeValue
                                 current_quantity = quantity.VolumeValue
                                 break
@@ -47,18 +63,6 @@ def calculate_beams(beams):
                         materials.append(material.Name)
                         current_material = material.Name
                         break
-                    elif material.is_a("IfcMaterialLayerSetUsage"):
-                        for layer in material.ForLayerSet.MaterialLayers:
-                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
-                            materials.append(layer.Material.Name)
-                            current_material = material.Name
-                            break
-                    elif material.is_a("IfcMaterialLayerSet"):
-                        for layer in material.MaterialLayers:
-                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
-                            materials.append(layer.Material.Name)
-                            current_material = material.Name
-                            break
 
         current_material_ec = MaterialList.get(current_material, None) if current_material else None
 
@@ -140,24 +144,41 @@ def calculate_columns(columns):
 
     return total_ec
 
-def calculate_slabs(slabs):
+def calculate_slabs(slabs, to_ignore=[]):
 
     total_ec = 0
     quantities = {}
-    materials = []
-    current_quantity = None
-    current_material = None
 
     for slab in slabs:
-
+        layer_thicknesses = {}
+        material_layers = []
+        current_area = None
+        current_ec = None
+        current_quantity = None
+        current_material = None
+        if slab.id() in to_ignore:
+            logger.info(f"Skipping slab {slab.id()} as its to be ignored")
+            continue
         if hasattr(slab, "IsDefinedBy"):
             for definition in slab.IsDefinedBy:
                 if definition.is_a('IfcRelDefinesByProperties'):
                     property_def = definition.RelatingPropertyDefinition
                     if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_SlabBaseQuantities':
                         for quantity in property_def.Quantities:
-                            if quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
-                                logger.debug(f'Found NetVolume  for {slab.Name}')
+                            # For material constituent
+                            if quantity.is_a("IfcPhysicalComplexQuantity"):
+                                for sub_quantity in quantity.HasQuantities:
+                                    logger.debug(f'Found subquantity {sub_quantity.Name} for {quantity.Name}: {sub_quantity.LengthValue}')
+                                    # logger.debug(sub_quantity.LengthValue)
+                                    layer_thicknesses[quantity.Name] = sub_quantity.LengthValue
+
+                            elif quantity.is_a('IfcQuantityArea') and quantity.Name == 'NetArea':
+                                logger.debug(f'Found NetArea for {slab.Name}')
+                                current_area = quantity.AreaValue
+
+                            elif quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
+                                logger.debug(f'Found NetVolume  for {slab.Name}: {quantity.VolumeValue}')
+
                                 quantities[quantity.Name] = quantity.VolumeValue
                                 current_quantity = quantity.VolumeValue
                                 break
@@ -168,49 +189,94 @@ def calculate_slabs(slabs):
             for association in slab.HasAssociations:
                 if association.is_a("IfcRelAssociatesMaterial"):
                     material = association.RelatingMaterial
+
                     if material.is_a("IfcMaterial"):
                         logger.debug(f"Found material '{material.Name}', as IfcMaterial")
-                        materials.append(material.Name)
+                        material_layers.append(material.Name)
                         current_material = material.Name
                         break
-                    elif material.is_a("IfcMaterialLayerSetUsage"):
-                        for layer in material.ForLayerSet.MaterialLayers:
-                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
-                            materials.append(layer.Material.Name)
-                            current_material = material.Name
-                            break
-                    elif material.is_a("IfcMaterialLayerSet"):
-                        for layer in material.MaterialLayers:
-                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
-                            materials.append(layer.Material.Name)
-                            current_material = material.Name
-                            break
+                    elif material.is_a("IfcMaterialConstituentSet"):
+                        for layer in material.MaterialConstituents:
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialConstituent")
+                            material_layers.append(layer.Material.Name)
 
-        current_material_ec = MaterialList.get(current_material, None) if current_material else None
+        if material_layers:
+            logger.debug("layered")
+            # Multi-material wall
+            for mat in material_layers:
 
-        if current_material_ec is None:
-            # handle with default value?
-            # ai?
-            raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+                mat_ec_data = MaterialList.get(mat)
+                thickness = layer_thicknesses.get(mat, None)
+                if thickness is None:
+                    logger.warning(f"'{mat}' layer thickness not found, skipping EC calculation")
+                    continue
+                if thickness <= 0:
+                    logger.warning(f"'{mat}' layer thickness <= 0, skipping EC calculation")
+                    continue
+                if mat_ec_data is None and mat not in MaterialsToIgnore:
+                    raise NotImplementedError(f"Material '{mat}' not found in database")
+
+                if current_area is None:
+                    logger.warning(f"{mat} area not found, manually calculating.")
+
+                ec_per_kg, density = mat_ec_data
+                logger.debug(thickness)
+                logger.debug(current_area)
+                logger.debug(ec_per_kg)
+                logger.debug(density)
+                current_ec = ec_per_kg * density * (thickness/1000) * current_area
+                logger.debug(f"EC for material '{mat}' in {slab.Name} is {current_ec}")
+                total_ec += current_ec
+
+        elif current_material:
+
+            current_material_ec = MaterialList.get(current_material, None) if current_material else None
+
+            if current_material_ec is None:
+                # handle with default value?
+                # ai?
+                raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+            material_ec_perkg, material_density = current_material_ec
+            current_ec = material_ec_perkg * material_density * current_quantity
+            logger.debug(f"EC for {slab.Name} is {current_ec}")
+            total_ec += current_ec
         
-        material_ec_perkg, material_density = current_material_ec
-        current_ec = material_ec_perkg * material_density * current_quantity
+        if current_ec is None:
+            logger.warning(f"EC calculation for slab failed, attempting manual volume method")
+            # Attempts to retrieve the "correct" material from material layer set. Works if able to filter down to one possible material.
+            # Calculates EC using EC density * volume method.
+            # Calculates volume from ifc geometry.
+            
+            MaterialList_filtered = [ material for material in material_layers if material not in MaterialsToIgnore]
+            if len(MaterialList_filtered) != 1:
+                logger.error(f"Unable to isolate to one material from material layer set. Skipping this slab {slab}") 
+            if current_quantity is None:
+                current_quantity = get_element_volume(slab)
+            current_material = MaterialList_filtered[0]
+            logger.debug(f"Using material {current_material}")
+            current_material_ec = MaterialList.get(current_material, None) if current_material else None
+            if current_material_ec is None:
+                # handle with default value?
+                # ai?
+                raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+            material_ec_perkg, material_density = current_material_ec
+            current_ec = material_ec_perkg * material_density * current_quantity
+            logger.debug(f"EC for {slab.Name} is {current_ec}")
+            total_ec += current_ec
 
-        logger.debug(f"EC for {slab.Name} is {current_ec}")
-        total_ec += current_ec
-    
     logger.debug(f"Total EC for slabs is {total_ec}")
 
     return total_ec
+
 def calculate_windows(windows):
 
     total_ec = 0
     quantities = {}
     materials = []
-    current_quantity = None
-    current_material = None
 
     for window in windows:
+        current_quantity = None
+        current_material = None
 
         if hasattr(window, "IsDefinedBy"):
             for definition in window.IsDefinedBy:
@@ -235,18 +301,6 @@ def calculate_windows(windows):
                         materials.append(material.Name)
                         current_material = material.Name
                         break
-                    elif material.is_a("IfcMaterialLayerSetUsage"):
-                        for layer in material.ForLayerSet.MaterialLayers:
-                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
-                            materials.append(layer.Material.Name)
-                            current_material = material.Name
-                            break
-                    elif material.is_a("IfcMaterialLayerSet"):
-                        for layer in material.MaterialLayers:
-                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
-                            materials.append(layer.Material.Name)
-                            current_material = material.Name
-                            break
 
         current_material_ec = MaterialList.get(current_material, None) if current_material else None
 
@@ -267,70 +321,103 @@ def calculate_windows(windows):
 def calculate_walls(walls):
 
     total_ec = 0
-    quantities = {}
-    materials = []
-    current_quantity = None
-    current_material = None
-
+    #quantities = {}
+    #materials = []
+    
     for wall in walls:
-        # psets = ifcopenshell.util.element.get_psets(wall)
-        # print(psets)
+        current_volume = None
+        current_material = None
+        layer_area = None
+        layer_thicknesses = {}
+        layer_materials = []
+        
         if hasattr(wall, "IsDefinedBy"):
             for definition in wall.IsDefinedBy:
                 if definition.is_a('IfcRelDefinesByProperties'):
                     property_def = definition.RelatingPropertyDefinition
                     if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_WallBaseQuantities':
                         for quantity in property_def.Quantities:
-                            if quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
-                                logger.debug(f'Found NetVolume  for {wall.Name}')
-                                quantities[quantity.Name] = quantity.VolumeValue
-                                current_quantity = quantity.VolumeValue
-                                break
-                        if current_quantity is not None:
-                            break
+                            # For material constituent
+                            if quantity.Name in MaterialList.keys(): 
+                                for sub_quantity in quantity.HasQuantities:
+                                    logger.debug(f'Found subquantity {sub_quantity.Name} for {quantity.Name}: {sub_quantity.LengthValue}')
+                                    # logger.debug(sub_quantity.LengthValue)
+                                    layer_thicknesses[quantity.Name] = sub_quantity.LengthValue
+                            elif quantity.is_a('IfcQuantityArea') and quantity.Name == 'NetSideArea':
+                                logger.debug(f'Found NetSideArea for {wall.Name}')
+                                current_area = quantity.AreaValue
+                                                                
+                            # For single material
+                            elif quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
+                                logger.debug(f'Found NetVolume for {wall.Name}')
+                                #quantities[quantity.Name] = quantity.VolumeValue
+                                current_volume = quantity.VolumeValue                            
 
         if hasattr(wall, "HasAssociations"):
             for association in wall.HasAssociations:
-                print(association)
                 if association.is_a("IfcRelAssociatesMaterial"):
                     material = association.RelatingMaterial
-                    print(material)
                     if material.is_a("IfcMaterial"):
                         logger.debug(f"Found material '{material.Name}', as IfcMaterial")
-                        materials.append(material.Name)
                         current_material = material.Name
-                        break
-                    elif material.is_a("IfcMaterialLayerSetUsage"):
-                        for layer in material.ForLayerSet.MaterialLayers:
-                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
-                            materials.append(layer.Material.Name)
-                            current_material = layer.Material.Name
-                            break
-                    elif material.is_a("IfcMaterialLayerSet"):
-                        for layer in material.MaterialLayers:
-                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
-                            materials.append(layer.Material.Name)
-                            current_material = layer.Material.Name
-                            break
 
-        current_material_ec = MaterialList.get(current_material, None) if current_material else None
+                        #materials.append(material.Name)
+                    # elif material.is_a("IfcMaterialLayerSetUsage"):
+                    #     for layer in material.ForLayerSet.MaterialLayers:
+                    #         logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
+                    #         materials.append(layer.Material.Name)
+                    #         current_material = material.Name
+                    # elif material.is_a("IfcMaterialLayerSet"):
+                    #     for layer in material.MaterialLayers:
+                    #         logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
+                    #         materials.append(layer.Material.Name)
+                    #         current_material = layer.Material.Name
+                    elif material.is_a("IfcMaterialConstituentSet"):
+                        for layer in material.MaterialConstituents:
+                            print("Constituent\n")
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialConstituent")
+                            layer_materials.append(layer.Material.Name)
 
-        if current_material_ec is None:
+        if layer_materials:
+            logger.debug("layered")
+            # Multi-material wall
+            for mat in layer_materials:
+                mat_ec_data = MaterialList.get(mat)
+                thickness = layer_thicknesses.get(mat, 0)
+
+                if mat_ec_data and thickness > 0:
+                    ec_per_kg, density = mat_ec_data
+                    logger.debug(thickness)
+                    logger.debug(current_area)
+                    logger.debug(ec_per_kg)
+                    logger.debug(density)
+                    current_ec = ec_per_kg * density * (thickness/1000) * current_area
+                    logger.debug(f"EC for material '{mat}' in {wall.Name} is {current_ec}")
+                    total_ec += current_ec
+                else:
+                    raise NotImplementedError(f"Material '{mat}' or thickness not properly defined")
+        elif current_material:
+            # Single-material wall
+            mat_ec_data = MaterialList.get(current_material)
+            if mat_ec_data and current_volume:
+                ec_per_kg, density = mat_ec_data
+                current_ec = ec_per_kg * density * current_volume
+                logger.debug(f"EC for {wall.Name} is {current_ec}")
+                total_ec += current_ec
+            else:
+                raise NotImplementedError(f"Material '{current_material}' or quantity not properly defined")
+
+        if current_ec is None:
             # handle with default value?
             # ai?
             raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
         
-        material_ec_perkg, material_density = current_material_ec
-        current_ec = material_ec_perkg * material_density * current_quantity
-
-        logger.debug(f"EC for {wall.Name} is {current_ec}")
-        total_ec += current_ec
-    
     logger.debug(f"Total EC for walls is {total_ec}")
 
     return total_ec
 
-
+# TODO
+# To wait for the ifc test file.
 def calculate_windows(windows):
 
     total_ec = 0
@@ -375,6 +462,128 @@ def calculate_windows(windows):
 
     return total_ec
 
+def calculate_doors(doors):
+
+    total_ec = 0
+    quantities = {}
+    materials = []
+    current_quantity = None
+    current_material = None
+
+    for door in doors:
+
+        if hasattr(door, "IsDefinedBy"):
+            for definition in door.IsDefinedBy:
+                if definition.is_a('IfcRelDefinesByProperties'):
+                    property_def = definition.RelatingPropertyDefinition
+                    if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_DoorBaseQuantities':
+                        for quantity in property_def.Quantities:
+                            if quantity.is_a('IfcQuantityArea') and quantity.Name == 'Area':
+                                logger.debug(f'Found Area for {door.Name}')
+                                quantities[quantity.Name] = quantity.AreaValue
+                                current_quantity = quantity.AreaValue
+                                break
+                        if current_quantity is not None:
+                            break
+
+        psets = get_psets(door)
+        current_material = psets['Pset_DoorCommon']['Reference']
+
+        current_material_ec = MaterialList.get(current_material, None) if current_material else None
+
+        if current_material_ec is None:
+            # handle with default value?
+            # ai?
+            raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+        
+        material_ec_per_m2 = current_material_ec
+        current_ec = material_ec_per_m2 *  current_quantity 
+
+        logger.debug(f"EC for {door.Name} is {current_ec}")
+        total_ec += current_ec
+    
+    logger.debug(f"Total EC for doors is {total_ec}")
+
+    return total_ec
+    pass
+                    
+
+def calculate_roofs(roofs):
+
+    total_ec = 0
+    quantities = {}
+    materials = []
+    slabs = []
+
+    for roof in roofs:
+        current_ec = 0
+        current_quantity = None
+        current_material = None
+        if hasattr(roof, "IsDecomposedBy"):
+            for rel in roof.IsDecomposedBy:
+                if rel.is_a("IfcRelAggregates"):
+                    for slab in rel.RelatedObjects:
+                        if slab.is_a("IfcSlab"):
+                            #print(f"Found Slab: {slab.Name}")
+                            slabs.append(slab)
+        
+        for slab in slabs:
+            if hasattr(slab, "IsDefinedBy"):
+                for definition in slab.IsDefinedBy:
+                    #logger.debug(definition)
+                    if definition.is_a('IfcRelDefinesByProperties'):
+                        property_def = definition.RelatingPropertyDefinition
+                        if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_SlabBaseQuantities':
+                            for quantity in property_def.Quantities:
+                                if quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
+                                    volume = quantity.VolumeValue / len(slabs)
+                                    logger.debug(f'Found NetVolume  for {roof.Name}: {volume}')
+                                    quantities[quantity.Name] = volume
+                                    current_quantity = volume
+                                    break
+                            if current_quantity is not None:
+                                break
+
+            if hasattr(slab, "HasAssociations"):
+                for association in slab.HasAssociations:
+                    if association.is_a("IfcRelAssociatesMaterial"):
+                        material = association.RelatingMaterial
+                        if material.is_a("IfcMaterial"):
+                            logger.debug(f"Found material '{material.Name}', as IfcMaterial")
+                            materials.append(material.Name)
+                            current_material = material.Name
+                            break
+                        elif material.is_a("IfcMaterialLayerSetUsage"):
+                            for layer in material.ForLayerSet.MaterialLayers:
+                                logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
+                                materials.append(layer.Material.Name)
+                                current_material = material.Name
+                                break
+                        elif material.is_a("IfcMaterialLayerSet"):
+                            for layer in material.MaterialLayers:
+                                logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
+                                materials.append(layer.Material.Name)
+                                current_material = material.Name
+                                break
+
+                current_material_ec = MaterialList.get(current_material, None) if current_material else None
+
+                if current_material_ec is None:
+                    # handle with default value?
+                    # ai?
+                    raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+            
+            material_ec_perkg, material_density = current_material_ec
+            slab_ec = material_ec_perkg * material_density * current_quantity
+            current_ec += slab_ec
+
+        logger.debug(f"EC for {roof.Name} is {current_ec}")
+        total_ec += current_ec
+    
+    logger.debug(f"Total EC for roofs is {total_ec}")
+
+    return total_ec
+
 def calculate_element_area(element):
     area = 0
     
@@ -388,12 +597,194 @@ def calculate_element_area(element):
                     for i in ['NetArea','NetSideArea', 'OuterSurfaceArea', 'NetSurfaceArea']:
                         for quantity, name in quantity_list:
                             if i == name:
-                                logger.info(f"{element} has area: {quantity.AreaValue}")
+                                # logger.info(f"{element} has area: {quantity.AreaValue}")
                                 area += quantity.AreaValue
     
     return area
 
+
+def get_element_volume(element):
+    settings = ifcopenshell.geom.settings()
+    
+    try:
+        shape = ifcopenshell.geom.create_shape(settings, element)
+        vertices = np.array(shape.geometry.verts).reshape((-1, 3))
+        faces = np.array(shape.geometry.faces).reshape(-1, 3)
+        
+        # Get all triangle vertices at once
+        v1 = vertices[faces[:, 0]]
+        v2 = vertices[faces[:, 1]]
+        v3 = vertices[faces[:, 2]]
+        
+        # Calculate volume using cross product method
+        # Volume = sum(v1 · (v2 × v3)) / 6
+        cross_products = np.cross(v2, v3)
+        dot_products = np.sum(v1 * cross_products, axis=1)
+        volume = np.sum(dot_products) / 6.0
+        
+        return np_abs(volume)
+        
+    except RuntimeError as e:
+        print(f"Error processing geometry: {e}")
+        return None
+
+def calculate_stairs(stairs):
+
+    total_ec = 0
+    quantities = {}
+    material_layers = []
+
+    for stair in stairs:
+        current_quantity = None
+        current_material = None
+        current_area = None
+        current_ec = None
+        layer_thicknesses = {}
+        material_layers = []
+
+
+        if hasattr(stair, "HasAssociations"):
+            for association in stair.HasAssociations:
+                if association.is_a("IfcRelAssociatesMaterial"):
+                    material = association.RelatingMaterial
+
+                    if material.is_a("IfcMaterial"):
+                        logger.debug(f"Found material '{material.Name}', as IfcMaterial")
+                        material_layers.append(material.Name)
+                        current_material = material.Name
+                        break
+                    elif material.is_a("IfcMaterialConstituentSet"):
+                        for layer in material.MaterialConstituents:
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialConstituent")
+                            material_layers.append(layer.Material.Name)
+
+        if material_layers:
+            logger.debug("layered")
+            # Multi-material wall
+            for mat in material_layers:
+
+                mat_ec_data = MaterialList.get(mat)
+                thickness = layer_thicknesses.get(mat, None)
+                if thickness is None:
+                    logger.warning(f"'{mat}' layer thickness not found, skipping EC calculation")
+                    continue
+                if thickness <= 0:
+                    logger.warning(f"'{mat}' layer thickness <= 0, skipping EC calculation")
+                    continue
+                if mat_ec_data is None and mat not in MaterialsToIgnore:
+                    raise NotImplementedError(f"Material '{mat}' not found in database")
+
+                if current_area is None:
+                    logger.warning(f"{mat} area not found, manually calculating.")
+
+                ec_per_kg, density = mat_ec_data
+                logger.debug(thickness)
+                logger.debug(current_area)
+                logger.debug(ec_per_kg)
+                logger.debug(density)
+                current_ec = ec_per_kg * density * (thickness/1000) * current_area
+                logger.debug(f"EC for material '{mat}' in {stair.Name} is {current_ec}")
+                total_ec += current_ec
+
+        elif current_material:
+
+            current_material_ec = MaterialList.get(current_material, None) if current_material else None
+
+            if current_material_ec is None:
+                # handle with default value?
+                # ai?
+                raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+            material_ec_perkg, material_density = current_material_ec
+            current_ec = material_ec_perkg * material_density * current_quantity
+            logger.debug(f"EC for {stair.Name} is {current_ec}")
+            total_ec += current_ec
+        
+        if current_ec is None:
+            logger.warning(f"EC calculation for stair failed, attempting manual volume method")
+            # Attempts to retrieve the "correct" material from material layer set. Works if able to filter down to one possible material.
+            # Calculates EC using EC density * volume method.
+            # Calculates volume from ifc geometry.
+            
+            MaterialList_filtered = [ material for material in material_layers if material not in MaterialsToIgnore]
+            if len(MaterialList_filtered) != 1:
+                logger.error(f"Unable to isolate to one material from material layer set. Skipping this stair {stair}") 
+            if current_quantity is None:
+                current_quantity = get_element_volume(stair)
+            current_material = MaterialList_filtered[0]
+            logger.debug(f"Using material {current_material} with volume {current_quantity}")
+            current_material_ec = MaterialList.get(current_material, None) if current_material else None
+            if current_material_ec is None:
+                # handle with default value?
+                # ai?
+                raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+            material_ec_perkg, material_density = current_material_ec
+            current_ec = material_ec_perkg * material_density * current_quantity
+            logger.debug(f"EC for {stair.Name} is {current_ec}")
+            total_ec += current_ec
+
+    logger.debug(f"Total EC for stairs is {total_ec}")
+
+    return total_ec
+
+def calculate_railings(railings):
+    total_ec = 0
+    material_layers = []
+
+    for railing in railings:
+        current_quantity = None
+        current_material = None
+        current_area = None
+        current_ec = None
+        layer_thicknesses = {}
+        material_layers = []
+
+
+        if hasattr(railing, "HasAssociations"):
+            for association in railing.HasAssociations:
+                if association.is_a("IfcRelAssociatesMaterial"):
+                    material = association.RelatingMaterial
+
+                    if material.is_a("IfcMaterial"):
+                        logger.debug(f"Found material '{material.Name}', as IfcMaterial")
+                        material_layers.append(material.Name)
+                        current_material = material.Name
+                        break
+                    elif material.is_a("IfcMaterialConstituentSet"):
+                        for layer in material.MaterialConstituents:
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialConstituent")
+                            material_layers.append(layer.Material.Name)
+
+        if current_ec is None:
+            # Attempts to retrieve the "correct" material from material layer set. Works if able to filter down to one possible material.
+            # Calculates EC using EC density * volume method.
+            # Calculates volume from ifc geometry.
+            
+            MaterialList_filtered = [ material for material in material_layers if material not in MaterialsToIgnore]
+            if len(MaterialList_filtered) != 1:
+                logger.error(f"Unable to isolate to one material from material layer set. Skipping this railing {railing}") 
+            if current_quantity is None:
+                current_quantity = get_element_volume(railing)
+            current_material = MaterialList_filtered[0]
+            logger.debug(f"Using material {current_material}")
+            current_material_ec = MaterialList.get(current_material, None) if current_material else None
+            if current_material_ec is None:
+                # handle with default value?
+                # ai?
+                raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+            material_ec_perkg, material_density = current_material_ec
+            current_ec = material_ec_perkg * material_density * current_quantity
+            logger.debug(f"EC for {railing.Name} is {current_ec}")
+            total_ec += current_ec
+
+    logger.debug(f"Total EC for railings is {total_ec}")
+
+    return total_ec
+
 def calculate_embodied_carbon(filepath):
+    
+    
+    slabs_to_ignore=[]
+    
     ifc_file = ifcopenshell.open(filepath)
 
     columns = ifc_file.by_type('IfcColumn')
@@ -404,6 +795,9 @@ def calculate_embodied_carbon(filepath):
 
     slabs = ifc_file.by_type('IfcSlab')
     logger.info(f"Total slabs found {len(slabs)}")
+    
+    roofs = ifc_file.by_type('IfcRoof')
+    logger.info(f"Total roofs found {len(roofs)}")
 
     windows = ifc_file.by_type('IfcWindow')
     logger.info(f"Total windows found {len(windows)}")
@@ -411,10 +805,30 @@ def calculate_embodied_carbon(filepath):
     walls = ifc_file.by_type('IfcWall')
     logger.info(f"Total walls found {len(walls)}")
 
-    # stairs = ifc_file.by_type('IfcStairFlight') # or IfcStair?
-    # logger.info(f"Total stairs found {len(stairs)}")
+    doors = ifc_file.by_type('IfcDoor')
+    logger.info(f"Total doors found {len(doors)}")
+
+    stairs = ifc_file.by_type('IfcStairFlight')
+    logger.info(f"Total stairflights found {len(stairs)}")
+
+    railings = ifc_file.by_type('IfcRailing')
+    logger.info(f"Total railings found {len(railings)}")
+
+    if roofs:
+        for roof in roofs:
+            aggregated_by = roof.IsDecomposedBy
+            for rel in aggregated_by:
+                if rel.is_a('IfcRelAggregates'):
+                    print(rel)
+                    for part in rel.RelatedObjects:
+                        print(f"child : {part.is_a()}")
+                        if part.is_a('IfcSlab'):
+                            slabs_to_ignore.append(part.id())
+                    
+    # print(slabs_to_ignore)
 
     total_ec = 0
+
     if columns:
         columns_ec= calculate_columns(columns)
         total_ec += columns_ec
@@ -424,7 +838,7 @@ def calculate_embodied_carbon(filepath):
         total_ec += beams_ec
 
     if slabs:
-        slabs_ec= calculate_slabs(slabs)
+        slabs_ec= calculate_slabs(slabs, to_ignore=slabs_to_ignore)
         total_ec += slabs_ec
 
     if walls:
@@ -434,23 +848,40 @@ def calculate_embodied_carbon(filepath):
     if windows:
         windows_ec = calculate_windows(windows)
         total_ec += windows_ec
+
+    if doors:
+        doors_ec = calculate_doors(doors)
+        total_ec += doors_ec
+
+    # IfcStairFlight only
+    if stairs:
+        stairs_ec = calculate_stairs(stairs)
+        total_ec += stairs_ec
+    
+    if railings:
+        railings_ec = calculate_railings(railings)
+        total_ec += railings_ec
+    
+    if roofs:
+        roofs_ec = calculate_roofs(roofs)
+        total_ec += roofs_ec
     logger.info(f"Total EC calculated: {total_ec}")
 
-    total_area = 0
-    for elements in [walls, slabs, columns,beams]:
-        for element in elements:
-            area = calculate_element_area(element)
-            if area:
-                total_area += area
 
+    # total_area = 0
+    # for elements in [walls, slabs, columns,beams]:
+    #     for element in elements:
+    #         area = calculate_element_area(element)
+    #         if area:
+    #             total_area += area
+    # print(total_area)
 
-    print(total_area)
     return total_ec
 
 import os 
 
 
 if __name__ == "__main__":
-    ifcpath = os.path.join(r"C:\Users\dczqd\Documents\SUTD\Capstone-calc", "Window 1.ifc")
+    ifcpath = os.path.join(r"/mnt/c/Users/dczqd/Documents/SUTD/Capstone-calc/", "IFC Test model_Stairs 1.ifc")
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
