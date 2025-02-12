@@ -41,18 +41,9 @@ def calculate_substructure_ec(filepath):
     if not elements:
         logger.warning("No elements found on Level 0")
         return 0 
-    total_ec = 0 
-    for element in elements: 
-        if element.is_a("IfcSlab"):
-            total_ec += calculate_slabs([element])
-        elif element.is_a("IfcWall"):
-            total_ec += calculate_walls([element])
-        elif element.is_a("IfcColumn"):
-            total_ec += calculate_columns([element])
-        elif element.is_a("IfcBeam"):
-            total_ec += calculate_beams([element])
-    logger.info(f"Total Embodied Carbon for Substructure (Level 0): {total_ec}")
-    return total_ec
+    substructure_ec=calculate_elements_ec(elements)
+    logger.info(f"Total Embodied Carbon for Substructure (Level 0): {substructure_ec}")
+    return substructure_ec
     
 def calculate_superstructure_ec(filepath):
     ## Calculate the embodied carbon for elements on Level 1 and above (superstructure)
@@ -80,25 +71,47 @@ def calculate_superstructure_ec(filepath):
 
     for storey in superstructure_levels:
         elements = get_elements_on_storey(filepath, storey.Name)
+        superstructure_ec = calculate_elements_ec(elements,slabs_to_ignore)
 
-        for element in elements:
-            if element.is_a("IfcSlab"):
-                superstructure_slabs.add(element.GlobalId)  # Track slabs
-                total_ec += calculate_slabs([element],slabs_to_ignore)
-            elif element.is_a("IfcWall"):
-                total_ec += calculate_walls([element])
-            elif element.is_a("IfcColumn"):
-                total_ec += calculate_columns([element])
-            elif element.is_a("IfcBeam"):
-                total_ec += calculate_beams([element])
-            elif element.is_a("IfcRoof"):  # ADD THIS
-                total_ec += calculate_roofs([element]) 
     
-    logger.info(f"Total Embodied Carbon for Superstructure (Level 1+): {total_ec}")
+    logger.info(f"Total Embodied Carbon for Superstructure (Level 1+): {superstructure_ec}")
     
+    return superstructure_ec
+
+## Calculate EC given elements - in progress
+def calculate_elements_ec(elements, slabs_to_ignore=[] ,**kwargs):
+    """
+    Given a mixed list of IFC elements, calculates and returns the total EC sum.
+    
+    Args:
+        elements (list): A list of IFC elements of different types.
+        ec_functions (dict): A dictionary mapping IFC element types to their EC calculation functions.
+        **kwargs: Additional arguments required by EC calculation functions.
+
+    Returns:
+        float: Total embodied carbon (EC) sum.
+    """
+    total_ec = 0
+     # Dictionary of element types mapped to their EC calculation functions
+    ec_functions = {
+        "IfcColumn": calculate_columns,
+        "IfcBeam": calculate_beams,
+        "IfcSlab": lambda elements: calculate_slabs(elements, to_ignore=slabs_to_ignore),
+        "IfcWall": calculate_walls,
+        "IfcWindow": calculate_windows,
+        "IfcDoor": calculate_doors,
+        "IfcStairFlight": calculate_stairs,
+        "IfcRailing": calculate_railings,
+        "IfcRoof": calculate_roofs,
+    }
+
+    for element in elements:
+        element_type = element.is_a()  # Get IFC element type
+        if element_type in ec_functions:
+            total_ec += ec_functions[element_type]([element], **kwargs)  # Call the correct function
+
     return total_ec
 
-## Calculate EC given elements 
 
 
 ## EC Breakdown by materials - concrete, window, wood, aluminium, plywood, granite 
