@@ -6,6 +6,7 @@ import ifcopenshell
 import ifcopenshell.geom
 import numpy as np
 from numpy import abs as np_abs
+import os 
 
  # kgCO2e per kg, kg per m^3 (Gen 1)
 MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] , 
@@ -88,10 +89,10 @@ def calculate_columns(columns):
     total_ec = 0
     quantities = {}
     materials = []
-    current_quantity = None
-    current_material = None
 
     for column in columns:
+        current_quantity = None
+        current_material = None
         if hasattr(column, "IsDefinedBy"):
             for definition in column.IsDefinedBy:
                 if definition.is_a('IfcRelDefinesByProperties'):
@@ -424,10 +425,10 @@ def calculate_windows(windows):
     total_ec = 0
     quantities = {}
     materials = []
-    current_quantity = None
-    current_material = None
 
     for window in windows:
+        current_quantity = None
+        current_material = None
 
         if hasattr(window, "IsDefinedBy"):
             for definition in window.IsDefinedBy:
@@ -468,10 +469,10 @@ def calculate_doors(doors):
     total_ec = 0
     quantities = {}
     materials = []
-    current_quantity = None
-    current_material = None
 
     for door in doors:
+        current_quantity = None
+        current_material = None
 
         if hasattr(door, "IsDefinedBy"):
             for definition in door.IsDefinedBy:
@@ -585,12 +586,7 @@ def calculate_roofs(roofs):
 
     return total_ec
 
-def calculate_gfa(spaces):
-    total_area = 0
-    for space in spaces:
-    # Get the area from quantities
-        total_area += get_element_area(space)
-    return total_area
+
 
 def get_element_area(element):
     settings = ifcopenshell.geom.settings()
@@ -831,8 +827,6 @@ def calculate_embodied_carbon(filepath):
     railings = ifc_file.by_type('IfcRailing')
     logger.info(f"Total railings found {len(railings)}")
 
-    spaces = ifc_file.by_type('IfcSpace')
-    logger.info(f"Total spaces found {len(spaces)}")
 
     if roofs:
         for roof in roofs:
@@ -887,20 +881,40 @@ def calculate_embodied_carbon(filepath):
         total_ec += roofs_ec
     logger.info(f"Total EC calculated: {total_ec}")
 
-    total_area = 0
-    if spaces:
-        total_area = calculate_gfa(spaces)
-    else:
-        logger.warning("No spaces found.")
-    logger.info(f"Total GFA calculated: {total_area}")
-
-
     return total_ec
 
-import os 
+def calculate_gfa(filepath):
 
+    ifc_file = ifcopenshell.open(filepath)
+    spaces = ifc_file.by_type('IfcSpace')
+    logger.info(f"Total spaces found {len(spaces)}")
+
+    if len(spaces) == 0 :    
+        logger.error("No spaces found.")
+        return 0
+    
+    total_area = 0
+
+    for space in spaces:
+    # Get the area from quantities
+        # total_area += get_element_area(space)
+        psets= get_psets(space)
+        qto = psets.get('Qto_SpaceBaseQuantities')
+        if not qto:
+            logger.error(f"{space} has no pset Qto_SpaceBaseQuantities, skipping this element")
+            return 0
+        gfa = qto.get('GrossFloorArea')
+        if not gfa:
+            logger.error(f"{space} has no GFA in Qto_SpaceBaseQuantities, skipping this element")
+            return 0
+        total_area += gfa
+
+    logger.info(f"Total GFA calculated: {total_area}")
+
+    return total_area
 
 if __name__ == "__main__":
     ifcpath = os.path.join("/home/davis/Downloads/GFA IFC Test Model_Complex 2b.ifc")
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
+    calculate_gfa(ifcpath)
