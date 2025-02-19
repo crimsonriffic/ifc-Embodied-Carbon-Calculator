@@ -14,15 +14,20 @@ MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] ,
                 "Concrete, C12/15": [0.097, 2350],
                 "Concrete, Grade 40": [0.170, 2400], 
                 "Concrete, Grade 25": [0.13, 2350], 
+                "Concrete, Grade 20": [0.140, 2350],
+                "Concrete, Grade 20": [0.140, 2350],
                 "Concrete, C25/30": [0.119, 2350],
                 "Concrete, General": [0.112,2350],
                 "Concrete, Precast, Ordinary Portland Cement": [0.148, 2400],
                 'Wood_aluminium fixed window 3-glass (SF 2010)' : 54.6, # kgCO2 per 1m^2
                 'Wood_aluminium sidehung window 3-glass (SF 2010)' : 72.4,
+                'M_Window-Casement-Double-Sidelight' : 86.830,
+                'M_Window-Casement-Double-Sidelight' : 86.830,
                 'Wooden doors T10-T25 with wooden frame' : 30.4,
                 'Wooden doors T10-T25 with steel frame' : 49.4,
                 'Aluminium, General': [13.100, 2700],
-                'Tiles, Granite'	:[0.700,	2650],
+                'Tiles, Granite'	:[0.700, 2650],
+                'Tiles, Granite'	:[0.700, 2650],
                 'Plywood':[0.910,	600]
                 }  
 MaterialsToIgnore  = ["Travertine","<Unnamed>"]
@@ -40,6 +45,42 @@ def calculate_beams(beams):
         current_quantity = None # in volume
         current_material = None
 
+        psets = get_psets(beam)
+        rebar_set = psets.get('Rebar Set')
+        if rebar_set is None:
+            logger.error('Rebar set not found')
+        if rebar_set:
+            BL = rebar_set.get('BottomLeft')
+            BM = rebar_set.get('BottomMiddle')
+            BR = rebar_set.get('BottomRight')
+            TL = rebar_set.get('TopLeft')
+            TM = rebar_set.get('TopMiddle')
+            TR = rebar_set.get('TopRight')
+            if BL == None or BM == None or BR == None or TL == None or TM == None or TR == None:
+                logger.error('Rebar part not found')
+            BLno, BLarea = BL.split("H")
+            BMno, BMarea = BM.split("H")
+            BRno, BRarea = BR.split("H")
+            TLno, TLarea = TL.split("H")
+            TMno, TMarea = TM.split("H")
+            TRno, TRarea = TR.split("H")
+        
+        
+        dimensions = psets.get('Dimensions')
+        if dimensions is None:
+            logger.error('Dimensions/Diameter not found')
+        if dimensions:
+            lengthmm = dimensions.get('Length')
+            if lengthmm is None:
+                logger.error("Length not found")
+            else:
+                length = lengthmm / 1000
+        
+        if rebar_set:
+            rebar_vol = ((int(TLno) * 3.14 * ((int(TLarea)/2000) ** 2) + int(BLno) * 3.14 * ((int(BLarea)/2000) ** 2)) * (1/3) * length)\
+                    + ((int(TMno) * 3.14 * ((int(TMarea)/2000) ** 2) + int(BMno) * 3.14 * ((int(BMarea)/2000) ** 2)) * (1/3) * length)\
+                    + ((int(TRno) * 3.14 * ((int(TRarea)/2000) ** 2) + int(BRno) * 3.14 * ((int(BRarea)/2000) ** 2)) * (1/3) * length)
+        
         if hasattr(beam, "IsDefinedBy"):
             for definition in beam.IsDefinedBy:
                 if definition.is_a('IfcRelDefinesByProperties'):
@@ -48,7 +89,6 @@ def calculate_beams(beams):
                         for quantity in property_def.Quantities:
                             if quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
                                 logger.debug(f'Found NetVolume  for {beam.Name}: {quantity.VolumeValue}')
-                                quantities[quantity.Name] = quantity.VolumeValue
                                 current_quantity = quantity.VolumeValue
                                 break
                         if current_quantity is not None:
@@ -74,8 +114,15 @@ def calculate_beams(beams):
         if current_quantity is None:
             continue
         material_ec_perkg, material_density = current_material_ec
-        current_ec = material_ec_perkg * material_density * current_quantity
+        if rebar_set == None:
+            current_ec = material_ec_perkg * material_density * current_quantity
 
+        else:
+            current_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
+            rebar_ec = rebar_vol * 2.510 * 7850
+            logger.debug(f"EC for {beam.Name}'s rebars is {rebar_ec}")
+            total_ec += rebar_ec
+            
         logger.debug(f"EC for {beam.Name} is {current_ec}")
         total_ec += current_ec
     
@@ -89,10 +136,35 @@ def calculate_columns(columns):
     total_ec = 0
     quantities = {}
     materials = []
+    current_quantity = None
+    current_material = None
+    rebar = None
 
     for column in columns:
-        current_quantity = None
-        current_material = None
+        psets = get_psets(column)
+        rebar_set = psets.get('Rebar Set')
+        if rebar_set is None:
+            logger.error('Rebar set not found')
+        if rebar_set:
+            rebar = rebar_set.get('MainRebar')
+            if rebar is None:
+                logger.error('Rebar not found')
+        
+        
+        dimensions = psets.get('Dimensions')
+        if dimensions is None:
+            logger.error('Dimensions/Diameter not found')
+        if dimensions:
+            heightmm = dimensions.get('Height')
+            if heightmm is None:
+                logger.error("Height not found")
+            else:
+                height = heightmm / 1000
+        
+        if rebar:
+            rebar_no, area = rebar.split("H")
+            rebar_vol = height * int(rebar_no) * 3.14 * ((int(area)/2000) **2)
+
         if hasattr(column, "IsDefinedBy"):
             for definition in column.IsDefinedBy:
                 if definition.is_a('IfcRelDefinesByProperties'):
@@ -134,13 +206,26 @@ def calculate_columns(columns):
         if current_material_ec is None:
             # handle with default value?
             # ai?
-            raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+            # raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+            print("Error, not implemented yet")
+            continue
         
         material_ec_perkg, material_density = current_material_ec
-        current_ec = material_ec_perkg * material_density * current_quantity
-
+        print(current_quantity)
+        if rebar == None:
+            current_ec = material_ec_perkg * material_density * current_quantity
+            
+        else:
+            current_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
+            rebar_ec = rebar_vol * 2.510 * 7850
+            logger.debug(f"EC for {column.Name}'s rebars is {rebar_ec}")
+            total_ec += rebar_ec
+        
+        
         logger.debug(f"EC for {column.Name} is {current_ec}")
         total_ec += current_ec
+
+
     
     logger.debug(f"Total EC for columns is {total_ec}")
 
@@ -793,6 +878,192 @@ def calculate_railings(railings):
 
     return total_ec
 
+# def calculate_curtainwalls(curtainwalls):
+
+#     total_ec = 0
+#     materials = []
+#     current_quantity = 1
+#     current_material = None
+
+#     for curtainwall in curtainwalls:
+#         curtainwalls = []
+#         if hasattr(curtainwall, "IsDecomposedBy"):
+#             for rel in curtainwall.IsDecomposedBy:
+#                 logger.debug(rel)
+#                 if rel.is_a("IfcRelAggregates"):
+#                     for curtainwall in rel.RelatedObjects:
+#                         if curtainwall.is_a("IfcCurtainWall"):
+#                             print(f"Found curtain wall: {curtainwall.Name}")
+#                             curtainwalls.append(curtainwall)
+                            
+#         for curtainwall in curtainwalls:
+#             if hasattr(curtainwall, "IsDefinedBy"):
+#                 for definition in curtainwall.IsDefinedBy:
+#                     if definition.is_a('IfcRelDefinesByProperties'):
+#                         property_def = definition.RelatingPropertyDefinition
+#                         if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_CurtainWallQuantities':
+#                             for quantity in property_def.Quantities:
+#                                 logger.debug(quantity)
+#                                 if quantity.is_a('IfcQuantityLength') and quantity.Name == 'Height':
+#                                     logger.debug(f'Found Height for {curtainwall.Name}: {quantity.LengthValue}')
+#                                     current_quantity *= (quantity.LengthValue/1000)
+#                                 if quantity.is_a('IfcQuantityLength') and quantity.Name == 'Length':
+#                                     logger.debug(f'Found Length for {curtainwall.Name}: {quantity.LengthValue}')
+#                                     current_quantity *= (quantity.LengthValue/1000)
+#                                 if quantity.is_a('IfcQuantityLength') and quantity.Name == 'Width':
+#                                     logger.debug(f'Found Width for {curtainwall.Name}: {quantity.LengthValue}')
+#                                     current_quantity *= (quantity.LengthValue/1000)
+#                             if current_quantity is not None:
+#                                 break
+#             logger.debug(f"Volume for {curtainwall.Name}: {current_quantity}")
+#             if hasattr(curtainwall, "HasAssociations"):
+#                 for association in curtainwall.HasAssociations:
+#                     if association.is_a("IfcRelAssociatesMaterial"):
+#                         material = association.RelatingMaterial
+#                         if material.is_a("IfcMaterial"):
+#                             logger.debug(f"Found material '{material.Name}', as IfcMaterial")
+#                             current_material = material.Name
+
+#             current_material_ec = MaterialList.get(current_material, None) if current_material else None
+
+#             if current_material_ec is None:
+#                 # handle with default value?
+#                 # ai?
+#                 raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+            
+#             material_ec_perkg, material_density = current_material_ec
+#             current_ec = material_ec_perkg  * material_density *  current_quantity 
+
+#             logger.debug(f"EC for {curtainwall.Name} is {current_ec}")
+#             total_ec += current_ec
+    
+#     logger.debug(f"Total EC for curtainwalls is {total_ec}")
+
+#     return total_ec
+#     pass
+
+def calculate_members(members):
+    total_ec = 0
+    materials = []
+    current_quantity = None
+    current_material = None
+
+    for member in members:
+        if hasattr(member, "IsDefinedBy"):
+            for definition in member.IsDefinedBy:
+                if definition.is_a('IfcRelDefinesByProperties'):
+                    property_def = definition.RelatingPropertyDefinition
+                    if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_MemberBaseQuantities':
+                        for quantity in property_def.Quantities:
+                            if quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
+                                logger.debug(f'Found NetVolume  for {member.Name}: {quantity.VolumeValue}')
+                                current_quantity = quantity.VolumeValue
+                                break
+                        if current_quantity is not None:
+                            break
+
+        if hasattr(member, "HasAssociations"):
+            for association in member.HasAssociations:
+                if association.is_a("IfcRelAssociatesMaterial"):
+                    material = association.RelatingMaterial
+                    if material.is_a("IfcMaterial"):
+                        logger.debug(f"Found material '{material.Name}', as IfcMaterial")
+                        materials.append(material.Name)
+                        current_material = material.Name
+                        break
+                    elif material.is_a("IfcMaterialLayerSetUsage"):
+                        for layer in material.ForLayerSet.MaterialLayers:
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
+                            materials.append(layer.Material.Name)
+                            current_material = material.Name
+                            break
+                    elif material.is_a("IfcMaterialLayerSet"):
+                        for layer in material.MaterialLayers:
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
+                            materials.append(layer.Material.Name)
+                            current_material = material.Name
+                            break
+
+        current_material_ec = MaterialList.get(current_material, None) if current_material else None
+
+        if current_material_ec is None:
+            # handle with default value?
+            # ai?
+            # raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+            print("Error, not implemented yet")
+            continue
+        
+        material_ec_perkg, material_density = current_material_ec
+        current_ec = material_ec_perkg * material_density * current_quantity
+
+        logger.debug(f"EC for {member.Name} is {current_ec}")
+        total_ec += current_ec
+    
+    logger.debug(f"Total EC for members is {total_ec}")
+
+    return total_ec          
+
+def calculate_plates(plates):
+    total_ec = 0
+    materials = []
+    current_quantity = None
+    current_material = None
+
+    for plate in plates:
+        if hasattr(plate, "IsDefinedBy"):
+            for definition in plate.IsDefinedBy:
+                if definition.is_a('IfcRelDefinesByProperties'):
+                    property_def = definition.RelatingPropertyDefinition
+                    if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_PlateBaseQuantities':
+                        for quantity in property_def.Quantities:
+                            if quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
+                                logger.debug(f'Found NetVolume  for {plate.Name}: {quantity.VolumeValue}')
+                                current_quantity = quantity.VolumeValue
+                                break
+                        if current_quantity is not None:
+                            break
+
+        if hasattr(plate, "HasAssociations"):
+            for association in plate.HasAssociations:
+                if association.is_a("IfcRelAssociatesMaterial"):
+                    material = association.RelatingMaterial
+                    if material.is_a("IfcMaterial"):
+                        logger.debug(f"Found material '{material.Name}', as IfcMaterial")
+                        materials.append(material.Name)
+                        current_material = material.Name
+                        break
+                    elif material.is_a("IfcMaterialLayerSetUsage"):
+                        for layer in material.ForLayerSet.MaterialLayers:
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
+                            materials.append(layer.Material.Name)
+                            current_material = material.Name
+                            break
+                    elif material.is_a("IfcMaterialLayerSet"):
+                        for layer in material.MaterialLayers:
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
+                            materials.append(layer.Material.Name)
+                            current_material = material.Name
+                            break
+
+        current_material_ec = MaterialList.get(current_material, None) if current_material else None
+
+        if current_material_ec is None:
+            # handle with default value?
+            # ai?
+            # raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+            print("Error, not implemented yet")
+            continue
+        
+        material_ec_perkg, material_density = current_material_ec
+        current_ec = material_ec_perkg * material_density * current_quantity
+
+        logger.debug(f"EC for {plate.Name} is {current_ec}")
+        total_ec += current_ec
+    
+    logger.debug(f"Total EC for plates is {total_ec}")
+
+    return total_ec                     
+
 def calculate_embodied_carbon(filepath):
     
     
@@ -826,6 +1097,18 @@ def calculate_embodied_carbon(filepath):
 
     railings = ifc_file.by_type('IfcRailing')
     logger.info(f"Total railings found {len(railings)}")
+
+    spaces = ifc_file.by_type('IfcSpace')
+    logger.info(f"Total spaces found {len(spaces)}")
+    
+    # curtainwalls = ifc_file.by_type('IfcCurtainWall')
+    # logger.info(f"Total curtainwalls found {len(curtainwalls)}")
+    
+    members = ifc_file.by_type('IfcMember')
+    logger.info(f"Total members found {len(members)}")
+
+    plates = ifc_file.by_type('IfcPlate')
+    logger.info(f"Total plates found {len(plates)}")
 
 
     if roofs:
@@ -879,6 +1162,19 @@ def calculate_embodied_carbon(filepath):
     if roofs:
         roofs_ec = calculate_roofs(roofs)
         total_ec += roofs_ec
+    # if curtainwalls:
+    #     curtainwalls_ec = calculate_curtainwalls(curtainwalls)
+    #     total_ec += curtainwalls_ec
+    
+    if members:
+        members_ec = calculate_members(members)
+        total_ec += members_ec
+    
+    if plates:
+        plates_ec = calculate_plates(plates)
+        total_ec += plates_ec
+    
+    
     logger.info(f"Total EC calculated: {total_ec}")
 
     return total_ec
@@ -910,10 +1206,43 @@ def calculate_gfa(filepath):
         total_area += gfa
 
     logger.info(f"Total GFA calculated: {total_area}")
+
+
+    return total_ec
+
+import os 
+
+def calculate_gfa(filepath):
+
+    ifc_file = ifcopenshell.open(filepath)
+    spaces = ifc_file.by_type('IfcSpace')
+    logger.info(f"Total spaces found {len(spaces)}")
+
+    if len(spaces) == 0 :    
+        logger.error("No spaces found.")
+        return 0
+    
+    total_area = 0
+
+    for space in spaces:
+    # Get the area from quantities
+        # total_area += get_element_area(space)
+        psets= get_psets(space)
+        qto = psets.get('Qto_SpaceBaseQuantities')
+        if not qto:
+            logger.error(f"{space} has no pset Qto_SpaceBaseQuantities, skipping this element")
+            return 0
+        gfa = qto.get('GrossFloorArea')
+        if not gfa:
+            logger.error(f"{space} has no GFA in Qto_SpaceBaseQuantities, skipping this element")
+            return 0
+        total_area += gfa
+
+    logger.info(f"Total GFA calculated: {total_area}")
     return total_area
 
 if __name__ == "__main__":
-    ifcpath = os.path.join(r"C:\Users\Carina\Downloads", "Complex2 (1).ifc")
+    ifcpath = "/Users/jk/Downloads/B. Column & Beams/Column&Beam 2.ifc"
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
     calculate_gfa(ifcpath)
