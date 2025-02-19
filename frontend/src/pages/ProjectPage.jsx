@@ -2,6 +2,8 @@ import Navbar from "../components/NavBar";
 import { Link, useParams, useLocation } from "react-router-dom";
 import ProjectErrorDialog from "./ProjectErrorDialog";
 import BuildingInfoCard from "../components/BuildingInfoCard";
+import SystemInfoCard from "../components/SystemInfoCard";
+import MaterialInfoCard from "../components/MaterialInfoCard";
 function ProjectPage() {
   const location = useLocation();
   const { projectName } = useParams();
@@ -45,6 +47,8 @@ function ProjectPage() {
               </h1>
             </div>
             <BuildingInfoCard projectId={projectId} />
+            <SystemInfoCard projectId={projectId} />
+            <MaterialInfoCard projectId={projectId} />
           </div>
         ) : (
           <ProjectErrorDialog />
