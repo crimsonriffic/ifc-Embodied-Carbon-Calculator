@@ -224,9 +224,8 @@ def breakdown_by_elements(filepath):
 
     logger.info(f"Total EC calculated: {total_ec}")
     
-    return {
-        "by_element": breakdown  # Example output: {"beam": 500, "column": 600, "slab": 700}
-    }
+    return breakdown  # Example output: {"beam": 500, "column": 600, "slab": 700}
+    
 
 def breakdown_by_building_system(filepath):
     results ={}
@@ -251,7 +250,7 @@ async def overall_ec_breakdown(filepath: str):
         "by_material":
             by_materials
         ,
-        "by_elements":
+        "by_element":
             by_elements
             
         

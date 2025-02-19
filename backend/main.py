@@ -206,9 +206,9 @@ async def upload_ifc(
                         "file_path": f"s3://{S3_BUCKET}/{s3_path}",
                         "total_ec": ec_data["total_ec"], 
                         "ec_breakdown":{
-                            "by_building_sysem":ec_data["by_building_system"],
+                            "by_building_system":ec_data["by_building_system"],
                             "by_material":ec_data["by_material"],
-                            "by_elements":ec_data["by_elements"],
+                            "by_element":ec_data["by_element"],
                         }
                     }
                 },
