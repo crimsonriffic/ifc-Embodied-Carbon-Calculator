@@ -12,6 +12,7 @@ export default {
     "./src/pages/CreatePage.jsx",
     "./src/components/SystemInfoCard.jsx",
     "./src/components/MaterialInfoCard.jsx",
+    "./src/components/ElementInfoCard.jsx",
   ],
   theme: {
     extend: {},

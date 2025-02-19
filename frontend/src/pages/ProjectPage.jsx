@@ -4,6 +4,7 @@ import ProjectErrorDialog from "./ProjectErrorDialog";
 import BuildingInfoCard from "../components/BuildingInfoCard";
 import SystemInfoCard from "../components/SystemInfoCard";
 import MaterialInfoCard from "../components/MaterialInfoCard";
+import ElementInfoCard from "../components/ElementInfoCard";
 function ProjectPage() {
   const location = useLocation();
   const { projectName } = useParams();
@@ -49,6 +50,7 @@ function ProjectPage() {
             <BuildingInfoCard projectId={projectId} />
             <SystemInfoCard projectId={projectId} />
             <MaterialInfoCard projectId={projectId} />
+            <ElementInfoCard projectId={projectId} />
           </div>
         ) : (
           <ProjectErrorDialog />

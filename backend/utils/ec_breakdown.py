@@ -9,7 +9,7 @@ import ifcopenshell.geom
 import numpy as np
 from numpy import abs as np_abs
 
-from .calculator import calculate_beams, calculate_columns, calculate_doors, calculate_embodied_carbon, calculate_railings, calculate_slabs, calculate_stairs, calculate_walls,calculate_roofs, calculate_windows
+from .calculator import calculate_beams, calculate_columns, calculate_doors, calculate_embodied_carbon, calculate_railings, calculate_slabs, calculate_stairs, calculate_walls,calculate_roofs, calculate_windows,calculate_gfa
 
 
 ## Helper functions
@@ -224,7 +224,7 @@ def breakdown_by_elements(filepath):
 
     logger.info(f"Total EC calculated: {total_ec}")
     
-    return breakdown  # Example output: {"beam": 500, "column": 600, "slab": 700}
+    return total_ec,breakdown  # Example output: {"beam": 500, "column": 600, "slab": 700}
     
 
 def breakdown_by_building_system(filepath):
@@ -236,14 +236,16 @@ def breakdown_by_building_system(filepath):
 async def overall_ec_breakdown(filepath: str):
     
     # Calculations
-    total_ec = calculate_total_ec(filepath)
+    # total_ec = calculate_total_ec(filepath)
     by_materials= breakdown_by_materials(filepath)
-    by_elements = breakdown_by_elements(filepath)
+    total_ec, by_elements = breakdown_by_elements(filepath)
     by_building_system=breakdown_by_building_system(filepath)
+    gfa = calculate_gfa(filepath)
 
     # Example: Dummy EC breakdown data
     return {
         "total_ec":total_ec,
+        "gfa":gfa,
         "by_building_system":
             by_building_system
         ,
@@ -303,11 +305,13 @@ if __name__ == "__main__":
     ec_by_elements = breakdown_by_elements(ifcpath)
     ec_by_materials = breakdown_by_materials(ifcpath)
     ec_by_system = breakdown_by_building_system(ifcpath)
+    gfa = calculate_gfa(ifcpath)
 
     logger.info(f"Breakdown by elements = {ec_by_elements}")
 
     logger.info(f"Breakdown by materials = {ec_by_materials}")
     logger.info(f"Breakdown by system = {ec_by_system}")
+    logger.info(f"GFA = {gfa}")
 
 
     logger.info(f"Validation: Substructure EC + Superstructure EC = {sub_ec + super_ec}, Total EC = {sum_total_ec}, Total EC from calculator.py = {total_ec}")

@@ -12,7 +12,7 @@ export default function SystemInfoCard({ projectId }) {
         const response = await getBuildingInfo(projectId);
         console.log("Building Info (EC breakdown)", response.data);
         setSystemInfo(response.data.ec_breakdown.by_building_system);
-        setEcValue(response.data.total_embodied_carbon);
+        setEcValue(response.data.total_ec);
         setError(null);
         setLoading(false);
       } catch (err) {

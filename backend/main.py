@@ -109,7 +109,8 @@ class Project(BaseModel):
 
 class ProjectInfo(BaseModel):
     project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    total_embodied_carbon: float
+    total_ec: float
+    gfa: float
     ## EC breakdown by superstructure, substrucutre
     ## EC breakdown by material 
     ## EC breakdown by elements 
@@ -204,6 +205,7 @@ async def upload_ifc(
                         "date_uploaded": datetime.now(),
                         "uploaded_by": user_id,
                         "file_path": f"s3://{S3_BUCKET}/{s3_path}",
+                        "gfa":ec_data["gfa"],
                         "total_ec": ec_data["total_ec"], 
                         "ec_breakdown":{
                             "by_building_system":ec_data["by_building_system"],
@@ -253,11 +255,13 @@ async def get_project_info(project_id: str):
     # Retrieve stored EC values and breakdowns
     total_ec = ifc_data.get("total_ec", 0)
     ec_breakdown = ifc_data.get("ec_breakdown", {})
+    gfa = ifc_data.get("gfa", 0)
     print("ec breakdown is,",ec_breakdown)
 
     return ProjectInfo(
         project_id=str(project["_id"]),
-        total_embodied_carbon=total_ec,
+        total_ec=total_ec,
+        gfa = gfa,
         ec_breakdown=ec_breakdown,
         last_calculated=project.get("last_calculated", datetime.now()),
         version=latest_version
