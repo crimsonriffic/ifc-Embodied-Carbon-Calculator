@@ -13,6 +13,9 @@ export default {
     "./src/components/SystemInfoCard.jsx",
     "./src/components/MaterialInfoCard.jsx",
     "./src/components/ElementInfoCard.jsx",
+    "./src/components/PieChart.jsx",
+    "./src/components/BarChart.jsx",
+    "./src/components/AwardCard.jsx",
   ],
   theme: {
     extend: {},

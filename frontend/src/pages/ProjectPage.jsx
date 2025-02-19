@@ -5,6 +5,7 @@ import BuildingInfoCard from "../components/BuildingInfoCard";
 import SystemInfoCard from "../components/SystemInfoCard";
 import MaterialInfoCard from "../components/MaterialInfoCard";
 import ElementInfoCard from "../components/ElementInfoCard";
+import AwardCard from "../components/AwardCard";
 function ProjectPage() {
   const location = useLocation();
   const { projectName } = useParams();
@@ -42,15 +43,16 @@ function ProjectPage() {
         {/**Check if project name exists */}
         {projectName ? (
           <div>
-            <div className="bg-gray-200 text-gray-800 rounded-lg px-4 py-2 flex items-center shadow-md mb-2 sm:max-w-xs">
+            <div className="bg-[#A0ABC0] text-white rounded-lg px-4 py-2 flex items-center shadow-md mb-2 sm:max-w-xs">
               <h1 className="text-lg font-semibold tracking-wide">
                 {decodeURIComponent(projectName)}
               </h1>
             </div>
-            <BuildingInfoCard projectId={projectId} />
-            <SystemInfoCard projectId={projectId} />
-            <MaterialInfoCard projectId={projectId} />
-            <ElementInfoCard projectId={projectId} />
+            <div className="space-y-2">
+              <BuildingInfoCard projectId={projectId} />
+              <SystemInfoCard projectId={projectId} />
+              <AwardCard projectId={projectId} />
+            </div>
           </div>
         ) : (
           <ProjectErrorDialog />
