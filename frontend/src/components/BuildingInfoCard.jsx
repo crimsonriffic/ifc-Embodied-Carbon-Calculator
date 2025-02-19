@@ -47,15 +47,13 @@ export default function BuildingInfoCard({ projectId }) {
             TOTAL EC VALUE:
           </span>
           <span className="text-sm font-semibold text-gray-800">
-            {buildingInfo.total_embodied_carbon
-              ? buildingInfo.total_embodied_carbon.toFixed(2)
-              : "N/A"}
+            {buildingInfo.total_ec ? buildingInfo.total_ec.toFixed(2) : "N/A"}
           </span>
         </div>
         <div className="flex justify-between border-b pb-2">
           <span className="text-sm font-medium text-gray-600">GFA:</span>
           <span className="text-sm font-semibold text-gray-800">
-            {buildingInfo.gfa || "N/A"}
+            {buildingInfo.gfa.toFixed(2) || "N/A"}
           </span>
         </div>
         <div className="flex justify-between border-b pb-2">

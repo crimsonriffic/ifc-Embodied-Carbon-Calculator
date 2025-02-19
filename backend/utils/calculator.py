@@ -910,11 +910,10 @@ def calculate_gfa(filepath):
         total_area += gfa
 
     logger.info(f"Total GFA calculated: {total_area}")
-
     return total_area
 
 if __name__ == "__main__":
-    ifcpath = os.path.join("/home/davis/Downloads/GFA IFC Test Model_Complex 2b.ifc")
+    ifcpath = os.path.join(r"C:\Users\Carina\Downloads", "Complex2 (1).ifc")
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
     calculate_gfa(ifcpath)

@@ -1,7 +1,7 @@
 import { getBuildingInfo } from "../api/api.jsx";
 import { useEffect, useState } from "react";
-export default function MaterialInfoCard({ projectId }) {
-  const [materialInfo, setMaterialInfo] = useState([]);
+export default function ElementInfoCard({ projectId }) {
+  const [elementInfo, setElementInfo] = useState([]);
   const [ecValue, setEcValue] = useState(0);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true); // Loading state
@@ -11,7 +11,7 @@ export default function MaterialInfoCard({ projectId }) {
       try {
         const response = await getBuildingInfo(projectId);
         console.log("Building Info (EC breakdown)", response.data);
-        setMaterialInfo(response.data.ec_breakdown.by_material);
+        setElementInfo(response.data.ec_breakdown.by_element);
         setEcValue(response.data.total_ec);
         setError(null);
         setLoading(false);
@@ -30,19 +30,19 @@ export default function MaterialInfoCard({ projectId }) {
   }
 
   if (loading) {
-    return <p>Loading material information...</p>; // Show loading state
+    return <p>Loading element information...</p>; // Show loading state
   }
 
   if (error) {
     return <p className="text-red-500">{error}</p>; // Display error message
   }
 
-  if (!materialInfo) {
-    return <p>No material information available.</p>;
+  if (!elementInfo) {
+    return <p>No element information available.</p>;
   }
   return (
     <div className="bg-white shadow-lg rounded-lg p-6 border border-gray-300  sm:max-w-xs">
-      <h2 className="text-lg font-bold mb-4 text-gray-800">MATERIAL INFO</h2>
+      <h2 className="text-lg font-bold mb-4 text-gray-800">ELEMENT INFO</h2>
       <div className="space-y-3">
         <div className="flex justify-between border-b pb-2">
           <span className="text-sm font-medium text-gray-600">
@@ -53,7 +53,7 @@ export default function MaterialInfoCard({ projectId }) {
           </span>
         </div>
         <ul>
-          {Object.entries(materialInfo).map(([key, value]) => (
+          {Object.entries(elementInfo).map(([key, value]) => (
             <li key={key}>
               <strong>{key}:</strong> {value.toFixed(2)}
             </li>
