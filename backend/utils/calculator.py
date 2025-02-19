@@ -76,9 +76,10 @@ def calculate_beams(beams):
             else:
                 length = lengthmm / 1000
         
-        rebar_vol = ((int(TLno) * 3.14 * ((int(TLarea)/2000) ** 2) + int(BLno) * 3.14 * ((int(BLarea)/2000) ** 2)) * (1/3) * length)\
-                + ((int(TMno) * 3.14 * ((int(TMarea)/2000) ** 2) + int(BMno) * 3.14 * ((int(BMarea)/2000) ** 2)) * (1/3) * length)\
-                + ((int(TRno) * 3.14 * ((int(TRarea)/2000) ** 2) + int(BRno) * 3.14 * ((int(BRarea)/2000) ** 2)) * (1/3) * length)
+        if rebar_set:
+            rebar_vol = ((int(TLno) * 3.14 * ((int(TLarea)/2000) ** 2) + int(BLno) * 3.14 * ((int(BLarea)/2000) ** 2)) * (1/3) * length)\
+                    + ((int(TMno) * 3.14 * ((int(TMarea)/2000) ** 2) + int(BMno) * 3.14 * ((int(BMarea)/2000) ** 2)) * (1/3) * length)\
+                    + ((int(TRno) * 3.14 * ((int(TRarea)/2000) ** 2) + int(BRno) * 3.14 * ((int(BRarea)/2000) ** 2)) * (1/3) * length)
         
         if hasattr(beam, "IsDefinedBy"):
             for definition in beam.IsDefinedBy:
@@ -160,8 +161,9 @@ def calculate_columns(columns):
             else:
                 height = heightmm / 1000
         
-        rebar_no, area = rebar.split("H")
-        rebar_vol = height * int(rebar_no) * 3.14 * ((int(area)/2000) **2)
+        if rebar:
+            rebar_no, area = rebar.split("H")
+            rebar_vol = height * int(rebar_no) * 3.14 * ((int(area)/2000) **2)
 
         if hasattr(column, "IsDefinedBy"):
             for definition in column.IsDefinedBy:
@@ -1240,7 +1242,7 @@ def calculate_gfa(filepath):
     return total_area
 
 if __name__ == "__main__":
-    ifcpath = "/Users/jk/Downloads/I. Curtain Wall/Curtain Wall simple 1_B.ifc"
+    ifcpath = "/Users/jk/Downloads/B. Column & Beams/Column&Beam 2.ifc"
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
     calculate_gfa(ifcpath)
