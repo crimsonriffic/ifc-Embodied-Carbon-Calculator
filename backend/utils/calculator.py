@@ -1240,7 +1240,7 @@ def calculate_gfa(filepath):
     return total_area
 
 if __name__ == "__main__":
-    ifcpath = "/Users/jk/Downloads/I. Curtain Wall/Curtain Wall group 1_A.ifc"
+    ifcpath = "/Users/jk/Downloads/I. Curtain Wall/Curtain Wall simple 1_B.ifc"
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
     calculate_gfa(ifcpath)
