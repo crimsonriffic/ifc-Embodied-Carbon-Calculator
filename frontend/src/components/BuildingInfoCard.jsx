@@ -9,7 +9,7 @@ export default function BuildingInfoCard({ projectId }) {
     const fetchBuildingInfo = async () => {
       try {
         const response = await getBuildingInfo(projectId);
-        console.log("Building Info (EC value)", response.data);
+        console.log("Building Info (EC breakdown)", response.data);
         setBuildingInfo(response.data);
         setError(null);
         setLoading(false);
@@ -47,8 +47,8 @@ export default function BuildingInfoCard({ projectId }) {
             TOTAL EC VALUE:
           </span>
           <span className="text-sm font-semibold text-gray-800">
-            {buildingInfo.embodied_carbon
-              ? buildingInfo.embodied_carbon.toFixed(2)
+            {buildingInfo.total_embodied_carbon
+              ? buildingInfo.total_embodied_carbon.toFixed(2)
               : "N/A"}
           </span>
         </div>

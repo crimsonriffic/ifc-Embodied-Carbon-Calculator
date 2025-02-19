@@ -139,8 +139,8 @@ def main():
     # test_get_projects(test_user)
     # test_get_projects("nonexistent_user")  # Should fail with 404
 
-    # test_upload_ifc("507f1f77bcf86cd799439011", "Window 1.ifc", test_user)
+    test_upload_ifc("507f1f77bcf86cd799439011", "16_Complex 1.ifc", test_user)
     # test_get_project_info("507f1f77bcf86cd799439011")
-    test_create_project(test_user)
+    # test_create_project(test_user)
 if __name__ == "__main__":
     main()

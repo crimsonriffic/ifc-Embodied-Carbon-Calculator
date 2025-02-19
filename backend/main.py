@@ -11,7 +11,7 @@ from pymongo import AsyncMongoClient
 from bson import ObjectId
 from pydantic import BaseModel, Field
 from pydantic_core import core_schema
-from utils import calculator, utils
+from utils import calculator, utils, ec_breakdown
 from pymongo.errors import ServerSelectionTimeoutError
 
 dotenv.load_dotenv()
@@ -109,12 +109,17 @@ class Project(BaseModel):
 
 class ProjectInfo(BaseModel):
     project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    embodied_carbon: float
+    total_embodied_carbon: float
+    ## EC breakdown by superstructure, substrucutre
+    ## EC breakdown by material 
+    ## EC breakdown by elements 
+    ec_breakdown:dict
     last_calculated: datetime
     version: str
 
 @app.get("/test_db_connection")
 async def test_db_connection():
+
     try:
         # List collections in the database to verify connectivity
         collections = await app.mongodb.list_collection_names()
@@ -181,6 +186,11 @@ async def upload_ifc(
             ContentType='application/octet-stream'
         )
 
+        # Use temporary file for EC breakdown calculation
+        with utils.temp_ifc_file(file_content) as tmp_path:
+            ec_data = await ec_breakdown.overall_ec_breakdown(tmp_path)
+
+
         # Update MongoDB
         update_result = await app.mongodb.projects.update_one(
             {"_id": ObjectId(project_id)},
@@ -190,10 +200,16 @@ async def upload_ifc(
                     "last_edited_date": datetime.now(),
                     "last_edited_user": user_id,
                     f"ifc_versions.{new_version}": {
-                        "total_ec": 0.0, 
+                        
                         "date_uploaded": datetime.now(),
                         "uploaded_by": user_id,
-                        "file_path": f"s3://{S3_BUCKET}/{s3_path}"
+                        "file_path": f"s3://{S3_BUCKET}/{s3_path}",
+                        "total_ec": ec_data["total_ec"], 
+                        "ec_breakdown":{
+                            "by_building_sysem":ec_data["by_building_system"],
+                            "by_material":ec_data["by_material"],
+                            "by_elements":ec_data["by_elements"],
+                        }
                     }
                 },
                 "$push": {
@@ -220,7 +236,8 @@ async def upload_ifc(
             detail=f"Failed to upload file: {str(e)}"
         )
 
-# only EC included in the info for now.
+
+# Get EC breakdown and ec value
 @app.get("/projects/{project_id}/get_info", response_model=ProjectInfo)
 async def get_project_info(project_id: str):
     project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)}) 
@@ -229,20 +246,31 @@ async def get_project_info(project_id: str):
        raise HTTPException(status_code=404, detail="Project not found")
        
     latest_version = str(project.get("current_version"))
-    file_path = project["ifc_versions"][latest_version]["file_path"].replace(f"s3://{S3_BUCKET}/", "")
-    ifc_bytes = utils.get_ifc_by_filepath(s3_client, S3_BUCKET, file_path)
+    ifc_data = project["ifc_versions"].get(latest_version, {})
 
-    with utils.temp_ifc_file(ifc_bytes) as tmp_path:
-        ec = calculator.calculate_embodied_carbon(tmp_path)
+    # file_path = project["ifc_versions"][latest_version]["file_path"].replace(f"s3://{S3_BUCKET}/", "")
+   
+    # Retrieve stored EC values and breakdowns
+    total_ec = ifc_data.get("total_ec", 0)
+    ec_breakdown = ifc_data.get("ec_breakdown", {})
+    print("ec breakdown is,",ec_breakdown)
 
     return ProjectInfo(
-       project_id=project["_id"],
-       embodied_carbon=ec,
-       last_calculated=datetime.now(),
-       version=latest_version
+        project_id=str(project["_id"]),
+        total_embodied_carbon=total_ec,
+        ec_breakdown=ec_breakdown,
+        last_calculated=project.get("last_calculated", datetime.now()),
+        version=latest_version
     )
 
-# TODO
+    # return ProjectInfo(
+    #    project_id=project["_id"],
+    #    embodied_carbon=ec,
+    #    last_calculated=datetime.now(),
+    #    version=latest_version
+    # )
+
+
 @app.post("/create_project", response_model=Project)
 async def create_project(project: Project):
     new_project = await app.mongodb.projects.insert_one(
