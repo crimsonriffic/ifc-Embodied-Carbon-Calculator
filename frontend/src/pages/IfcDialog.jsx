@@ -28,7 +28,13 @@ function IfcDialog({ onClose, projectId }) {
     }
     try {
       const userId = "user123";
-      const response = await uploadIfc(projectId, selectedFile, userId);
+      const response = await uploadIfc(
+        projectId,
+        selectedFile,
+        userId,
+        inputComment,
+        updateType
+      );
       setSuccessMessage(response.message);
       setUploadError(null);
       onClose();

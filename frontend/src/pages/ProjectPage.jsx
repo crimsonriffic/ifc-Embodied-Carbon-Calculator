@@ -1,5 +1,7 @@
 import Navbar from "../components/NavBar";
 import { Link, useParams, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getProjectHistory } from "../api/api";
 import ProjectErrorDialog from "./ProjectErrorDialog";
 import BuildingInfoCard from "../components/BuildingInfoCard";
 import SystemInfoCard from "../components/SystemInfoCard";
@@ -8,34 +10,49 @@ import ElementInfoCard from "../components/ElementInfoCard";
 import AwardCard from "../components/AwardCard";
 function ProjectPage() {
   const location = useLocation();
+  const [loading, setLoading] = useState(true); // Loading state
+  const [error, setError] = useState(null);
+  const [projectHistory, setProjectHistory] = useState([]);
   const { projectName } = useParams();
   console.log("Location state is ", location.state);
 
-  // Check if location.state is null or undefined
-  if (!location.state) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-        <Navbar />
-        <div className="bg-white rounded-lg p-6 shadow-md text-center">
-          <h1 className="text-xl font-semibold text-red-500 mb-4">
-            Error: Missing Project Information
-          </h1>
-          <p className="text-gray-700">
-            No project data was provided. Make sure you navigated to this page
-            from a valid project link.
-          </p>
-          <Link
-            to="/home"
-            className="mt-4 inline-block px-4 py-2 bg-[#5B9130] text-white rounded hover:bg-[#3d5c23]"
-          >
-            Select Project
-          </Link>
-        </div>
-      </div>
-    );
-  }
   const { projectId } = location.state;
+  useEffect(() => {
+    const fetchProjectHistory = async () => {
+      try {
+        const response = await getProjectHistory(projectId);
+        console.log("API response data", response.data.history);
+        //TODO fix to 2dp
+        setProjectHistory(response.data.history);
 
+        setError(null);
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to fetch project history: ", err);
+        setError("Failed to fetch project history."); // Set error message
+      }
+    };
+    if (projectId) {
+      fetchProjectHistory();
+    }
+  }, [projectId]);
+
+  if (!projectId) {
+    return <p className="text-red-500">No project ID provided.</p>;
+  }
+
+  if (loading) {
+    return <p>Loading building system information...</p>; // Show loading state
+  }
+
+  if (error) {
+    return <p className="text-red-500">{error}</p>; // Display error message
+  }
+
+  if (!projectHistory) {
+    return <p>No project history available.</p>;
+  }
+  console.log("Project history is: ", projectHistory);
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -51,7 +68,51 @@ function ProjectPage() {
             <div className="space-y-2">
               <BuildingInfoCard projectId={projectId} />
               <SystemInfoCard projectId={projectId} />
-              <AwardCard projectId={projectId} />
+              <div className="flex flex-row justify-left">
+                <div className="w-1/3">
+                  {" "}
+                  {/* Adjust width as needed */}
+                  <AwardCard projectId={projectId} />
+                </div>
+                <div>
+                  <table className="w-full text-left border-collapse border border-gray-300">
+                    <thead>
+                      <tr>
+                        <th className="border border-gray-300 p-2 font-bold">
+                          USER
+                        </th>
+                        <th className="border border-gray-300 p-2 font-bold">
+                          COMMENTS
+                        </th>
+                        <th className="border border-gray-300 p-2 font-bold">
+                          TIME
+                        </th>
+                        <th className="border border-gray-300 p-2 font-bold">
+                          UPDATE TYPE
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {projectHistory.map((item, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="border border-gray-300 px-4 py-2">
+                            {item.uploaded_by}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2">
+                            {item.comments}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2">
+                            {item.date_uploaded}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2">
+                            {item.update_type}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
