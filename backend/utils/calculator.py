@@ -575,6 +575,7 @@ def calculate_roofs(roofs):
             current_ec = None
             current_quantity = None
             current_material = None
+            roof_ec = 0
             if hasattr(slab, "IsDefinedBy"):
                 for definition in slab.IsDefinedBy:
                     if definition.is_a('IfcRelDefinesByProperties'):
@@ -588,14 +589,14 @@ def calculate_roofs(roofs):
                                         # logger.debug(sub_quantity.LengthValue)
                                         layer_thicknesses[quantity.Name] = sub_quantity.LengthValue
                                 elif quantity.is_a('IfcQuantityArea') and (quantity.Name == 'NetSideArea' or quantity.Name == 'GrossArea'):
-                                    logger.debug(f'Found NetSideArea for {slab.Name}')
+                                    logger.debug(f'Found NetSideArea for {slab.Name}: {quantity.AreaValue}')
                                     current_area = quantity.AreaValue
                                                                     
                                 # For single material
                                 elif quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
-                                    logger.debug(f'Found NetVolume for {slab.Name}')
+                                    logger.debug(f'Found NetVolume for {slab.Name}: {quantity.VolumeValue / len(slabs)}')
                                     #quantities[quantity.Name] = quantity.VolumeValue
-                                    current_volume = quantity.VolumeValue                            
+                                    current_volume = quantity.VolumeValue / len(slabs)                            
 
             if hasattr(slab, "HasAssociations"):
                 for association in slab.HasAssociations:
@@ -642,7 +643,7 @@ def calculate_roofs(roofs):
                     # ai?
                     raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
                 material_ec_perkg, material_density = current_material_ec
-                current_ec = material_ec_perkg * material_density * current_quantity
+                current_ec = material_ec_perkg * material_density * current_volume
                 logger.debug(f"EC for {slab.Name} is {current_ec}")
                 total_ec += current_ec
             
@@ -666,10 +667,10 @@ def calculate_roofs(roofs):
                     raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
                 material_ec_perkg, material_density = current_material_ec
                 slab_ec = material_ec_perkg * material_density * current_quantity
-                total_ec += slab_ec
+                roof_ec += slab_ec
 
-        logger.debug(f"EC for {roof.Name} is {current_ec}")
-        total_ec += current_ec
+        logger.debug(f"EC for {roof.Name} is {roof_ec}")
+        total_ec += roof_ec
     
     logger.debug(f"Total EC for roofs is {total_ec}")
 
@@ -1248,7 +1249,7 @@ def calculate_gfa(filepath):
     return total_area
 
 if __name__ == "__main__":
-    ifcpath = "/Users/jk/Downloads/Complex 3_USETHIS.ifc"
+    ifcpath = "/Users/jk/Downloads/z. Complex Models/Complex 2.ifc"
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
     calculate_gfa(ifcpath)
