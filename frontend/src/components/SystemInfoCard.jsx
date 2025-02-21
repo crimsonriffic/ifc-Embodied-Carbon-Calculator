@@ -1,11 +1,26 @@
 import { getBuildingInfo } from "../api/api.jsx";
 import { useEffect, useState } from "react";
-import BarChart from "./BarChart.jsx";
+import PieChart from "./PieChart.jsx";
+import { Pie } from "react-chartjs-2";
+import { ArrowRightIcon } from "@heroicons/react/24/solid";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+
 export default function SystemInfoCard({ projectId }) {
   const [systemInfo, setSystemInfo] = useState([]);
   const [ecValue, setEcValue] = useState(0);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true); // Loading state
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { projectName } = useParams();
+  console.log("Location state is ", location.state);
+
+  const handleGoToBreakdown = (projectId, projectName) => {
+    console.log("HandleGoToBreakdown called");
+    navigate(`/ecbreakdown/${encodeURIComponent(projectName)}`, {
+      state: { projectId },
+    });
+  };
 
   useEffect(() => {
     const fetchBuildingInfo = async () => {
@@ -42,53 +57,36 @@ export default function SystemInfoCard({ projectId }) {
     return <p>No building information available.</p>;
   }
 
-  const data = {
-    labels: ["TOTAL", "SUPER-STRUCTURE", "SUB-STRUCTURE"],
+  const piedata = {
+    labels: ["Superstructure", "Substructure"],
     datasets: [
       {
-        label: [""],
+        label: "EC Breakdown",
         data: [
-          ecValue,
           systemInfo["superstructure_ec"].toFixed(2),
           systemInfo["substructure_ec"].toFixed(2),
         ],
-        backgroundColor: "rgba(75,192,192,0.6)",
-        borderColor: "rgba(75,192,192,1)",
-        borderWidth: 1,
+        backgroundColor: ["#E17352", "#D0C4C4"],
+        borderColor: "#000000",
+        borderWidth: 2,
       },
     ],
   };
   return (
-    <div className="bg-white shadow-lg rounded-lg p-6 border border-gray-300  sm:max-w-xs">
-      <h2 className="text-lg font-bold mb-4 text-gray-800">
-        BUILDING SYSTEM INFO
+    <div className="bg-white shadow-lg rounded-lg border-2 border-gray-800  sm:max-w-xs">
+      <h2 className="text-lg font-bold  text-gray-800 px-4 py-2 border-b-2 border-gray-800">
+        EC DISTRIBUTION
       </h2>
-      <div className="space-y-3">
-        <div className="flex justify-between border-b pb-2">
-          <span className="text-sm font-medium text-gray-600">
-            TOTAL EC VALUE:
-          </span>
-          <span className="text-sm font-semibold text-gray-800">
-            {ecValue ? ecValue.toFixed(2) : "N/A"}
-          </span>
-        </div>
-        <div className="flex justify-between border-b pb-2">
-          <span className="text-sm font-medium text-gray-600">
-            Substructure EC
-          </span>
-          <span className="text-sm font-semibold text-gray-800">
-            {systemInfo["substructure_ec"].toFixed(2) || "N/A"}
-          </span>
-        </div>
-        <div className="flex justify-between border-b pb-2">
-          <span className="text-sm font-medium text-gray-600">
-            Superstructure EC
-          </span>
-          <span className="text-sm font-semibold text-gray-800">
-            {systemInfo["superstructure_ec"].toFixed(2) || "N/A"}
-          </span>
-        </div>
-        <BarChart data={data} />
+      <div className="flex flex-col p-4">
+        <PieChart data={piedata} />
+      </div>
+      <div className="flex justify-end px-2 py-1">
+        <button
+          className="text-gray-500 hover:bg-blue-500"
+          onClick={() => handleGoToBreakdown(projectId, projectName)}
+        >
+          <ArrowRightIcon className="w-6 h-6 text-gray-500" />
+        </button>
       </div>
     </div>
   );

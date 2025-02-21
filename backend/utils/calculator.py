@@ -13,6 +13,7 @@ MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] ,
                 "Concrete, Cast-in-Place gray": [0.103, 2350] , 
                 "Concrete, C12/15": [0.097, 2350],
                 "Concrete, Grade 40": [0.170, 2400], 
+                "Concrete, Grade 20": [0.120,2350],
                 "Concrete, Grade 25": [0.13, 2350], 
                 "Concrete, Grade 20": [0.140, 2350],
                 "Concrete, Grade 20": [0.140, 2350],
@@ -26,9 +27,9 @@ MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] ,
                 'Wooden doors T10-T25 with wooden frame' : 30.4,
                 'Wooden doors T10-T25 with steel frame' : 49.4,
                 'Aluminium, General': [13.100, 2700],
-                'Tiles, Granite'	:[0.700, 2650],
-                'Tiles, Granite'	:[0.700, 2650],
-                'Plywood':[0.910,	600]
+                'Tiles, Granite'	:[0.700,	2650],
+                'Plywood':[0.910,	600],
+                'Cross Laminated Timber':[-1.310,500],
                 }  
 MaterialsToIgnore  = ["Travertine","<Unnamed>"]
 LOGGING_LEVEL = "DEBUG" 

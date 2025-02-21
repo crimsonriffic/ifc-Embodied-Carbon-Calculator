@@ -9,7 +9,7 @@ const routes = [
   { path: "/home", element: <HomePage /> },
   { path: "/createProject", element: <CreatePage /> },
   { path: "/project/:projectName?", element: <ProjectPage /> },
-  { path: "/ecbreakdown", element: <ECBreakdownPage /> },
+  { path: "/ecbreakdown/:projectName?", element: <ECBreakdownPage /> },
   { path: "/ifc", element: <IfcDialog /> },
 ];
 
