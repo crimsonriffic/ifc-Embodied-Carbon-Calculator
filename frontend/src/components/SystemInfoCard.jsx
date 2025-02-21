@@ -73,7 +73,7 @@ export default function SystemInfoCard({ projectId }) {
     ],
   };
   return (
-    <div className="bg-white shadow-lg rounded-lg border-2 border-gray-800  sm:max-w-xs">
+    <div className="bg-white shadow-lg rounded-lg border-2 border-gray-800  sm:max-w-md">
       <h2 className="text-lg font-bold  text-gray-800 px-4 py-2 border-b-2 border-gray-800">
         EC DISTRIBUTION
       </h2>

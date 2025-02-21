@@ -81,7 +81,7 @@ function ECBreakdownPage() {
             buildingInfo.by_building_system["superstructure_ec"],
             buildingInfo.by_building_system["substructure_ec"],
           ],
-          backgroundColor: ["#E17352", "#E17352", "#D0C4C4"],
+          backgroundColor: ["#E17352"],
           borderColor: "#000000",
           borderWidth: 0,
         },
@@ -104,7 +104,7 @@ function ECBreakdownPage() {
         {
           label: "EC Breakdown by Element",
           data: elementValues,
-          backgroundColor: ["#D0C4C4"],
+          backgroundColor: ["#E17352"],
           borderColor: "#000000",
           borderWidth: 0,
         },
@@ -124,7 +124,7 @@ function ECBreakdownPage() {
         {
           label: "EC Breakdown by Material",
           data: materialValues,
-          backgroundColor: ["#D0C4C4"],
+          backgroundColor: ["#E17352"],
           borderColor: "#000000",
           borderWidth: 0,
         },
