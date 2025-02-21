@@ -556,9 +556,10 @@ def calculate_roofs(roofs):
     total_ec = 0
     quantities = {}
     materials = []
-    slabs = []
 
     for roof in roofs:
+        slabs = []
+        roof_ec = 0
         current_ec = 0
         if hasattr(roof, "IsDecomposedBy"):
             for rel in roof.IsDecomposedBy:
@@ -575,7 +576,7 @@ def calculate_roofs(roofs):
             current_ec = None
             current_quantity = None
             current_material = None
-            roof_ec = 0
+            
             if hasattr(slab, "IsDefinedBy"):
                 for definition in slab.IsDefinedBy:
                     if definition.is_a('IfcRelDefinesByProperties'):
@@ -633,7 +634,7 @@ def calculate_roofs(roofs):
                     ec_per_kg, density = mat_ec_data
                     current_ec = ec_per_kg * density * (thickness/1000) * current_area
                     logger.debug(f"EC for material '{mat}' in {slab.Name} is {current_ec}")
-                    total_ec += current_ec
+                    roof_ec += current_ec
 
             elif current_material:
                 current_material_ec = MaterialList.get(current_material, None) if current_material else None
@@ -645,7 +646,7 @@ def calculate_roofs(roofs):
                 material_ec_perkg, material_density = current_material_ec
                 current_ec = material_ec_perkg * material_density * current_volume
                 logger.debug(f"EC for {slab.Name} is {current_ec}")
-                total_ec += current_ec
+                roof_ec += current_ec
             
             if current_ec is None:
                 logger.warning(f"EC calculation for slab failed, attempting manual volume method")
@@ -1249,7 +1250,7 @@ def calculate_gfa(filepath):
     return total_area
 
 if __name__ == "__main__":
-    ifcpath = "/Users/jk/Downloads/z. Complex Models/Complex 2.ifc"
+    ifcpath = "/Users/jk/Downloads/Complex 3_USETHIS.ifc"
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
     calculate_gfa(ifcpath)
