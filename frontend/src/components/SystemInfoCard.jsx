@@ -1,6 +1,5 @@
 import { getBuildingInfo } from "../api/api.jsx";
 import { useEffect, useState } from "react";
-import BarChart from "./BarChart.jsx";
 import PieChart from "./PieChart.jsx";
 import { Pie } from "react-chartjs-2";
 import { ArrowRightIcon } from "@heroicons/react/24/solid";

@@ -16,6 +16,7 @@ export default {
     "./src/components/PieChart.jsx",
     "./src/components/BarChart.jsx",
     "./src/components/AwardCard.jsx",
+    "./src/pages/ECBreakdownPage.jsx",
   ],
   theme: {
     extend: {},

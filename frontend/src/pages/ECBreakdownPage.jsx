@@ -3,36 +3,118 @@ import MaterialInfoCard from "../components/MaterialInfoCard";
 import ElementInfoCard from "../components/ElementInfoCard";
 import ProjectErrorDialog from "./ProjectErrorDialog";
 import { useParams, useLocation, Link } from "react-router-dom";
+import { getBuildingInfo } from "../api/api.jsx";
+import { useEffect, useState } from "react";
+import BarChart from "../components/BarChart.jsx";
 
 function ECBreakdownPage() {
   const location = useLocation();
   const { projectName } = useParams();
+  const [error, setError] = useState(null);
+  const [barData, setBarData] = useState({
+    labels: [],
+    datasets: [],
+  });
+
+  const [elementData, setElementData] = useState({
+    labels: [],
+    datasets: [],
+  });
+  const [elementInfo, setElementInfo] = useState({});
+  const [loading, setLoading] = useState(true); // Loading state
+  const [systemInfo, setSystemInfo] = useState({});
+  const [ecValue, setEcValue] = useState(0);
   console.log("Location state is ", location.state);
 
-  // Check if location.state is null or undefined
-  if (!location.state) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-        <Navbar />
-        <div className="bg-white rounded-lg p-6 shadow-md text-center">
-          <h1 className="text-xl font-semibold text-red-500 mb-4">
-            Error: Missing Project Information
-          </h1>
-          <p className="text-gray-700">
-            No project data was provided. Make sure you navigated to this page
-            from a valid project link.
-          </p>
-          <Link
-            to="/home"
-            className="mt-4 inline-block px-4 py-2 bg-[#5B9130] text-white rounded hover:bg-[#3d5c23]"
-          >
-            Select Project
-          </Link>
-        </div>
-      </div>
-    );
-  }
   const { projectId } = location.state;
+
+  useEffect(() => {
+    const fetchBuildingInfo = async () => {
+      try {
+        const response = await getBuildingInfo(projectId);
+        console.log("Building Info (EC breakdown)", response.data);
+        //TODO fix to 2dp
+        setSystemInfo(response.data.ec_breakdown.by_building_system);
+        setElementInfo(response.data.ec_breakdown.by_element);
+        setEcValue(response.data.total_ec.toFixed(2));
+
+        setError(null);
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to fetch building info: ", err);
+        setError("Failed to fetch building information."); // Set error message
+      }
+    };
+    if (projectId) {
+      fetchBuildingInfo();
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    if (
+      !ecValue ||
+      Object.keys(systemInfo).length === 0 ||
+      Object.keys(elementInfo).length === 0
+    ) {
+      return; // Don't execute if state is empty
+    }
+    console.log("EC value, ", ecValue);
+    console.log("System info, ", systemInfo);
+    console.log("Element Info:", elementInfo);
+    const data = {
+      labels: ["Total", "Superstructure", "Substructure"],
+      datasets: [
+        {
+          label: "EC Breakdown",
+          data: [
+            ecValue,
+            systemInfo["superstructure_ec"],
+            systemInfo["substructure_ec"],
+          ],
+          backgroundColor: ["#E17352", "#E17352", "#D0C4C4"],
+          borderColor: "#000000",
+          borderWidth: 0,
+        },
+      ],
+    };
+
+    const elementLabels = elementInfo ? Object.keys(elementInfo) : {};
+
+    const elementValues = elementInfo ? Object.values(elementInfo) : {};
+
+    console.log("Element labels are ", elementLabels);
+    console.log("Element values are ", elementValues);
+    const element_data = {
+      labels: elementLabels,
+      datasets: [
+        {
+          label: "EC Breakdown by Element",
+          data: elementValues,
+          backgroundColor: ["#D0C4C4"],
+          borderColor: "#000000",
+          borderWidth: 0,
+        },
+      ],
+    };
+    setBarData(data);
+    setElementData(element_data);
+  }, [elementInfo, systemInfo, ecValue]);
+
+  if (!projectId) {
+    return <p className="text-red-500">No project ID provided.</p>;
+  }
+
+  if (loading) {
+    return <p>Loading building system information...</p>; // Show loading state
+  }
+
+  if (error) {
+    return <p className="text-red-500">{error}</p>; // Display error message
+  }
+
+  if (!systemInfo) {
+    return <p>No building information available.</p>;
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -46,9 +128,19 @@ function ECBreakdownPage() {
                 {decodeURIComponent(projectName)}
               </h1>
             </div>
-            <div className="space-y-2">
-              <MaterialInfoCard projectId={projectId} />
-              <ElementInfoCard projectId={projectId} />
+            <div className="space-y-1">
+              <h1 className="font-bold">
+                Overall EC Breakdown - <br /> by Substructure/Superstructure
+              </h1>
+              <div className="flex flex-col w-[400px] h-[200px]">
+                <BarChart data={barData} />
+              </div>
+              <h1 className="font-bold">
+                Overall EC Breakdown - <br /> by Element
+              </h1>
+              <div className="flex flex-col w-[400px] h-[200px]">
+                <BarChart data={elementData} />
+              </div>
             </div>
           </div>
         ) : (
