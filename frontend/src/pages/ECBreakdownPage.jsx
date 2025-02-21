@@ -1,6 +1,4 @@
 import Navbar from "../components/NavBar";
-import MaterialInfoCard from "../components/MaterialInfoCard";
-import ElementInfoCard from "../components/ElementInfoCard";
 import ProjectErrorDialog from "./ProjectErrorDialog";
 import { useParams, useLocation, Link } from "react-router-dom";
 import { getBuildingInfo } from "../api/api.jsx";
@@ -10,7 +8,9 @@ import BarChart from "../components/BarChart.jsx";
 function ECBreakdownPage() {
   const location = useLocation();
   const { projectName } = useParams();
+  const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null);
+  // Charts Data
   const [barData, setBarData] = useState({
     labels: [],
     datasets: [],
@@ -20,11 +20,18 @@ function ECBreakdownPage() {
     labels: [],
     datasets: [],
   });
-  const [elementInfo, setElementInfo] = useState({});
-  const [loading, setLoading] = useState(true); // Loading state
-  const [systemInfo, setSystemInfo] = useState({});
+
+  const [materialData, setMaterialData] = useState({
+    labels: [],
+    datasets: [],
+  });
+
+  // API data
+
+  const [buildingInfo, setBuildingInfo] = useState({});
   const [ecValue, setEcValue] = useState(0);
-  console.log("Location state is ", location.state);
+
+  // console.log("Location state is ", location.state);
 
   const { projectId } = location.state;
 
@@ -32,10 +39,9 @@ function ECBreakdownPage() {
     const fetchBuildingInfo = async () => {
       try {
         const response = await getBuildingInfo(projectId);
-        console.log("Building Info (EC breakdown)", response.data);
+        console.log("API response data", response.data);
         //TODO fix to 2dp
-        setSystemInfo(response.data.ec_breakdown.by_building_system);
-        setElementInfo(response.data.ec_breakdown.by_element);
+        setBuildingInfo(response.data.ec_breakdown);
         setEcValue(response.data.total_ec.toFixed(2));
 
         setError(null);
@@ -53,14 +59,18 @@ function ECBreakdownPage() {
   useEffect(() => {
     if (
       !ecValue ||
-      Object.keys(systemInfo).length === 0 ||
-      Object.keys(elementInfo).length === 0
+      !buildingInfo.by_building_system ||
+      !buildingInfo.by_element ||
+      Object.keys(buildingInfo.by_building_system).length === 0 ||
+      Object.keys(buildingInfo.by_element).length === 0
     ) {
+      console.log("State is empty");
       return; // Don't execute if state is empty
     }
-    console.log("EC value, ", ecValue);
-    console.log("System info, ", systemInfo);
-    console.log("Element Info:", elementInfo);
+    console.log("EC value: ", ecValue);
+    console.log("Building info: ", buildingInfo);
+    console.log("System info: ", buildingInfo.by_building_system);
+    console.log("Element Info:", buildingInfo.by_element);
     const data = {
       labels: ["Total", "Superstructure", "Substructure"],
       datasets: [
@@ -68,8 +78,8 @@ function ECBreakdownPage() {
           label: "EC Breakdown",
           data: [
             ecValue,
-            systemInfo["superstructure_ec"],
-            systemInfo["substructure_ec"],
+            buildingInfo.by_building_system["superstructure_ec"],
+            buildingInfo.by_building_system["substructure_ec"],
           ],
           backgroundColor: ["#E17352", "#E17352", "#D0C4C4"],
           borderColor: "#000000",
@@ -78,9 +88,13 @@ function ECBreakdownPage() {
       ],
     };
 
-    const elementLabels = elementInfo ? Object.keys(elementInfo) : {};
+    const elementLabels = buildingInfo.by_element
+      ? Object.keys(buildingInfo.by_element)
+      : {};
 
-    const elementValues = elementInfo ? Object.values(elementInfo) : {};
+    const elementValues = buildingInfo.by_element
+      ? Object.values(buildingInfo.by_element)
+      : {};
 
     console.log("Element labels are ", elementLabels);
     console.log("Element values are ", elementValues);
@@ -96,9 +110,30 @@ function ECBreakdownPage() {
         },
       ],
     };
+
+    const materialLabels = buildingInfo.by_material
+      ? Object.keys(buildingInfo.by_material)
+      : {};
+
+    const materialValues = buildingInfo.by_material
+      ? Object.values(buildingInfo.by_material)
+      : {};
+    const material_data = {
+      labels: materialLabels,
+      datasets: [
+        {
+          label: "EC Breakdown by Material",
+          data: materialValues,
+          backgroundColor: ["#D0C4C4"],
+          borderColor: "#000000",
+          borderWidth: 0,
+        },
+      ],
+    };
     setBarData(data);
     setElementData(element_data);
-  }, [elementInfo, systemInfo, ecValue]);
+    setMaterialData(material_data);
+  }, [buildingInfo, ecValue]);
 
   if (!projectId) {
     return <p className="text-red-500">No project ID provided.</p>;
@@ -112,7 +147,7 @@ function ECBreakdownPage() {
     return <p className="text-red-500">{error}</p>; // Display error message
   }
 
-  if (!systemInfo) {
+  if (!buildingInfo) {
     return <p>No building information available.</p>;
   }
 
@@ -140,6 +175,12 @@ function ECBreakdownPage() {
               </h1>
               <div className="flex flex-col w-[400px] h-[200px]">
                 <BarChart data={elementData} />
+              </div>
+              <h1 className="font-bold">
+                Overall EC Breakdown - <br /> by Material
+              </h1>
+              <div className="flex flex-col w-[400px] h-[200px]">
+                <BarChart data={materialData} />
               </div>
             </div>
           </div>
