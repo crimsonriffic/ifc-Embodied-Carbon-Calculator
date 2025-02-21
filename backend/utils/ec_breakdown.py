@@ -9,7 +9,7 @@ import ifcopenshell.geom
 import numpy as np
 from numpy import abs as np_abs
 
-from .calculator import calculate_beams, calculate_columns, calculate_doors, calculate_embodied_carbon, calculate_railings, calculate_slabs, calculate_stairs, calculate_walls,calculate_roofs, calculate_windows,calculate_gfa
+from calculator import calculate_beams, calculate_columns, calculate_doors, calculate_embodied_carbon, calculate_railings, calculate_slabs, calculate_stairs, calculate_walls,calculate_roofs, calculate_windows,calculate_gfa
 
 
 ## Helper functions
@@ -296,7 +296,7 @@ def check_roof_hierarchy(filepath):
 
 if __name__ == "__main__":
     #ifcpath = os.path.join(r"C:\Users\dczqd\Documents\SUTD\Capstone-calc", "Window 1.ifc")
-    ifcpath = os.path.join(r"C:\Users\Carina\Downloads", "Complex 1.ifc")
+    ifcpath = os.path.join(r"C:\Users\Carina\Downloads", "Complex 3.ifc")
     logger.info(f"{ifcpath=}")
     sub_ec = calculate_substructure_ec(ifcpath)
     super_ec = calculate_superstructure_ec(ifcpath)
