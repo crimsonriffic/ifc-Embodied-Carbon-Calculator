@@ -6,12 +6,27 @@ const api = axios.create({
 export const getProjectsByUsername = (user_id) => {
   return api.get("/projects", { params: { user_id } });
 };
-export const uploadIfc = async (projectId, file, userId) => {
+export const uploadIfc = async (
+  projectId,
+  file,
+  userId,
+  comments,
+  updateType
+) => {
   try {
     // Create FormData to send the file
     const formData = new FormData();
     formData.append("file", file);
-    console.log("The uploadIFC inputs are", projectId, file, userId);
+    formData.append("comments", comments);
+    formData.append("update_type", updateType);
+    console.log(
+      "The uploadIFC inputs are",
+      projectId,
+      file,
+      userId,
+      comments,
+      updateType
+    );
     // Upload file using Axios
     const response = await axios.post(
       `http://localhost:8000/projects/${projectId}/upload_ifc`, // Dynamically add project ID
@@ -36,6 +51,11 @@ export const uploadIfc = async (projectId, file, userId) => {
 export const getBuildingInfo = async (projectId) => {
   console.log("Projectid at api.jsx is ", projectId);
   return api.get(`/projects/${projectId}/get_info`);
+};
+
+export const getProjectHistory = async (projectId) => {
+  console.log("Projectid at api.jsx is ", projectId);
+  return api.get(`/projects/${projectId}/get_history`);
 };
 
 export const createProject = async (projectName, client, file, userId) => {

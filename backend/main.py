@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, HTTPException, Query
+from fastapi import FastAPI, Form, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
@@ -111,13 +111,21 @@ class ProjectInfo(BaseModel):
     project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     total_ec: float
     gfa: float
-    ## EC breakdown by superstructure, substrucutre
-    ## EC breakdown by material 
-    ## EC breakdown by elements 
+    comments: str
+    update_type: str
     ec_breakdown:dict
     last_calculated: datetime
     version: str
 
+class VersionHistory(BaseModel):
+    version: str
+    uploaded_by: str
+    date_uploaded: datetime
+    comments: str
+    update_type: str
+
+class ProjectHistoryResponse(BaseModel):
+    history: List[VersionHistory]
 @app.get("/test_db_connection")
 async def test_db_connection():
 
@@ -151,7 +159,9 @@ async def get_projects(user_id: str = Query(..., description="User ID to fetch p
 async def upload_ifc(
     project_id: str,
     file: UploadFile,
-    user_id: str = Query(..., description="ID of the user uploading the file")
+    user_id: str = Query(..., description="ID of the user uploading the file"),
+    comments: str = Form(""),  # Default to empty string if not provided
+    update_type: str = Form("")  # Default to empty string if not provided
 ):
     if not file.filename.lower().endswith('.ifc'):
         raise HTTPException(
@@ -177,6 +187,7 @@ async def upload_ifc(
     try:
         file_content = await file.read()
         new_version = str(project.get("current_version", 0) + 1)
+
         s3_path = f"ifc_files/{project_id}/{new_version}_{file.filename}"
         
         # Upload to S3
@@ -204,6 +215,8 @@ async def upload_ifc(
                         
                         "date_uploaded": datetime.now(),
                         "uploaded_by": user_id,
+                        "comments":comments,
+                        "update_type": update_type,
                         "file_path": f"s3://{S3_BUCKET}/{s3_path}",
                         "gfa":ec_data["gfa"],
                         "total_ec": ec_data["total_ec"], 
@@ -256,23 +269,48 @@ async def get_project_info(project_id: str):
     total_ec = ifc_data.get("total_ec", 0)
     ec_breakdown = ifc_data.get("ec_breakdown", {})
     gfa = ifc_data.get("gfa", 0)
+    comments = ifc_data.get("comments", "")
+    update_type = ifc_data.get("update_type", "")
     print("ec breakdown is,",ec_breakdown)
 
     return ProjectInfo(
         project_id=str(project["_id"]),
         total_ec=total_ec,
         gfa = gfa,
+        comments =comments,
+        update_type = update_type,
         ec_breakdown=ec_breakdown,
         last_calculated=project.get("last_calculated", datetime.now()),
         version=latest_version
     )
 
-    # return ProjectInfo(
-    #    project_id=project["_id"],
-    #    embodied_carbon=ec,
-    #    last_calculated=datetime.now(),
-    #    version=latest_version
-    # )
+
+# Get latest edits history (top 4 history, get the uploaded_by, date_uploaded, comments, update_type)
+@app.get("/projects/{project_id}/get_history", response_model = ProjectHistoryResponse)
+async def get_project_history(project_id: str):
+    project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
+
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Get the last 4 versions uploaded
+    ifc_versions = project.get("ifc_versions", {})
+    sorted_versions = sorted(ifc_versions.keys(), key=lambda v: int(v), reverse=True)[:4]
+
+    version_history = []
+    for version in sorted_versions:
+        version_data = ifc_versions.get(version, {})
+        version_history.append(VersionHistory(
+            version=version,
+            uploaded_by=version_data.get("uploaded_by", ""),
+            date_uploaded=version_data.get("date_uploaded", datetime.now()),
+            comments=version_data.get("comments", ""),
+            update_type=version_data.get("update_type", "")
+        ))
+
+    return ProjectHistoryResponse(
+        history=version_history
+    )
 
 
 @app.post("/create_project", response_model=Project)
@@ -285,24 +323,6 @@ async def create_project(project: Project):
     )
     return created_project
 
-# # TODO
-# @app.put("/projects/{project_id}", response_model=Project)
-# async def update_project(project_id: str, project_update: Project):
-#     update_result = await app.mongodb.projects.update_one(
-#         {"_id": ObjectId(project_id)},
-#         {"$set": project_update.dict(by_alias=True, exclude={"id"})}
-#     )
-    
-#     if update_result.modified_count == 0:
-#         raise HTTPException(
-#             status_code=404,
-#             detail=f"Project with ID {project_id} not found"
-#         )
-    
-#     updated_project = await app.mongodb.projects.find_one(
-#         {"_id": ObjectId(project_id)}
-#     )
-#     return updated_project
 
 
 
