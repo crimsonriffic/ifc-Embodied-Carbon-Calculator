@@ -39,41 +39,24 @@ export default function BuildingInfoCard({ projectId }) {
     return <p>No building information available.</p>;
   }
   return (
-    <div className="bg-white shadow-lg rounded-lg border-2 border-gray-800 sm:max-w-md ">
-      <h2 className="text-lg font-bold mb-4 text-gray-800 px-4 py-2 border-b-2 border-gray-800">
-        BUILDING INFO
-      </h2>
+    <div className="bg-white rounded-lg sm:max-w-md ">
       <div className="space-y-2 ">
-        <div className="flex justify-between border-b p-2">
-          <span className="text-sm font-medium text-gray-600">
-            TOTAL EC VALUE:
-          </span>
-          <span className="text-sm font-semibold text-gray-800">
-            {buildingInfo.total_ec ? buildingInfo.total_ec.toFixed(2) : "N/A"}
-          </span>
-        </div>
-        <div className="flex justify-between border-b p-2">
+        <div className="flex justify-between border-b py-2">
           <span className="text-sm font-medium text-gray-600">GFA:</span>
-          <span className="text-sm font-semibold text-gray-800">
+          <span className="text-sm  text-gray-800">
             {buildingInfo.gfa.toFixed(2) || "N/A"}
           </span>
         </div>
-        <div className="flex justify-between border-b p-2">
+        <div className="flex justify-between border-b py-2">
           <span className="text-sm font-medium text-gray-600">TYPOLOGY:</span>
-          <span className="text-sm font-semibold text-gray-800">
+          <span className="text-sm  text-gray-800">
             {buildingInfo.typology || "N/A"}
           </span>
         </div>
-        <div className="flex justify-between border-b p-2">
-          <span className="text-sm font-medium text-gray-600">PHASE:</span>
-          <span className="text-sm font-semibold text-gray-800">
-            {buildingInfo.phase || "N/A"}
-          </span>
-        </div>
-        <div className="flex justify-between p-2">
-          <span className="text-sm font-medium text-gray-600">COST:</span>
-          <span className="text-sm font-semibold text-gray-800">
-            {buildingInfo.cost || "N/A"}
+        <div className="flex justify-between border-b py-2">
+          <span className="text-sm font-medium text-gray-600">STATUS:</span>
+          <span className="text-sm  text-gray-800">
+            {buildingInfo.status || "N/A"}
           </span>
         </div>
       </div>

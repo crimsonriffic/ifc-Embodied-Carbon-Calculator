@@ -8,11 +8,16 @@ import SystemInfoCard from "../components/SystemInfoCard";
 import MaterialInfoCard from "../components/MaterialInfoCard";
 import ElementInfoCard from "../components/ElementInfoCard";
 import AwardCard from "../components/AwardCard";
+import BarChart from "../components/BarChart";
 function ProjectPage() {
   const location = useLocation();
   const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null);
   const [projectHistory, setProjectHistory] = useState([]);
+  const [barData, setBarData] = useState({
+    labels: [],
+    datasets: [],
+  });
   const { projectName } = useParams();
   console.log("Location state is ", location.state);
 
@@ -21,8 +26,8 @@ function ProjectPage() {
     const fetchProjectHistory = async () => {
       try {
         const response = await getProjectHistory(projectId);
-        console.log("API response data", response.data.history);
-        //TODO fix to 2dp
+        console.log("API response data", response.data);
+
         setProjectHistory(response.data.history);
 
         setError(null);
@@ -36,6 +41,40 @@ function ProjectPage() {
       fetchProjectHistory();
     }
   }, [projectId]);
+
+  useEffect(() => {
+    if (!projectHistory) {
+      console.log("Project history is empty");
+      return;
+    }
+
+    console.log("Project history is: ", projectHistory);
+    const sortedHistory = projectHistory
+      ? [...projectHistory].sort((a, b) => a.version - b.version)
+      : [];
+
+    const versionLabels = sortedHistory
+      ? sortedHistory.map((item) => item.version)
+      : [];
+    const versionValues = projectHistory
+      ? sortedHistory.map((item) => item.total_ec)
+      : [];
+    console.log("Project history labels is: ", versionLabels);
+    console.log("Project history values is: ", versionValues);
+    const data = {
+      labels: versionLabels,
+      datasets: [
+        {
+          label: "A1-A3 carbon Comparison",
+          data: versionValues,
+          backgroundColor: ["#E4937B", "#CAA05C", "#E2D35E", "#E5E548"],
+          borderColor: "#000000",
+          borderWidth: 0,
+        },
+      ],
+    };
+    setBarData(data);
+  }, [projectHistory]);
 
   if (!projectId) {
     return <p className="text-red-500">No project ID provided.</p>;
@@ -52,7 +91,6 @@ function ProjectPage() {
   if (!projectHistory) {
     return <p>No project history available.</p>;
   }
-  console.log("Project history is: ", projectHistory);
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -60,55 +98,90 @@ function ProjectPage() {
         {/**Check if project name exists */}
         {projectName ? (
           <div>
-            <div className="bg-[#A0ABC0] text-white rounded-lg px-4 py-2 flex items-center shadow-md mb-2 sm:max-w-md">
+            <div className="bg-[#A9C0A0]  text-white rounded-lg px-4 py-2 flex items-center shadow-md mb-2 sm:max-w-md">
               <h1 className="text-lg font-semibold tracking-wide">
                 {decodeURIComponent(projectName)}
               </h1>
             </div>
-            <div className="space-y-2">
-              <BuildingInfoCard projectId={projectId} />
-              <SystemInfoCard projectId={projectId} />
-              <div className="flex flex-row justify-left">
-                <AwardCard projectId={projectId} />
-
-                <div className=" px-8">
-                  <table className="w-full text-left border-collapse border border-gray-300">
+            <div className="flex flex-col">
+              <div className="flex flex-row">
+                <div className="flex flex-1 flex-col">
+                  <h1 className="font-bold w-full md:w-1/2">
+                    Project Upload History
+                  </h1>
+                  <table className="w-full md:w-1/2 text-left border-separate border-spacing-0 border border-gray-800 rounded-lg overflow-hidden">
                     <thead>
                       <tr>
-                        <th className="border-2 border-gray-800 px-6 py-2 font-bold">
-                          USER
+                        <th className="border-b border-r border-gray-800 px-6 py-4 font-bold first:rounded-tl-lg ">
+                          User
                         </th>
-                        <th className="border-2 border-gray-800 px-6 py-2 font-bold">
-                          COMMENTS
+                        <th className="border-b border-r w-96 border-gray-800 px-6 py-4 font-bold">
+                          Comments
                         </th>
-                        <th className="border-2 border-gray-800 px-6 py-2 font-bold">
-                          TIME
+                        <th className="border-b border-r border-gray-800 px-6 py-4 font-bold">
+                          Upload Time
                         </th>
-                        <th className="border-2 border-gray-800 px-6 py-2 font-bold">
-                          UPDATE TYPE
+                        <th className="border-b border-gray-800 px-6 py-4 font-bold">
+                          Comparison
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {projectHistory.map((item, index) => (
-                        <tr key={index} className="hover:bg-gray-50 px-6 py-2">
-                          <td className="border-2 border-gray-800 px-6 py-2">
+                        <tr key={index} className="hover:bg-gray-50 px-6 py-4">
+                          <td
+                            className={`px-6 py-2 ${
+                              index === projectHistory.length - 1
+                                ? "first:rounded-bl-lg border-r border-gray-800"
+                                : "border-b border-r border-gray-800"
+                            }`}
+                          >
                             {item.uploaded_by}
                           </td>
-                          <td className="border-2 border-gray-800 px-6 py-2">
+                          <td
+                            className={` px-6 py-4 ${
+                              index === projectHistory.length - 1
+                                ? "border-r border-gray-800"
+                                : "border-b border-r border-gray-800"
+                            }`}
+                          >
                             {item.comments}
                           </td>
-                          <td className="border-2 border-gray-800 px-6 py-2">
+                          <td
+                            className={` px-6 py-4 ${
+                              index === projectHistory.length - 1
+                                ? "border-r border-gray-800"
+                                : "border-b border-r border-gray-800"
+                            }`}
+                          >
                             {item.date_uploaded}
                           </td>
-                          <td className="border-2 border-gray-800 px-6 py-2">
-                            {item.update_type}
+                          <td
+                            className={` px-6 py-4 ${
+                              index === projectHistory.length - 1
+                                ? ""
+                                : "border-b border-gray-800"
+                            }`}
+                          >
+                            TODO
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+                <div className="flex flex-1 flex-col">
+                  <h1 className="font-bold">
+                    A1-A3 Embodied Carbon Comparison
+                  </h1>
+                  <div className="h-[400px]">
+                    <BarChart data={barData} />
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col mt-6">
+                <h1 className="font-bold">Project Information</h1>
+                <BuildingInfoCard projectId={projectId} />
               </div>
             </div>
           </div>

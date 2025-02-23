@@ -9,6 +9,8 @@ import { createProject } from "../api/api";
 export default function CreatePage() {
   const [projectName, setProjectName] = useState("");
   const [client, setClient] = useState("");
+  const [typology, setTypology] = useState("");
+  const [status, setStatus] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false); // State for IfcDialog
   const [selectedFile, setSelectedFile] = useState(null);
   const { username } = useUser();
@@ -21,7 +23,9 @@ export default function CreatePage() {
         projectName,
         client,
         selectedFile,
-        username
+        username,
+        typology,
+        status
       );
       console.log("Successfully created project: ", response.data);
       navigate("/home");
@@ -35,6 +39,13 @@ export default function CreatePage() {
     if (file) {
       setSelectedFile(file);
     }
+  };
+  const handleUpdateTypology = (e) => {
+    setTypology(e.target.value);
+  };
+
+  const handleUpdateStatus = (e) => {
+    setStatus(e.target.value);
   };
   return (
     <div className="px-6">
@@ -86,8 +97,45 @@ export default function CreatePage() {
               required
             />
           </div>
+          {/*Input typology type */}
+          <div className="mb-4">
+            <label
+              htmlFor="typology"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Typology
+            </label>
+            <select
+              id="typology"
+              value={typology}
+              onChange={handleUpdateTypology}
+              className="w-full p-2 border border-gray-300 rounded-lg"
+            >
+              <option value="Residential">Residential</option>
+              <option value="Commerical">Commerical</option>
+            </select>
+          </div>
 
-          {/** Upload IFC Seciton */}
+          {/*Input Status type */}
+          <div className="mb-4">
+            <label
+              htmlFor="status"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Status
+            </label>
+            <select
+              id="status"
+              value={status}
+              onChange={handleUpdateStatus}
+              className="w-full p-2 border border-gray-300 rounded-lg"
+            >
+              <option value="Initial Design">Initial Design</option>
+              <option value="Detailed Design">Detailed Design</option>
+            </select>
+          </div>
+
+          {/** Upload IFC Section */}
           <div className="mb-4">
             <label
               htmlFor="client"

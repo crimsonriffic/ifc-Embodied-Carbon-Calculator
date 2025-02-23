@@ -4,6 +4,7 @@ const api = axios.create({
   baseURL: "http://localhost:8000", // Replace with your backend's base URL
 });
 export const getProjectsByUsername = (user_id) => {
+  console.log("api.jsx being called");
   return api.get("/projects", { params: { user_id } });
 };
 export const uploadIfc = async (
@@ -50,7 +51,7 @@ export const uploadIfc = async (
 
 export const getBuildingInfo = async (projectId) => {
   console.log("Projectid at api.jsx is ", projectId);
-  return api.get(`/projects/${projectId}/get_info`);
+  return api.get(`/projects/${projectId}/get_project_info`);
 };
 
 export const getProjectHistory = async (projectId) => {
@@ -58,13 +59,22 @@ export const getProjectHistory = async (projectId) => {
   return api.get(`/projects/${projectId}/get_history`);
 };
 
-export const createProject = async (projectName, client, file, userId) => {
+export const createProject = async (
+  projectName,
+  client,
+  file,
+  userId,
+  typology,
+  status
+) => {
   console.log("Calling create projects API");
 
   //Construct the project data object
   const projectData = {
     project_name: projectName,
     client_name: client,
+    typology: typology,
+    status: status,
     last_edited_date: new Date().toISOString(), // Current timestamp
     last_edited_user: userId,
     user_job_role: "Senior Architect", // Replace with actual role

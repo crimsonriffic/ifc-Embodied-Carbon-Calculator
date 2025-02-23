@@ -12,6 +12,7 @@ ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 const options = {
   responsive: true,
+  maintainAspectRatio: false,
 
   scales: {
     y: {
