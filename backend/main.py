@@ -94,6 +94,8 @@ class Project(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     project_name: str
     client_name: str
+    typology:Optional[str] = None
+    status:Optional[str] = None
     last_edited_date: datetime  
     last_edited_user: str
     user_job_role: str
@@ -117,15 +119,22 @@ class ProjectInfo(BaseModel):
     last_calculated: datetime
     version: str
 
+class ProjectBasicInfo(BaseModel):
+    project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    gfa: float
+    typology: str
+    status:str
+
 class VersionHistory(BaseModel):
     version: str
     uploaded_by: str
     date_uploaded: datetime
     comments: str
     update_type: str
+    total_ec: float
 
 class ProjectHistoryResponse(BaseModel):
-    history: List[VersionHistory]
+    history: List
 @app.get("/test_db_connection")
 async def test_db_connection():
 
@@ -143,7 +152,7 @@ async def get_projects(user_id: str = Query(..., description="User ID to fetch p
     projects = await app.mongodb.projects.find(
         {f"access_control.{user_id}": {"$exists": True}}
     ).to_list(1000)
-    print("Projects: ", projects)
+    #print("Projects: ", projects)
     if not projects:
         raise HTTPException(
             status_code=404,
@@ -253,8 +262,8 @@ async def upload_ifc(
 
 
 # Get EC breakdown and ec value
-@app.get("/projects/{project_id}/get_info", response_model=ProjectInfo)
-async def get_project_info(project_id: str):
+@app.get("/projects/{project_id}/get_breakdown", response_model=ProjectInfo)
+async def get_breakdown(project_id: str):
     project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)}) 
    
     if not project:
@@ -284,7 +293,24 @@ async def get_project_info(project_id: str):
         version=latest_version
     )
 
+@app.get("/projects/{project_id}/get_project_info", response_model=ProjectBasicInfo)
+async def get_project_info(project_id:str):
+    project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)}) 
+   
+    if not project:
+       raise HTTPException(status_code=404, detail="Project not found")
+    
+     # Get the latest version's GFA
+    latest_version = str(project.get("current_version"))
+    ifc_data = project["ifc_versions"].get(latest_version, {})
+    gfa = ifc_data.get("gfa", 0)
 
+    return ProjectBasicInfo(
+        _id=project["_id"],
+        gfa=gfa,
+        typology=project.get("typology", "Not Specified"),
+        status=project.get("status", "Not Specified")
+    )
 # Get latest edits history (top 4 history, get the uploaded_by, date_uploaded, comments, update_type)
 @app.get("/projects/{project_id}/get_history", response_model = ProjectHistoryResponse)
 async def get_project_history(project_id: str):
@@ -300,17 +326,17 @@ async def get_project_history(project_id: str):
     version_history = []
     for version in sorted_versions:
         version_data = ifc_versions.get(version, {})
-        version_history.append(VersionHistory(
+        version_history.append( VersionHistory(
             version=version,
             uploaded_by=version_data.get("uploaded_by", ""),
             date_uploaded=version_data.get("date_uploaded", datetime.now()),
             comments=version_data.get("comments", ""),
-            update_type=version_data.get("update_type", "")
+            update_type=version_data.get("update_type", ""),
+            total_ec=version_data.get("total_ec",0.0)
         ))
 
-    return ProjectHistoryResponse(
-        history=version_history
-    )
+    return ProjectHistoryResponse(history=version_history)
+    
 
 
 @app.post("/create_project", response_model=Project)
