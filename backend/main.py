@@ -109,12 +109,10 @@ class Project(BaseModel):
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
-class ProjectInfo(BaseModel):
+class ProjectBreakdown(BaseModel):
     project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     total_ec: float
     gfa: float
-    comments: str
-    update_type: str
     ec_breakdown:dict
     last_calculated: datetime
     version: str
@@ -262,7 +260,7 @@ async def upload_ifc(
 
 
 # Get EC breakdown and ec value
-@app.get("/projects/{project_id}/get_breakdown", response_model=ProjectInfo)
+@app.get("/projects/{project_id}/get_breakdown", response_model=ProjectBreakdown)
 async def get_breakdown(project_id: str):
     project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)}) 
    
@@ -278,16 +276,13 @@ async def get_breakdown(project_id: str):
     total_ec = ifc_data.get("total_ec", 0)
     ec_breakdown = ifc_data.get("ec_breakdown", {})
     gfa = ifc_data.get("gfa", 0)
-    comments = ifc_data.get("comments", "")
-    update_type = ifc_data.get("update_type", "")
+    
     print("ec breakdown is,",ec_breakdown)
 
-    return ProjectInfo(
+    return ProjectBreakdown(
         project_id=str(project["_id"]),
         total_ec=total_ec,
         gfa = gfa,
-        comments =comments,
-        update_type = update_type,
         ec_breakdown=ec_breakdown,
         last_calculated=project.get("last_calculated", datetime.now()),
         version=latest_version
