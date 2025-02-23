@@ -145,3 +145,8 @@ export const createProject = async (
     throw err; // Re-throw the error for handling in the calling function
   }
 };
+
+export const getProjectBreakdown = async (projectId) => {
+  console.log("getProjectBreakdown API is called with  ", projectId);
+  return api.get(`/projects/${projectId}/get_breakdown`);
+};

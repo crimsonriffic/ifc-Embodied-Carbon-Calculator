@@ -1,19 +1,21 @@
 import Navbar from "../components/NavBar";
 import { Link, useParams, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { getProjectHistory } from "../api/api";
+import { getProjectHistory, getProjectBreakdown } from "../api/api";
 import ProjectErrorDialog from "./ProjectErrorDialog";
 import BuildingInfoCard from "../components/BuildingInfoCard";
 import SystemInfoCard from "../components/SystemInfoCard";
 import MaterialInfoCard from "../components/MaterialInfoCard";
 import ElementInfoCard from "../components/ElementInfoCard";
-import AwardCard from "../components/AwardCard";
 import BarChart from "../components/BarChart";
+import HistoryTable from "../components/VersionTable";
 function ProjectPage() {
   const location = useLocation();
   const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null);
   const [projectHistory, setProjectHistory] = useState([]);
+  const [breakdownData, setBreakdownData] = useState([]);
+  const [selectedBreakdownType, setSelectedBreakdownType] = useState("");
   const [barData, setBarData] = useState({
     labels: [],
     datasets: [],
@@ -22,26 +24,35 @@ function ProjectPage() {
   console.log("Location state is ", location.state);
 
   const { projectId } = location.state;
+
+  /* Fetch Project History API call  */
   useEffect(() => {
-    const fetchProjectHistory = async () => {
+    const fetchData = async () => {
       try {
-        const response = await getProjectHistory(projectId);
-        console.log("API response data", response.data);
-
-        setProjectHistory(response.data.history);
-
+        const [historyResponse, breakdownResponse] = await Promise.all([
+          getProjectHistory(projectId),
+          getProjectBreakdown(projectId),
+        ]);
+        console.log("History response data: ", historyResponse.data);
+        console.log(
+          "Breakdown response data: ",
+          breakdownResponse.data.ec_breakdown
+        );
+        setProjectHistory(historyResponse.data.history);
+        setBreakdownData(breakdownResponse.data.ec_breakdown);
         setError(null);
         setLoading(false);
       } catch (err) {
-        console.error("Failed to fetch project history: ", err);
-        setError("Failed to fetch project history."); // Set error message
+        console.error("Failed to data: ", err);
+        setError("Failed to fetch data."); // Set error message
       }
     };
     if (projectId) {
-      fetchProjectHistory();
+      fetchData();
     }
   }, [projectId]);
 
+  /* Set the data for history bar chart */
   useEffect(() => {
     if (!projectHistory) {
       console.log("Project history is empty");
@@ -76,6 +87,9 @@ function ProjectPage() {
     setBarData(data);
   }, [projectHistory]);
 
+  const handleUpdateTypeChange = (e) => {
+    setSelectedBreakdownType(e.target.value);
+  };
   if (!projectId) {
     return <p className="text-red-500">No project ID provided.</p>;
   }
@@ -105,71 +119,7 @@ function ProjectPage() {
             </div>
             <div className="flex flex-col">
               <div className="flex flex-row">
-                <div className="flex flex-1 flex-col">
-                  <h1 className="font-bold w-full md:w-1/2">
-                    Project Upload History
-                  </h1>
-                  <table className="w-full md:w-1/2 text-left border-separate border-spacing-0 border border-gray-800 rounded-lg overflow-hidden">
-                    <thead>
-                      <tr>
-                        <th className="border-b border-r border-gray-800 px-6 py-4 font-bold first:rounded-tl-lg ">
-                          User
-                        </th>
-                        <th className="border-b border-r w-96 border-gray-800 px-6 py-4 font-bold">
-                          Comments
-                        </th>
-                        <th className="border-b border-r border-gray-800 px-6 py-4 font-bold">
-                          Upload Time
-                        </th>
-                        <th className="border-b border-gray-800 px-6 py-4 font-bold">
-                          Comparison
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {projectHistory.map((item, index) => (
-                        <tr key={index} className="hover:bg-gray-50 px-6 py-4">
-                          <td
-                            className={`px-6 py-2 ${
-                              index === projectHistory.length - 1
-                                ? "first:rounded-bl-lg border-r border-gray-800"
-                                : "border-b border-r border-gray-800"
-                            }`}
-                          >
-                            {item.uploaded_by}
-                          </td>
-                          <td
-                            className={` px-6 py-4 ${
-                              index === projectHistory.length - 1
-                                ? "border-r border-gray-800"
-                                : "border-b border-r border-gray-800"
-                            }`}
-                          >
-                            {item.comments}
-                          </td>
-                          <td
-                            className={` px-6 py-4 ${
-                              index === projectHistory.length - 1
-                                ? "border-r border-gray-800"
-                                : "border-b border-r border-gray-800"
-                            }`}
-                          >
-                            {item.date_uploaded}
-                          </td>
-                          <td
-                            className={` px-6 py-4 ${
-                              index === projectHistory.length - 1
-                                ? ""
-                                : "border-b border-gray-800"
-                            }`}
-                          >
-                            TODO
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <HistoryTable projectHistory={projectHistory} />
                 <div className="flex flex-1 flex-col">
                   <h1 className="font-bold">
                     A1-A3 Embodied Carbon Comparison
@@ -179,9 +129,37 @@ function ProjectPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col mt-6">
-                <h1 className="font-bold">Project Information</h1>
-                <BuildingInfoCard projectId={projectId} />
+
+              {/**Bottom half of screen */}
+              <div className="flex flex-row mt-6 justify-between gap-x-24">
+                {/** Card 1 - Building Info*/}
+                <div className="flex-1 flex-col sm:max-w-md ">
+                  <h1 className="font-bold">Project Information</h1>
+                  <BuildingInfoCard projectId={projectId} />
+                </div>
+
+                {/** Card 2- Breakdown graphs */}
+                <div className=" flex-1 flex flex-col ">
+                  <div className="flex flex-row items-center gap-2">
+                    <label
+                      htmlFor="breakdownType"
+                      className="inline-block text-sm font-medium text-gray-700"
+                    >
+                      Compare by:
+                    </label>
+
+                    <select
+                      id="breakdownType"
+                      value={selectedBreakdownType}
+                      onChange={handleUpdateTypeChange}
+                      className="font-semibold rounded-lg"
+                    >
+                      <option value="by_material">Building Material</option>
+                      <option value="by_element">Building Element</option>
+                      <option value="by_system">Building System</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

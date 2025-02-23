@@ -18,6 +18,7 @@ export default {
     "./src/components/AwardCard.jsx",
     "./src/pages/ECBreakdownPage.jsx",
     "./src/Layout.jsx",
+    "./src/components/VersionTable.jsx",
   ],
   theme: {
     extend: {},
