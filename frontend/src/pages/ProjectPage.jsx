@@ -16,7 +16,11 @@ function ProjectPage() {
   const [projectHistory, setProjectHistory] = useState([]);
   const [breakdownData, setBreakdownData] = useState([]);
   const [selectedBreakdownType, setSelectedBreakdownType] = useState("");
-  const [barData, setBarData] = useState({
+  const [versionBar, setVersionBar] = useState({
+    labels: [],
+    datasets: [],
+  });
+  const [breakdownBar, setBreakdownBar] = useState({
     labels: [],
     datasets: [],
   });
@@ -25,7 +29,7 @@ function ProjectPage() {
 
   const { projectId } = location.state;
 
-  /* Fetch Project History API call  */
+  /* Initial API calls to fetch project history and breakdown data */
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -52,6 +56,40 @@ function ProjectPage() {
     }
   }, [projectId]);
 
+  useEffect(() => {
+    if (!selectedBreakdownType) {
+      console.log("Selected Breakdown Type is empty");
+      return;
+    }
+
+    console.log("Selected Breakdown Type is : ", selectedBreakdownType);
+    console.log(
+      "Data of the selected breakdown type is : ",
+      breakdownData[selectedBreakdownType]
+    );
+
+    const breakdownValues = breakdownData[selectedBreakdownType];
+
+    // Extract labels (keys) and data (values)
+    const labels = Object.keys(breakdownValues);
+    const data = Object.values(breakdownValues);
+
+    console.log("Labels: ", labels);
+    console.log("Data: ", data);
+    const barData = {
+      labels: labels,
+      datasets: [
+        {
+          label: "A1-A3 carbon Comparison",
+          data: data,
+          backgroundColor: "#E4937B",
+          borderColor: "#000000",
+          borderWidth: 0,
+        },
+      ],
+    };
+    setBreakdownBar(barData);
+  }, [selectedBreakdownType]);
   /* Set the data for history bar chart */
   useEffect(() => {
     if (!projectHistory) {
@@ -84,7 +122,7 @@ function ProjectPage() {
         },
       ],
     };
-    setBarData(data);
+    setVersionBar(data);
   }, [projectHistory]);
 
   const handleUpdateTypeChange = (e) => {
@@ -125,7 +163,7 @@ function ProjectPage() {
                     A1-A3 Embodied Carbon Comparison
                   </h1>
                   <div className="h-[400px]">
-                    <BarChart data={barData} />
+                    <BarChart data={versionBar} />
                   </div>
                 </div>
               </div>
@@ -156,8 +194,13 @@ function ProjectPage() {
                     >
                       <option value="by_material">Building Material</option>
                       <option value="by_element">Building Element</option>
-                      <option value="by_system">Building System</option>
+                      <option value="by_building_system">
+                        Building System
+                      </option>
                     </select>
+                  </div>
+                  <div className="h-[200px]">
+                    <BarChart data={breakdownBar} />
                   </div>
                 </div>
               </div>
