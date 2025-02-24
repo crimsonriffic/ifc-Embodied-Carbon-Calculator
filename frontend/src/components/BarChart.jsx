@@ -28,6 +28,7 @@ const options = {
         drawBorder: true, // Adds a border to X-axis
         borderColor: "black", // Set border color
         borderWidth: 2, // Set border thickness
+        display: false,
       },
     },
   },

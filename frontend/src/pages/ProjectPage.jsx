@@ -85,6 +85,7 @@ function ProjectPage() {
           backgroundColor: "#E4937B",
           borderColor: "#000000",
           borderWidth: 0,
+          barThickness: 40,
         },
       ],
     };
@@ -119,6 +120,7 @@ function ProjectPage() {
           backgroundColor: ["#E4937B", "#CAA05C", "#E2D35E", "#E5E548"],
           borderColor: "#000000",
           borderWidth: 0,
+          barThickness: 40,
         },
       ],
     };
@@ -156,20 +158,20 @@ function ProjectPage() {
               </h1>
             </div>
             <div className="flex flex-col">
-              <div className="flex flex-row">
+              <div className="flex flex-row justify-between gap-x-16">
                 <HistoryTable projectHistory={projectHistory} />
                 <div className="flex flex-1 flex-col">
                   <h1 className="font-bold">
                     A1-A3 Embodied Carbon Comparison
                   </h1>
-                  <div className="h-[400px]">
+                  <div className="h-[300px]">
                     <BarChart data={versionBar} />
                   </div>
                 </div>
               </div>
 
               {/**Bottom half of screen */}
-              <div className="flex flex-row mt-6 justify-between gap-x-24">
+              <div className="flex flex-row mt-6 justify-between gap-x-16">
                 {/** Card 1 - Building Info*/}
                 <div className="flex-1 flex-col sm:max-w-md ">
                   <h1 className="font-bold">Project Information</h1>
