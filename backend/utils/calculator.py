@@ -29,7 +29,7 @@ MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] ,
                 'Wooden doors T10-T25 with wooden frame 2' : 30.4,
                 'Aluminium, General': [13.100, 2700],
                 'Tiles, Granite'	:[0.700,	2650],
-                'Plywood':[0.910,	600],
+                'Plywood':[0.910, 600],
                 'Primary Steel': [2.080, 7850],
                 'Cross Laminated Timber':[-1.310,500],
                 }  
