@@ -886,76 +886,13 @@ def calculate_railings(railings):
                 raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
             material_ec_perkg, material_density = current_material_ec
             current_ec = material_ec_perkg * material_density * current_quantity
-            logger.debug(f"EC for {railing.Name} is {current_ec}")
+            logger.debug(f"EC for {railing.Name} is {current_ec}, volume is {current_quantity}")
             total_ec += current_ec
 
     logger.debug(f"Total EC for railings is {total_ec}")
 
     return total_ec
 
-# def calculate_curtainwalls(curtainwalls):
-
-#     total_ec = 0
-#     materials = []
-#     current_quantity = 1
-#     current_material = None
-
-#     for curtainwall in curtainwalls:
-#         curtainwalls = []
-#         if hasattr(curtainwall, "IsDecomposedBy"):
-#             for rel in curtainwall.IsDecomposedBy:
-#                 logger.debug(rel)
-#                 if rel.is_a("IfcRelAggregates"):
-#                     for curtainwall in rel.RelatedObjects:
-#                         if curtainwall.is_a("IfcCurtainWall"):
-#                             print(f"Found curtain wall: {curtainwall.Name}")
-#                             curtainwalls.append(curtainwall)
-                            
-#         for curtainwall in curtainwalls:
-#             if hasattr(curtainwall, "IsDefinedBy"):
-#                 for definition in curtainwall.IsDefinedBy:
-#                     if definition.is_a('IfcRelDefinesByProperties'):
-#                         property_def = definition.RelatingPropertyDefinition
-#                         if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_CurtainWallQuantities':
-#                             for quantity in property_def.Quantities:
-#                                 logger.debug(quantity)
-#                                 if quantity.is_a('IfcQuantityLength') and quantity.Name == 'Height':
-#                                     logger.debug(f'Found Height for {curtainwall.Name}: {quantity.LengthValue}')
-#                                     current_quantity *= (quantity.LengthValue/1000)
-#                                 if quantity.is_a('IfcQuantityLength') and quantity.Name == 'Length':
-#                                     logger.debug(f'Found Length for {curtainwall.Name}: {quantity.LengthValue}')
-#                                     current_quantity *= (quantity.LengthValue/1000)
-#                                 if quantity.is_a('IfcQuantityLength') and quantity.Name == 'Width':
-#                                     logger.debug(f'Found Width for {curtainwall.Name}: {quantity.LengthValue}')
-#                                     current_quantity *= (quantity.LengthValue/1000)
-#                             if current_quantity is not None:
-#                                 break
-#             logger.debug(f"Volume for {curtainwall.Name}: {current_quantity}")
-#             if hasattr(curtainwall, "HasAssociations"):
-#                 for association in curtainwall.HasAssociations:
-#                     if association.is_a("IfcRelAssociatesMaterial"):
-#                         material = association.RelatingMaterial
-#                         if material.is_a("IfcMaterial"):
-#                             logger.debug(f"Found material '{material.Name}', as IfcMaterial")
-#                             current_material = material.Name
-
-#             current_material_ec = MaterialList.get(current_material, None) if current_material else None
-
-#             if current_material_ec is None:
-#                 # handle with default value?
-#                 # ai?
-#                 raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
-            
-#             material_ec_perkg, material_density = current_material_ec
-#             current_ec = material_ec_perkg  * material_density *  current_quantity 
-
-#             logger.debug(f"EC for {curtainwall.Name} is {current_ec}")
-#             total_ec += current_ec
-    
-#     logger.debug(f"Total EC for curtainwalls is {total_ec}")
-
-#     return total_ec
-#     pass
 
 def calculate_members(members):
     total_ec = 0
@@ -1513,7 +1450,7 @@ def calculate_gfa(filepath):
     return total_area
 
 if __name__ == "__main__":
-    ifcpath = "/Users/jk/Downloads/z. Complex Models/Complex 4.ifc"
+    ifcpath = "../../../IFC Test model_Stairs 1.ifc"
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
     calculate_gfa(ifcpath)
