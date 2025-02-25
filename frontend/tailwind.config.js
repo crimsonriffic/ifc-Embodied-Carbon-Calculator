@@ -19,6 +19,8 @@ export default {
     "./src/pages/ECBreakdownPage.jsx",
     "./src/Layout.jsx",
     "./src/components/VersionTable.jsx",
+    "./src/components/SankeyChart.jsx",
+    "./src/pages/DraftPage.jsx",
   ],
   theme: {
     extend: {},
