@@ -17,6 +17,10 @@ export default {
     "./src/components/BarChart.jsx",
     "./src/components/AwardCard.jsx",
     "./src/pages/ECBreakdownPage.jsx",
+    "./src/Layout.jsx",
+    "./src/components/VersionTable.jsx",
+    "./src/components/SankeyChart.jsx",
+    "./src/pages/DraftPage.jsx",
   ],
   theme: {
     extend: {},

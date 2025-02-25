@@ -18,13 +18,13 @@ function Navbar() {
     setIsOpen(true);
   };
   return (
-    <div className="bg-white text-gray-500 fixed top-0 left-0 w-full z-10 shadow-md ">
-      <div className=" mx-auto px-4 flex justify-between items-center h-16">
+    <div className="bg-white text-gray-500 fixed top-0 left-0 w-full z-10 border-b border-gray-300 ">
+      <div className=" mx-auto px-4 flex justify-between items-center h-16 p-6 md:px-36">
         {/* Left section: Logo and navigation */}
         <div className="flex items-center space-x-8">
           {/* Logo */}
           <div className="flex items-center">
-            <div className="bg-white rounded-full p-2">
+            <div className="bg-white rounded-full p-4">
               <h1 className="text-[#5B9130] font-bold text-lg">
                 eCO2llaborate
               </h1>
