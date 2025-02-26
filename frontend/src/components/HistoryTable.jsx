@@ -1,67 +1,29 @@
-import React from "react";
 const HistoryTable = ({ projectHistory }) => {
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-GB"); // 'en-GB' ensures DD/MM/YYYY format
-  };
   return (
-    <div className="flex flex-1 flex-col h-[300px]">
-      <h1 className="font-bold w-full mb-4">Project Upload History</h1>
-      <table className="w-full  text-left border-separate border-spacing-0 border border-gray-800 rounded-lg overflow-hidden">
-        <thead>
+    <div className="overflow-x-auto">
+      <table className="min-w-full border border-black bg-white shadow-md rounded-lg">
+        <thead className="bg-gray-100">
           <tr>
-            <th className="border-b border-r border-gray-800 px-2 py-2 font-bold first:rounded-tl-lg text-left align-top ">
-              User
-            </th>
-            <th className="border-b border-r w-96 border-gray-800 px-2 py-2 font-bold text-left align-top">
-              Comments
-            </th>
-            <th className="border-b border-r border-gray-800 px-2 py-2 font-bold text-left align-top">
-              Upload Time
-            </th>
-            <th className="border-b border-gray-800 px-2 py-2 font-bold text-left align-top">
-              Comparison
-            </th>
+            <th className="border border-black px-4 py-2">S/N</th>
+            <th className="border border-black px-4 py-2">User</th>
+            <th className="border border-black px-4 py-2">Comments</th>
+            <th className="border border-black px-4 py-2">Upload Time</th>
           </tr>
         </thead>
-        <tbody className="overflow-auto">
-          {projectHistory.map((item, index) => (
-            <tr key={index} className="hover:bg-gray-50 px-4 py-2">
-              <td
-                className={`px-4 py-2 text-left align-top ${
-                  index === projectHistory.length - 1
-                    ? "first:rounded-bl-lg border-r border-gray-800"
-                    : "border-b border-r border-gray-800"
-                }`}
-              >
-                {item.uploaded_by}
+        <tbody>
+          {projectHistory.map((entry, index) => (
+            <tr key={entry.version} className="border-b">
+              <td className="border border-black px-4 py-2 text-center">
+                {entry.version}
               </td>
-              <td
-                className={` px-4 py-2 text-left align-top ${
-                  index === projectHistory.length - 1
-                    ? "border-r border-gray-800"
-                    : "border-b border-r border-gray-800"
-                }`}
-              >
-                {item.comments}
+              <td className="border border-black px-4 py-2">
+                {entry.uploaded_by}
               </td>
-              <td
-                className={` px-4 py-2 text-left align-top ${
-                  index === projectHistory.length - 1
-                    ? "border-r border-gray-800"
-                    : "border-b border-r border-gray-800"
-                }`}
-              >
-                {formatDate(item.date_uploaded)}
+              <td className="border border-black px-4 py-2">
+                {entry.comments}
               </td>
-              <td
-                className={` px-4 py-2 text-left align-top ${
-                  index === projectHistory.length - 1
-                    ? ""
-                    : "border-b border-gray-800"
-                }`}
-              >
-                TODO
+              <td className="border border-black px-4 py-2">
+                {new Date(entry.date_uploaded).toLocaleString()}
               </td>
             </tr>
           ))}
@@ -70,5 +32,8 @@ const HistoryTable = ({ projectHistory }) => {
     </div>
   );
 };
+
+// Example usage:
+// <ProjectHistoryTable projectHistory={yourProjectHistoryArray} />
 
 export default HistoryTable;

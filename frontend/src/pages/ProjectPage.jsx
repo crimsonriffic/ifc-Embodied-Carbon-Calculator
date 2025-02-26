@@ -9,6 +9,9 @@ import MaterialInfoCard from "../components/MaterialInfoCard";
 import ElementInfoCard from "../components/ElementInfoCard";
 import BarChart from "../components/BarChart";
 import HistoryTable from "../components/HistoryTable";
+import UploadInfoCard from "../components/UploadInfoCard";
+import { ChevronDownIcon } from "@heroicons/react/24/solid";
+
 function ProjectPage() {
   const location = useLocation();
   const [loading, setLoading] = useState(true); // Loading state
@@ -16,6 +19,7 @@ function ProjectPage() {
   const [projectHistory, setProjectHistory] = useState([]);
   const [breakdownData, setBreakdownData] = useState([]);
   const [selectedBreakdownType, setSelectedBreakdownType] = useState("");
+  const [versionNumber, setVersionNumber] = useState("");
   const [versionBar, setVersionBar] = useState({
     labels: [],
     datasets: [],
@@ -28,7 +32,9 @@ function ProjectPage() {
   console.log("Location state is ", location.state);
 
   const { projectId } = location.state;
-
+  const handleVersionClick = () => {
+    setVersionNumber(1);
+  };
   /* Initial API calls to fetch project history and breakdown data */
   useEffect(() => {
     const fetchData = async () => {
@@ -37,7 +43,12 @@ function ProjectPage() {
           getProjectHistory(projectId),
           getProjectBreakdown(projectId),
         ]);
-        console.log("History response data: ", historyResponse.data);
+        console.log("History response data: ", historyResponse.data.history);
+        console.log(
+          "Version number data: ",
+          historyResponse.data.history[0].version
+        );
+
         console.log(
           "Breakdown response data: ",
           breakdownResponse.data.ec_breakdown
@@ -45,6 +56,7 @@ function ProjectPage() {
         setProjectHistory(historyResponse.data.history);
         setBreakdownData(breakdownResponse.data.ec_breakdown);
         setSelectedBreakdownType("by_material");
+        setVersionNumber(historyResponse.data.history[0].version);
         setError(null);
         setLoading(false);
       } catch (err) {
@@ -159,30 +171,29 @@ function ProjectPage() {
               </h1>
             </div>
             <div className="flex flex-col">
-              <div className="flex flex-row justify-between gap-x-16 h-[300px] ">
-                <HistoryTable projectHistory={projectHistory} />
-
-                <div className="flex flex-1 flex-col">
-                  <h1 className="font-bold mb-4">
-                    A1-A3 Embodied Carbon Comparison
-                  </h1>
-                  <div className="h-full">
-                    <BarChart data={versionBar} />
-                  </div>
+              {/**Top half of screen */}
+              <button
+                onClick={handleVersionClick}
+                className="flex items-center  "
+              >
+                <div className=" font-bold text-2xl rounded-lg">
+                  Upload {versionNumber || "Upload"}
                 </div>
-              </div>
-
-              {/**Bottom half of screen */}
+                <ChevronDownIcon className="w-5 h-5 bg-gray-200  ml-2" />
+              </button>
               <div className="flex flex-row mt-6 justify-between gap-x-16">
                 {/** Card 1 - Building Info*/}
                 <div className="flex-1 flex-col sm:max-w-md ">
-                  <h1 className="font-bold">Project Information</h1>
+                  <h1 className="font-bold">Upload Information</h1>
+                  <UploadInfoCard uploadInfoData={projectHistory[0]} />
+                  <h1 className="mt-4 font-bold">Project Information</h1>
                   <BuildingInfoCard projectId={projectId} />
                 </div>
 
                 {/** Card 2- Breakdown graphs */}
                 <div className=" flex-1 flex flex-col ">
-                  <div className="flex flex-row items-center gap-2">
+                  <h1 className="font-bold">A1-A3 Embodied Carbon Data</h1>
+                  <div className="flex flex-row items-center gap-2 mt-1">
                     <label
                       htmlFor="breakdownType"
                       className="inline-block text-sm font-medium text-gray-700"
@@ -205,6 +216,23 @@ function ProjectPage() {
                   </div>
                   <div className="h-[200px]">
                     <BarChart data={breakdownBar} />
+                  </div>
+                </div>
+              </div>
+              {/**Bottom half of screen */}
+              <div className="flex flex-row justify-between mt-4 gap-x-16 h-[300px] ">
+                <div className="flex flex-1 flex-col">
+                  <h1 className="font-bold mb-4">Project Upload History</h1>
+                  <HistoryTable projectHistory={projectHistory} />
+                </div>
+
+                <div className="flex flex-1 flex-col">
+                  <h1 className="font-bold mb-4">
+                    A1-A3 Embodied Carbon Comparison
+                  </h1>
+
+                  <div className="h-full">
+                    <BarChart data={versionBar} />
                   </div>
                 </div>
               </div>
