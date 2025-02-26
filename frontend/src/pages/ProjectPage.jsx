@@ -1,6 +1,6 @@
 import Navbar from "../components/NavBar";
 import { Link, useParams, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, version } from "react";
 import { getProjectHistory, getProjectBreakdown } from "../api/api";
 import ProjectErrorDialog from "./ProjectErrorDialog";
 import BuildingInfoCard from "../components/BuildingInfoCard";
@@ -20,6 +20,7 @@ function ProjectPage() {
   const [breakdownData, setBreakdownData] = useState([]);
   const [selectedBreakdownType, setSelectedBreakdownType] = useState("");
   const [versionNumber, setVersionNumber] = useState("");
+  const [versionArray, setVersionArray] = useState([]);
   const [versionBar, setVersionBar] = useState({
     labels: [],
     datasets: [],
@@ -29,11 +30,10 @@ function ProjectPage() {
     datasets: [],
   });
   const { projectName } = useParams();
-  console.log("Location state is ", location.state);
 
   const { projectId } = location.state;
-  const handleVersionClick = () => {
-    setVersionNumber(1);
+  const handleVersionClick = (e) => {
+    setVersionNumber(e.target.value);
   };
   /* Initial API calls to fetch project history and breakdown data */
   useEffect(() => {
@@ -56,7 +56,12 @@ function ProjectPage() {
         setProjectHistory(historyResponse.data.history);
         setBreakdownData(breakdownResponse.data.ec_breakdown);
         setSelectedBreakdownType("by_material");
-        setVersionNumber(historyResponse.data.history[0].version);
+        // Set latest version only if history exists
+        if (historyResponse.data.history.length > 0) {
+          const latestVersion = historyResponse.data.history[0].version;
+
+          setVersionNumber("Upload " + latestVersion);
+        }
         setError(null);
         setLoading(false);
       } catch (err) {
@@ -117,8 +122,9 @@ function ProjectPage() {
       : [];
 
     const versionLabels = sortedHistory
-      ? sortedHistory.map((item) => item.version)
+      ? sortedHistory.map((item) => "Upload " + item.version)
       : [];
+    setVersionArray(versionLabels);
     const versionValues = projectHistory
       ? sortedHistory.map((item) => item.total_ec)
       : [];
@@ -172,15 +178,27 @@ function ProjectPage() {
             </div>
             <div className="flex flex-col">
               {/**Top half of screen */}
-              <button
-                onClick={handleVersionClick}
-                className="flex items-center  "
-              >
-                <div className=" font-bold text-2xl rounded-lg">
-                  Upload {versionNumber || "Upload"}
-                </div>
-                <ChevronDownIcon className="w-5 h-5 bg-gray-200  ml-2" />
-              </button>
+
+              {/*Dropdown of version number*/}
+              <div className="mb-4">
+                <label
+                  htmlFor="versionNumber"
+                  className="block font-bold text-gray-700 mb-1"
+                ></label>
+                <select
+                  id="versionNumber"
+                  value={versionNumber}
+                  onChange={handleVersionClick}
+                  className="font-3xl font-bold"
+                >
+                  {[...versionArray].reverse().map((version) => (
+                    <option key={version} value={version}>
+                      {version}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="flex flex-row mt-6 justify-between gap-x-16">
                 {/** Card 1 - Building Info*/}
                 <div className="flex-1 flex-col sm:max-w-md ">
