@@ -8,7 +8,7 @@ import SystemInfoCard from "../components/SystemInfoCard";
 import MaterialInfoCard from "../components/MaterialInfoCard";
 import ElementInfoCard from "../components/ElementInfoCard";
 import BarChart from "../components/BarChart";
-import HistoryTable from "../components/VersionTable";
+import HistoryTable from "../components/HistoryTable";
 function ProjectPage() {
   const location = useLocation();
   const [loading, setLoading] = useState(true); // Loading state
@@ -44,6 +44,7 @@ function ProjectPage() {
         );
         setProjectHistory(historyResponse.data.history);
         setBreakdownData(breakdownResponse.data.ec_breakdown);
+        setSelectedBreakdownType("by_material");
         setError(null);
         setLoading(false);
       } catch (err) {
@@ -158,13 +159,14 @@ function ProjectPage() {
               </h1>
             </div>
             <div className="flex flex-col">
-              <div className="flex flex-row justify-between gap-x-16">
+              <div className="flex flex-row justify-between gap-x-16 h-[300px] ">
                 <HistoryTable projectHistory={projectHistory} />
+
                 <div className="flex flex-1 flex-col">
-                  <h1 className="font-bold">
+                  <h1 className="font-bold mb-4">
                     A1-A3 Embodied Carbon Comparison
                   </h1>
-                  <div className="h-[300px]">
+                  <div className="h-full">
                     <BarChart data={versionBar} />
                   </div>
                 </div>

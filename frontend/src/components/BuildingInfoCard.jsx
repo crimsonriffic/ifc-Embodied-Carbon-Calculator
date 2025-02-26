@@ -42,7 +42,7 @@ export default function BuildingInfoCard({ projectId }) {
     <div className="bg-white rounded-lg sm:max-w-md ">
       <div className="space-y-2 ">
         <div className="flex justify-between border-b py-2">
-          <span className="text-sm font-medium text-gray-600">GFA:</span>
+          <span className="text-sm font-medium text-gray-600">FLOOR AREA:</span>
           <span className="text-sm  text-gray-800">
             {buildingInfo.gfa.toFixed(2) || "N/A"}
           </span>
