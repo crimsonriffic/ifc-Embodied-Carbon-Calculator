@@ -146,7 +146,13 @@ export const createProject = async (
   }
 };
 
-export const getProjectBreakdown = async (projectId) => {
-  console.log("getProjectBreakdown API is called with  ", projectId);
-  return api.get(`/projects/${projectId}/get_breakdown`);
+export const getProjectBreakdown = async (projectId, versionNumber) => {
+  console.log(
+    "getProjectBreakdown API is called with  ",
+    projectId,
+    "and version number ",
+    versionNumber
+  );
+  const versionQuery = versionNumber ? `?version=${versionNumber}` : "";
+  return api.get(`/projects/${projectId}/get_breakdown${versionQuery}`);
 };

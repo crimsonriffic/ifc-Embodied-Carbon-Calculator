@@ -39,29 +39,34 @@ function ProjectPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [historyResponse, breakdownResponse] = await Promise.all([
-          getProjectHistory(projectId),
-          getProjectBreakdown(projectId),
-        ]);
-        console.log("History response data: ", historyResponse.data.history);
-        console.log(
-          "Version number data: ",
-          historyResponse.data.history[0].version
-        );
+        const historyResponse = await getProjectHistory(projectId);
 
+        console.log("History response data: ", historyResponse.data.history);
+        // Get the latest version from history
+        const latestVersion = historyResponse.data.history[0]?.version || "";
+
+        // If versionNumber is empty, use the latest version
+        const versionToFetch = versionNumber || latestVersion;
+        console.log("Fetching breakdown for version: ", versionToFetch);
+
+        const breakdownResponse = await getProjectBreakdown(
+          projectId,
+          versionToFetch
+        );
         console.log(
           "Breakdown response data: ",
           breakdownResponse.data.ec_breakdown
         );
+
         setProjectHistory(historyResponse.data.history);
         setBreakdownData(breakdownResponse.data.ec_breakdown);
         setSelectedBreakdownType("by_material");
         // Set latest version only if history exists
-        if (historyResponse.data.history.length > 0) {
-          const latestVersion = historyResponse.data.history[0].version;
-
-          setVersionNumber("Upload " + latestVersion);
+        // Set the versionNumber state if it's empty
+        if (!versionNumber && latestVersion) {
+          setVersionNumber(latestVersion);
         }
+
         setError(null);
         setLoading(false);
       } catch (err) {
@@ -72,7 +77,7 @@ function ProjectPage() {
     if (projectId) {
       fetchData();
     }
-  }, [projectId]);
+  }, [projectId, versionNumber]);
 
   useEffect(() => {
     if (!selectedBreakdownType) {
@@ -121,21 +126,27 @@ function ProjectPage() {
       ? [...projectHistory].sort((a, b) => a.version - b.version)
       : [];
 
-    const versionLabels = sortedHistory
+    // Version array for the drop down to refer to
+    const versionArr = sortedHistory
+      ? sortedHistory.map((item) => item.version)
+      : [];
+    setVersionArray(versionArr);
+
+    // Chart labels and values
+    const chartLabels = sortedHistory
       ? sortedHistory.map((item) => "Upload " + item.version)
       : [];
-    setVersionArray(versionLabels);
-    const versionValues = projectHistory
+    const chartValues = projectHistory
       ? sortedHistory.map((item) => item.total_ec)
       : [];
-    console.log("Project history labels is: ", versionLabels);
-    console.log("Project history values is: ", versionValues);
+    console.log("Project history labels is: ", chartLabels);
+    console.log("Project history values is: ", chartValues);
     const data = {
-      labels: versionLabels,
+      labels: chartLabels,
       datasets: [
         {
           label: "A1-A3 carbon Comparison",
-          data: versionValues,
+          data: chartValues,
           backgroundColor: ["#E4937B", "#CAA05C", "#E2D35E", "#E5E548"],
           borderColor: "#000000",
           borderWidth: 0,
@@ -167,12 +178,12 @@ function ProjectPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <div className="overflow-x-auto bg-white rounded-lg p-4 mt-16">
+      <div className="overflow-x-auto bg-white rounded-lg  mt-16">
         {/**Check if project name exists */}
         {projectName ? (
           <div>
             <div className="bg-[#A9C0A0]  text-white rounded-lg px-4 py-2 flex items-center shadow-md mb-2 sm:max-w-md">
-              <h1 className="text-lg font-semibold tracking-wide">
+              <h1 className="text-2xl font-semibold tracking-wide">
                 {decodeURIComponent(projectName)}
               </h1>
             </div>
@@ -181,29 +192,29 @@ function ProjectPage() {
 
               {/*Dropdown of version number*/}
               <div className="mb-4">
-                <label
-                  htmlFor="versionNumber"
-                  className="block font-bold text-gray-700 mb-1"
-                ></label>
                 <select
                   id="versionNumber"
                   value={versionNumber}
                   onChange={handleVersionClick}
-                  className="font-3xl font-bold"
+                  className="text-2xl font-bold"
                 >
                   {[...versionArray].reverse().map((version) => (
-                    <option key={version} value={version}>
-                      {version}
+                    <option key={version} value={version} className="text-lg ">
+                      Upload {version}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div className="flex flex-row mt-6 justify-between gap-x-16">
+              <div className="flex flex-row mt-2 justify-between gap-x-16">
                 {/** Card 1 - Building Info*/}
                 <div className="flex-1 flex-col sm:max-w-md ">
                   <h1 className="font-bold">Upload Information</h1>
-                  <UploadInfoCard uploadInfoData={projectHistory[0]} />
+                  <UploadInfoCard
+                    uploadInfoData={projectHistory.find(
+                      (item) => item.version === versionNumber
+                    )}
+                  />
                   <h1 className="mt-4 font-bold">Project Information</h1>
                   <BuildingInfoCard projectId={projectId} />
                 </div>
