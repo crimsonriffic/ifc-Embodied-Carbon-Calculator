@@ -11,7 +11,7 @@ import BarChart from "../components/BarChart";
 import HistoryTable from "../components/HistoryTable";
 import UploadInfoCard from "../components/UploadInfoCard";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
-
+import SankeyChart from "../components/SankeyChart";
 function ProjectPage() {
   const location = useLocation();
   const [loading, setLoading] = useState(true); // Loading state
@@ -35,6 +35,39 @@ function ProjectPage() {
   console.log("Project Name and project Id is ", projectName, projectId);
   const handleVersionClick = (e) => {
     setVersionNumber(e.target.value);
+  };
+  // DUMMY DATA FOR SANKEY
+  const data = {
+    total_ec: 10731.417534758186,
+    ec_breakdown: [
+      {
+        category: "substructure",
+        total_ec: 5342.129999999996,
+        elements: [
+          {
+            element: "slab",
+            ec: 1938.21875,
+            materials: [{ material: "concrete", ec: 1938.21875 }],
+          },
+          {
+            element: "wall",
+            ec: 8311.679999999998,
+            materials: [{ material: "concrete", ec: 8311.679999999998 }],
+          },
+        ],
+      },
+      {
+        category: "superstructure",
+        total_ec: 5389.287534758189,
+        elements: [
+          {
+            element: "roof",
+            ec: 481.5187485187485,
+            materials: [{ material: "concrete", ec: 481.5187485187485 }],
+          },
+        ],
+      },
+    ],
   };
   /* Initial API calls to fetch project history and breakdown data */
   useEffect(() => {
@@ -207,7 +240,7 @@ function ProjectPage() {
                 </select>
               </div>
 
-              <div className="flex flex-row mt-2 justify-between gap-x-16">
+              <div className="flex flex-row mt-2 justify-between gap-x-12">
                 {/** Card 1 - Building Info*/}
                 <div className="flex-1 flex-col sm:max-w-md ">
                   <h1 className="font-bold">Upload Information</h1>
@@ -220,7 +253,6 @@ function ProjectPage() {
                   <BuildingInfoCard projectId={projectId} />
                 </div>
 
-                {/** Card 2- Breakdown graphs */}
                 <div className=" flex-1 flex flex-col ">
                   <h1 className="font-bold">A1-A3 Embodied Carbon Data</h1>
                   <div className="flex flex-row">
@@ -232,7 +264,13 @@ function ProjectPage() {
                       kgCO2eq
                     </p>
                   </div>
-                  <div className="flex flex-row items-center gap-2 mt-2">
+                  {/** Card 2 - Sankey chart  */}
+                  <SankeyChart data={data} />
+                </div>
+                <div className="flex flex-1 flex-col">
+                  {/** Card 3- Breakdown graphs */}
+
+                  <div className="flex flex-row items-center gap-2 mt-4">
                     <label
                       htmlFor="breakdownType"
                       className="inline-block text-sm font-medium text-gray-700"
@@ -258,21 +296,21 @@ function ProjectPage() {
                   </div>
                 </div>
               </div>
-              {/**Bottom half of screen */}
-              <div className="flex flex-row justify-between mt-4 gap-x-16 h-[300px] ">
-                <div className="flex flex-1 flex-col">
-                  <h1 className="font-bold mb-4">Project Upload History</h1>
-                  <HistoryTable projectHistory={projectHistory} />
-                </div>
+            </div>
+            {/**Bottom half of screen */}
+            <div className="flex flex-row justify-between mt-4 gap-x-16 h-[300px] ">
+              <div className="flex flex-1 flex-col">
+                <h1 className="font-bold mb-4">Project Upload History</h1>
+                <HistoryTable projectHistory={projectHistory} />
+              </div>
 
-                <div className="flex flex-1 flex-col">
-                  <h1 className="font-bold mb-4">
-                    A1-A3 Embodied Carbon Comparison
-                  </h1>
+              <div className="flex flex-1 flex-col">
+                <h1 className="font-bold mb-4">
+                  A1-A3 Embodied Carbon Comparison
+                </h1>
 
-                  <div className="h-full">
-                    <BarChart data={versionBar} />
-                  </div>
+                <div className="h-full">
+                  <BarChart data={versionBar} />
                 </div>
               </div>
             </div>

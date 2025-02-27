@@ -1,4 +1,4 @@
-import { Sankey, Tooltip } from "recharts";
+import { Sankey, Tooltip, Layer, Rectangle } from "recharts";
 import { useState } from "react";
 //Helper function
 const transformDataForSankey = (data) => {
@@ -63,45 +63,73 @@ const transformDataForSankey = (data) => {
 
   return { nodes, links };
 };
-
+function CustomNode({ x, y, width, height, index, payload, containerWidth }) {
+  const isOut = x + width + 6 > containerWidth;
+  return (
+    <Layer key={`CustomNode${index}`}>
+      <Rectangle
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill="#79E779"
+        fillOpacity="1"
+        stroke="#79E779"
+        strokeWidth={2}
+      />
+      <text
+        textAnchor={isOut ? "end" : "start"}
+        x={isOut ? x - 6 : x + width + 6}
+        y={y + height / 2}
+        fontSize="14"
+        stroke="#333"
+      >
+        {payload.name}
+      </text>
+      <text
+        textAnchor={isOut ? "end" : "start"}
+        x={isOut ? x - 6 : x + width + 6}
+        y={y + height / 2 + 13}
+        fontSize="12"
+        stroke="#333"
+        strokeOpacity="0.5"
+      >
+        {Math.round(payload.value)} kgCO2e
+      </text>
+    </Layer>
+  );
+}
 export default function SankeyChart({ data }) {
   const { nodes, links } = transformDataForSankey(data);
   const [activeNode, setActiveNode] = useState(null);
 
   return (
-    <div className="w-full h-[600px]">
-      <Sankey
-        width={800}
-        height={600}
-        data={{ nodes, links }}
-        nodePadding={50}
-        margin={{ top: 20, right: 200, bottom: 20, left: 20 }}
-        link={{ stroke: "url(#gradient)", fill: "url(gradient)" }}
-        node={{
-          stroke: "#79E779",
-          strokeWidth: 2,
-          fill: "#79E779",
-          label: true,
-        }}
-        onMouseEnter={(node) => setActiveNode(node)}
-        onMouseLeave={() => setActiveNode(null)}
-      >
-        <defs>
-          <linearGradient
-            id="gradient"
-            gradientUnits="Useron"
-            x1="0"
-            y1="0"
-            x2="1"
-            y2="0"
-          >
-            <stop offset="0%" stopColor="#B7D788" stopOpacity={1.0} />
-            <stop offset="50%" stopColor="#79E779" stopOpacity={1.0} />
-            <stop offset="100%" stopColor="#69F798" stopOpacity={1.0} />
-          </linearGradient>
-        </defs>
-        <Tooltip />
-      </Sankey>
-    </div>
+    <Sankey
+      width={600}
+      height={300}
+      data={{ nodes, links }}
+      nodePadding={50}
+      margin={{ top: 20, right: 100, bottom: 20, left: 0 }}
+      link={{ stroke: "url(#gradient)", fill: "url(gradient)" }}
+      node={<CustomNode />}
+      onMouseEnter={(node) => setActiveNode(node)}
+      onMouseLeave={() => setActiveNode(null)}
+    >
+      <defs>
+        <linearGradient
+          id="gradient"
+          gradientUnits="Useron"
+          x1="0"
+          y1="0"
+          x2="1"
+          y2="0"
+        >
+          <stop offset="0%" stopColor="#B7D788" stopOpacity={1.0} />
+          <stop offset="50%" stopColor="#79E779" stopOpacity={1.0} />
+          <stop offset="100%" stopColor="#69F798" stopOpacity={1.0} />
+        </linearGradient>
+      </defs>
+      <Tooltip />
+    </Sankey>
   );
 }
