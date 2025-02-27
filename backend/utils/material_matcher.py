@@ -13,7 +13,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 
 # Setup logging
-LOGGING_LEVEL = "DEBUG" 
+LOGGING_LEVEL = "INFO" 
 logger.remove()  
 logger.add(sys.stderr, level=LOGGING_LEVEL) 
 
@@ -40,7 +40,7 @@ MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] ,
                 'Plywood':[0.910, 600],
                 'Cross Laminated Timber':[-1.310,500],
                 }  
-MaterialsToIgnore = ["Travertine","<Unnamed>"]
+MaterialsToIgnore = ["Travertine","<Unnamed>", "Undefined"]
 
 # File paths for material database
 MATERIAL_CSV_PATH = "material_database.csv"
@@ -1391,9 +1391,9 @@ def calculate_embodied_carbon(filepath):
         columns_ec = calculate_columns(columns)
         total_ec += columns_ec
 
-    # if beams:
-    #     beams_ec = calculate_beams(beams)
-    #     total_ec += beams_ec
+    if beams:
+        beams_ec = calculate_beams(beams)
+        total_ec += beams_ec
 
     if slabs:
         slabs_ec = calculate_slabs(slabs, to_ignore=slabs_to_ignore)
@@ -1411,12 +1411,30 @@ def calculate_embodied_carbon(filepath):
         doors_ec = calculate_doors(doors)
         total_ec += doors_ec
 
-    # Calculate for other element types (using their original functions)
-    # Add calculate_stairs, calculate_railings, calculate_roofs, etc.
+    if stairs:
+        stairs_ec = calculate_stairs(stairs)
+        total_ec += stairs_ec
+    
+    if railings:
+        railings_ec = calculate_railings(railings)
+        total_ec += railings_ec
+    
+    if roofs:
+        roofs_ec = calculate_roofs(roofs)
+        total_ec += roofs_ec
+    
+    if members:
+        members_ec = calculate_members(members)
+        total_ec += members_ec
+    
+    if plates:
+        plates_ec = calculate_plates(plates)
+        total_ec += plates_ec
+    
     
     logger.info(f"Total embodied carbon: {total_ec} kgCO2e")
-
-    return total_ec
+    # print(f"{columns_ec=}, {doors_ec=}, {slabs_ec=}, {beams_ec=}, {windows_ec}" )
+    return total_ec 
 
 def calculate_gfa(filepath):
     """Calculate the gross floor area for an IFC model"""

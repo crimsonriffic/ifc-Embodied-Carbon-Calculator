@@ -42,7 +42,7 @@ def manually_synchronize():
     # indices_to_keep = csv_data[csv_data['material_name'].isin(materials_to_keep)].index.tolist()
     
     # Example: Keep specific row indices (0-based, like Python lists)
-    indices_to_keep = [0, 1,2, 3,4, 5,6,9]  # Replace with the actual indices you want to keep
+    indices_to_keep = [0, 1,2, 3,4, 5,6,7]  # Replace with the actual indices you want to keep
     
     print(f"Keeping {len(indices_to_keep)} rows/embeddings")
     
