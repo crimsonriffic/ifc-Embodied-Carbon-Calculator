@@ -7,6 +7,8 @@ import ifcopenshell.geom
 import numpy as np
 from numpy import abs as np_abs
 import os 
+import math
+
 
  # kgCO2e per kg, kg per m^3 (Gen 1)
 MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] , 
@@ -15,8 +17,6 @@ MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] ,
                 "Concrete, Grade 40": [0.170, 2400], 
                 "Concrete, Grade 20": [0.120,2350],
                 "Concrete, Grade 25": [0.13, 2350], 
-                "Concrete, Grade 20": [0.140, 2350],
-                "Concrete, Grade 20": [0.140, 2350],
                 "Concrete, C25/30": [0.119, 2350],
                 "Concrete, General": [0.112,2350],
                 "Concrete, Precast, Ordinary Portland Cement": [0.148, 2400],
@@ -26,9 +26,11 @@ MaterialList = {"Concrete, Cast In Situ": [0.103, 2350] ,
                 'M_Window-Casement-Double-Sidelight' : 86.830,
                 'Wooden doors T10-T25 with wooden frame' : 30.4,
                 'Wooden doors T10-T25 with steel frame' : 49.4,
+                'Wooden doors T10-T25 with wooden frame 2' : 30.4,
                 'Aluminium, General': [13.100, 2700],
                 'Tiles, Granite'	:[0.700,	2650],
                 'Plywood':[0.910,	600],
+                'Primary Steel': [2.080, 7850],
                 'Cross Laminated Timber':[-1.310,500],
                 }  
 MaterialsToIgnore  = ["Travertine","<Unnamed>"]
@@ -261,7 +263,7 @@ def calculate_slabs(slabs, to_ignore=[]):
                                     layer_thicknesses[quantity.Name] = sub_quantity.LengthValue
 
                             elif (quantity.is_a('IfcQuantityArea') and (quantity.Name == 'NetArea' or quantity.Name == 'GrossArea')) :
-                                logger.debug(f'Found NetArea for {slab.Name}')
+                                logger.debug(f'Found NetArea for {slab.Name}: {quantity.AreaValue}')
                                 current_area = quantity.AreaValue
 
                             elif quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
@@ -335,12 +337,18 @@ def calculate_slabs(slabs, to_ignore=[]):
             # Attempts to retrieve the "correct" material from material layer set. Works if able to filter down to one possible material.
             # Calculates EC using EC density * volume method.
             # Calculates volume from ifc geometry.
-            
-            MaterialList_filtered = [ material for material in material_layers if material not in MaterialsToIgnore]
-            if len(MaterialList_filtered) != 1:
-                logger.error(f"Unable to isolate to one material from material layer set. Skipping this slab {slab}") 
+        
+            MaterialList_filtered = [material for material in material_layers if material not in MaterialsToIgnore]
+            if len(MaterialList_filtered) > 1:
+                logger.error(f"Unable to isolate to one material from material layer set. Using the first material found, {MaterialList_filtered[0]} for this slab {slab}") 
+
+            elif len(MaterialList_filtered) == 0 :
+                logger.error(f"No material found for this {slab=}")
+                continue
+                
             if current_quantity is None:
                 current_quantity = get_element_volume(slab)
+                
             current_material = MaterialList_filtered[0]
             logger.debug(f"Using material {current_material}")
             current_material_ec = MaterialList.get(current_material, None) if current_material else None
@@ -383,12 +391,12 @@ def calculate_walls(walls):
                                     # logger.debug(sub_quantity.LengthValue)
                                     layer_thicknesses[quantity.Name] = sub_quantity.LengthValue
                             elif quantity.is_a('IfcQuantityArea') and quantity.Name == 'NetSideArea':
-                                logger.debug(f'Found NetSideArea for {wall.Name}')
+                                logger.debug(f'Found NetSideArea for {wall.Name}: {quantity.AreaValue}')
                                 current_area = quantity.AreaValue
                                                                 
                             # For single material
                             elif quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
-                                logger.debug(f'Found NetVolume for {wall.Name}')
+                                logger.debug(f'Found NetVolume for {wall.Name}: {quantity.VolumeValue}')
                                 #quantities[quantity.Name] = quantity.VolumeValue
                                 current_volume = quantity.VolumeValue                            
 
@@ -476,7 +484,7 @@ def calculate_windows(windows):
                     if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_WindowBaseQuantities':
                         for quantity in property_def.Quantities:
                             if quantity.is_a('IfcQuantityArea') and quantity.Name == 'Area':
-                                logger.debug(f'Found Area for {window.Name}')
+                                logger.debug(f'Found Area for {window.Name}: {quantity.AreaValue}')
                                 quantities[quantity.Name] = quantity.AreaValue
                                 current_quantity = quantity.AreaValue
                                 break
@@ -522,7 +530,7 @@ def calculate_doors(doors):
                     if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_DoorBaseQuantities':
                         for quantity in property_def.Quantities:
                             if quantity.is_a('IfcQuantityArea') and quantity.Name == 'Area':
-                                logger.debug(f'Found Area for {door.Name}')
+                                logger.debug(f'Found Area for {door.Name}: {quantity.AreaValue}')
                                 quantities[quantity.Name] = quantity.AreaValue
                                 current_quantity = quantity.AreaValue
                                 break
@@ -1069,7 +1077,277 @@ def calculate_plates(plates):
     
     logger.debug(f"Total EC for plates is {total_ec}")
 
-    return total_ec                     
+    return total_ec           
+
+def calculate_piles(piles):
+
+
+    total_ec = 0
+    quantities = {}
+    materials = []
+    current_quantity = None
+    current_material = None
+    rebar = None
+
+    for pile in piles:
+        psets = get_psets(pile)
+        rebar_set = psets.get('Rebar Set')
+        if rebar_set is None:
+            logger.error('Rebar set not found')
+        if rebar_set:
+            rebar = rebar_set.get('MainRebar')
+            if rebar is None:
+                logger.error('Rebar not found')
+        
+        
+        dimensions = psets.get('Dimensions')
+        if dimensions is None:
+            logger.error('Dimensions/Diameter not found')
+        if dimensions:
+            lengthmm = dimensions.get('Length')
+            if lengthmm is None:
+                logger.error("Length not found")
+            else:
+                length = lengthmm / 1000
+        
+        if rebar:
+            rebar_no, area = rebar.split("H")
+            rebar_vol = length * int(rebar_no) * 3.14 * ((int(area)/2000) **2)
+
+        if hasattr(pile, "IsDefinedBy"):
+            for definition in pile.IsDefinedBy:
+                if definition.is_a('IfcRelDefinesByProperties'):
+                    property_def = definition.RelatingPropertyDefinition
+                    if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_PileBaseQuantities':
+                        for quantity in property_def.Quantities:
+                            if quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
+                                logger.debug(f'Found NetVolume  for {pile.Name}')
+                                quantities[quantity.Name] = quantity.VolumeValue
+                                current_quantity = quantity.VolumeValue
+                                break
+                        if current_quantity is not None:
+                            break
+
+        if hasattr(pile, "HasAssociations"):
+            for association in pile.HasAssociations:
+                if association.is_a("IfcRelAssociatesMaterial"):
+                    material = association.RelatingMaterial
+                    if material.is_a("IfcMaterial"):
+                        logger.debug(f"Found material '{material.Name}', as IfcMaterial")
+                        materials.append(material.Name)
+                        current_material = material.Name
+                        break
+                    elif material.is_a("IfcMaterialLayerSetUsage"):
+                        for layer in material.ForLayerSet.MaterialLayers:
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
+                            materials.append(layer.Material.Name)
+                            current_material = material.Name
+                            break
+                    elif material.is_a("IfcMaterialLayerSet"):
+                        for layer in material.MaterialLayers:
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
+                            materials.append(layer.Material.Name)
+                            current_material = material.Name
+                            break
+
+        current_material_ec = MaterialList.get(current_material, None) if current_material else None
+
+        if current_material_ec is None:
+            # handle with default value?
+            # ai?
+            # raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+            print("Error, not implemented yet")
+            continue
+        
+        material_ec_perkg, material_density = current_material_ec
+        print(current_quantity)
+        if rebar == None:
+            current_ec = material_ec_perkg * material_density * current_quantity
+            
+        else:
+            current_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
+            rebar_ec = rebar_vol * 2.510 * 7850
+            logger.debug(f"EC for {pile.Name}'s rebars is {rebar_ec}")
+            total_ec += rebar_ec
+        
+        
+        logger.debug(f"EC for {pile.Name} is {current_ec}")
+        total_ec += current_ec
+
+
+    
+    logger.debug(f"Total EC for piles is {total_ec}")
+
+    return total_ec
+
+def calculate_footings(footings):
+    total_ec = 0
+    quantities = {}
+    materials = []
+    current_quantity = None
+    current_material = None
+    rebar = None
+
+    for footing in footings:
+        psets = get_psets(footing)
+        rebar_set = psets.get('Rebar Set')
+        if rebar_set is None:
+            logger.error('Rebar set not found')
+        if rebar_set:
+            BD = rebar_set.get('BottomDistribution')
+            BM = rebar_set.get('BottomMain')
+            sidebar = rebar_set.get('SideBar')
+            stirrups = rebar_set.get('Stirrups')
+            TD = rebar_set.get('TopDistribution')
+            TM = rebar_set.get('TopMain')
+            if BD == None or BM == None or sidebar == None or stirrups == None or TM == None or TD == None:
+                logger.error('Rebar part not found')
+                
+            # Get diameter and spacing 
+            BDdiameter, BDspacing = BD.split("-")
+            BDdiameter = BDdiameter[1:3]
+            BMdiameter, BMspacing = BM.split("-")
+            BMdiameter = BMdiameter[1:3]
+            sidebar_diameter, sidebar_spacing = sidebar.split("-")
+            sidebar_diameter = sidebar_diameter[1:3]
+            stirrups_diameter, stirrups_spacing, ignore = stirrups.split("-")
+            stirrups_diameter = stirrups_diameter[1:3]
+            TDdiameter, TDspacing = TD.split("-")
+            TDdiameter = TDdiameter[1:3]
+            TMdiameter, TMspacing = TM.split("-")
+            TMdiameter = TMdiameter[1:3]
+
+        # Get width and length 
+        dimensions = psets.get('Dimensions')
+        if dimensions is None:
+            logger.error('Dimensions/Diameter not found')
+        if dimensions:
+            lengthmm = dimensions.get('Length')
+            if lengthmm is None:
+                logger.error("Length not found")
+            else:
+                length = lengthmm / 1000
+            
+            widthmm = dimensions.get('Width')
+            if widthmm is None:
+                logger.error("Width not found")
+            else:
+                width = widthmm / 1000
+            
+            heightmm = dimensions.get('Foundation Thickness')
+            if heightmm is None:
+                logger.error("Height not found")
+            else:
+                height = heightmm / 1000
+        # If width is more than length, flip
+        # if length and width:
+        #     if length < width: 
+        #         temp = length
+        #         length = width
+        #         width = temp  
+        
+        if rebar_set:
+            rebar_length = length - (2 * (50/1000))
+            rebar_breadth = width - (2 * (50/1000))
+            rebar_height = height - (2 * (50/1000))
+            # Bottom
+            
+            length_rebarsno = math.floor(rebar_length / (int(BDspacing)/1000)) + 1
+            breadth_rebarsno = math.floor(rebar_breadth / (int(BMspacing)/1000)) + 1
+            
+            bottom_vol = (breadth_rebarsno * rebar_length * (3.14 * ((int(BDdiameter)/2000) ** 2 ))) + (length_rebarsno * rebar_breadth * (3.14 * ((int(BMdiameter)/2000) ** 2 )))
+
+            # Top
+            length_rebarsno = math.floor(rebar_length / (int(TDspacing)/1000)) + 1
+            breadth_rebarsno = math.floor(rebar_breadth / (int(TMspacing)/1000)) + 1
+            
+            top_vol = (breadth_rebarsno * rebar_length * (3.14 * ((int(TDdiameter)/2000) ** 2 ))) + (length_rebarsno * rebar_breadth * (3.14 * ((int(TMdiameter)/2000) ** 2 )))
+        
+            # Side
+            length_rebarsno = math.floor(rebar_length / (int(TDspacing)/1000)) + 1
+            breadth_rebarsno = math.floor(rebar_breadth / (int(TMspacing)/1000)) + 1
+            height_rebarsno = math.floor(rebar_height / (int(sidebar_spacing)/1000)) + 1
+            
+            #side_vol = (length * height) + (breadth * height) + (height * length) + (height * breadth)
+            side_vol = (2 * (length_rebarsno * rebar_height * (3.14 * ((int(sidebar_diameter)/2000) ** 2)))) + (2 * (breadth_rebarsno * rebar_height * (3.14 * ((int(sidebar_diameter)/2000) ** 2)))) \
+                    +  (2 * (height_rebarsno * rebar_length * (3.14 * ((int(sidebar_diameter)/2000) ** 2)))) + (2 * (height_rebarsno * rebar_breadth * (3.14 * ((int(sidebar_diameter)/2000) ** 2))))
+            
+            
+            # Stirrups
+            perimeter = (2*rebar_breadth) + (2*rebar_height)
+            length_rebarsno = math.floor(rebar_length / (int(stirrups_spacing)/1000)) + 1
+            stirrups_vol = length_rebarsno * perimeter * (3.14 * ((int(stirrups_diameter)/2000) ** 2))
+
+            
+        if hasattr(footing, "IsDefinedBy"):
+            for definition in footing.IsDefinedBy:
+                if definition.is_a('IfcRelDefinesByProperties'):
+                    property_def = definition.RelatingPropertyDefinition
+                    if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_FootingBaseQuantities':
+                        for quantity in property_def.Quantities:
+                            if quantity.is_a('IfcQuantityVolume') and (quantity.Name == 'NetVolume' or quantity.Name == 'GrossVolume'):
+                                logger.debug(f'Found NetVolume  for {footing.Name}')
+                                quantities[quantity.Name] = quantity.VolumeValue
+                                current_quantity = quantity.VolumeValue
+                                break
+                        if current_quantity is not None:
+                            break
+
+        if hasattr(footing, "HasAssociations"):
+            for association in footing.HasAssociations:
+                if association.is_a("IfcRelAssociatesMaterial"):
+                    material = association.RelatingMaterial
+                    if material.is_a("IfcMaterial"):
+                        logger.debug(f"Found material '{material.Name}', as IfcMaterial")
+                        materials.append(material.Name)
+                        current_material = material.Name
+                        break
+                    elif material.is_a("IfcMaterialLayerSetUsage"):
+                        for layer in material.ForLayerSet.MaterialLayers:
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSetUsage")
+                            materials.append(layer.Material.Name)
+                            current_material = material.Name
+                            break
+                    elif material.is_a("IfcMaterialLayerSet"):
+                        for layer in material.MaterialLayers:
+                            logger.debug(f"Found material '{layer.Material.Name}', as IfcMaterialLayerSet")
+                            materials.append(layer.Material.Name)
+                            current_material = material.Name
+                            break
+
+        current_material_ec = MaterialList.get(current_material, None) if current_material else None
+
+        if current_material_ec is None:
+            # handle with default value?
+            # ai?
+            raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
+        
+        material_ec_perkg, material_density = current_material_ec
+        
+        if rebar_set == None:
+            current_ec = material_ec_perkg * material_density * current_quantity
+
+        else:
+            rebar_vol = top_vol + bottom_vol + side_vol + stirrups_vol
+            print(rebar_vol)
+            current_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
+            rebar_ec = rebar_vol  * 2.510 * 7850
+            logger.debug(f"EC for {footing.Name}'s rebars is {rebar_ec}")
+            total_ec += rebar_ec
+            
+        logger.debug(f"EC for {footing.Name} is {current_ec}")
+        total_ec += current_ec
+    
+    logger.debug(f"Total EC for footings is {total_ec}")
+
+    return total_ec
+
+
+
+    
+    logger.debug(f"Total EC for columns is {total_ec}")
+
+    return total_ec
 
 def calculate_embodied_carbon(filepath):
     
@@ -1116,6 +1394,12 @@ def calculate_embodied_carbon(filepath):
 
     plates = ifc_file.by_type('IfcPlate')
     logger.info(f"Total plates found {len(plates)}")
+    
+    piles = ifc_file.by_type('IfcPile')
+    logger.info(f"Total piles found {len(piles)}")
+    
+    footings = ifc_file.by_type('IfcFooting')
+    logger.info(f"Total footings found {len(footings)}")
 
 
     if roofs:
@@ -1182,6 +1466,18 @@ def calculate_embodied_carbon(filepath):
         plates_ec = calculate_plates(plates)
         total_ec += plates_ec
     
+    if plates:
+        plates_ec = calculate_plates(plates)
+        total_ec += plates_ec
+        
+    if piles:
+        piles_ec = calculate_piles(piles)
+        total_ec += piles_ec
+        
+    if footings:
+        footings_ec = calculate_footings(footings)
+        total_ec += footings_ec
+    
     
     logger.info(f"Total EC calculated: {total_ec}")
 
@@ -1214,43 +1510,10 @@ def calculate_gfa(filepath):
         total_area += gfa
 
     logger.info(f"Total GFA calculated: {total_area}")
-
-
-    return total_ec
-
-import os 
-
-def calculate_gfa(filepath):
-
-    ifc_file = ifcopenshell.open(filepath)
-    spaces = ifc_file.by_type('IfcSpace')
-    logger.info(f"Total spaces found {len(spaces)}")
-
-    if len(spaces) == 0 :    
-        logger.error("No spaces found.")
-        return 0
-    
-    total_area = 0
-
-    for space in spaces:
-    # Get the area from quantities
-        # total_area += get_element_area(space)
-        psets= get_psets(space)
-        qto = psets.get('Qto_SpaceBaseQuantities')
-        if not qto:
-            logger.error(f"{space} has no pset Qto_SpaceBaseQuantities, skipping this element")
-            return 0
-        gfa = qto.get('GrossFloorArea')
-        if not gfa:
-            logger.error(f"{space} has no GFA in Qto_SpaceBaseQuantities, skipping this element")
-            return 0
-        total_area += gfa
-
-    logger.info(f"Total GFA calculated: {total_area}")
     return total_area
 
 if __name__ == "__main__":
-    ifcpath = "/Users/jk/Downloads/Complex 3_USETHIS.ifc"
+    ifcpath = "/Users/jk/Downloads/z. Complex Models/Complex 4.ifc"
     logger.info(f"{ifcpath=}")
     calculate_embodied_carbon(ifcpath)
     calculate_gfa(ifcpath)
