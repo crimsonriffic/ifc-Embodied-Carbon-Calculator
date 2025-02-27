@@ -4,7 +4,6 @@ import { useEffect, useState, version } from "react";
 import { getProjectHistory, getProjectBreakdown } from "../api/api";
 import ProjectErrorDialog from "./ProjectErrorDialog";
 import BuildingInfoCard from "../components/BuildingInfoCard";
-import SystemInfoCard from "../components/SystemInfoCard";
 import MaterialInfoCard from "../components/MaterialInfoCard";
 import ElementInfoCard from "../components/ElementInfoCard";
 import BarChart from "../components/BarChart";
@@ -41,29 +40,69 @@ function ProjectPage() {
     total_ec: 10731.417534758186,
     ec_breakdown: [
       {
-        category: "substructure",
-        total_ec: 5342.129999999996,
+        category: "Substructure",
+        total_ec: 5342.13,
         elements: [
           {
-            element: "slab",
-            ec: 1938.21875,
-            materials: [{ material: "concrete", ec: 1938.21875 }],
+            element: "Slab",
+            ec: 1291.952,
+            materials: [{ material: "Concrete", ec: 1291.952 }],
           },
           {
-            element: "wall",
-            ec: 8311.679999999998,
-            materials: [{ material: "concrete", ec: 8311.679999999998 }],
+            element: "Wall",
+            ec: 1096.68,
+            materials: [{ material: "Concrete", ec: 1096.68 }],
+          },
+          {
+            element: "Wall",
+            ec: 1012.32,
+            materials: [{ material: "Concrete", ec: 1012.32 }],
+          },
+          {
+            element: "Wall",
+            ec: 1012.32,
+            materials: [{ material: "Concrete", ec: 1012.32 }],
+          },
+          {
+            element: "Wall",
+            ec: 927.96,
+            materials: [{ material: "Concrete", ec: 927.96 }],
           },
         ],
       },
       {
-        category: "superstructure",
-        total_ec: 5389.287534758189,
+        category: "Superstructure",
+        total_ec: 5389.2875,
         elements: [
           {
-            element: "roof",
+            element: "Roof",
             ec: 481.5187485187485,
-            materials: [{ material: "concrete", ec: 481.5187485187485 }],
+            materials: [{ material: "Concrete", ec: 481.5187485187485 }],
+          },
+          {
+            element: "Slab",
+            ec: 645.5215,
+            materials: [{ material: "Concrete", ec: 645.5215 }],
+          },
+          {
+            element: "Wall",
+            ec: 1154.4,
+            materials: [{ material: "Concrete", ec: 1154.4 }],
+          },
+          {
+            element: "Wall",
+            ec: 1065.6,
+            materials: [{ material: "Concrete", ec: 1065.6 }],
+          },
+          {
+            element: "Wall",
+            ec: 1065.6,
+            materials: [{ material: "Concrete", ec: 1065.6 }],
+          },
+          {
+            element: "Wall",
+            ec: 976.8,
+            materials: [{ material: "Concrete", ec: 976.8 }],
           },
         ],
       },
@@ -128,7 +167,9 @@ function ProjectPage() {
     const breakdownValues = breakdownData[selectedBreakdownType];
 
     // Extract labels (keys) and data (values)
-    const labels = Object.keys(breakdownValues);
+    const labels = Object.keys(breakdownValues).map(
+      (key) => key.charAt(0).toUpperCase() + key.slice(1)
+    );
     const data = Object.values(breakdownValues);
 
     console.log("Labels: ", labels);
@@ -258,9 +299,11 @@ function ProjectPage() {
                   <div className="flex flex-row">
                     <p>Total Embodied Carbon: </p>
                     <p className="font-bold">
-                      {projectHistory
-                        .find((item) => item.version === versionNumber)
-                        ?.total_ec.toFixed(0)}{" "}
+                      {Number(
+                        projectHistory
+                          .find((item) => item.version === versionNumber)
+                          ?.total_ec.toFixed(0)
+                      ).toLocaleString()}{" "}
                       kgCO2eq
                     </p>
                   </div>
@@ -298,7 +341,7 @@ function ProjectPage() {
               </div>
             </div>
             {/**Bottom half of screen */}
-            <div className="flex flex-row justify-between mt-4 gap-x-16 h-[300px] ">
+            <div className="flex flex-row justify-between mt-12 gap-x-16 h-[300px] ">
               <div className="flex flex-1 flex-col">
                 <h1 className="font-bold mb-4">Project Upload History</h1>
                 <HistoryTable projectHistory={projectHistory} />
