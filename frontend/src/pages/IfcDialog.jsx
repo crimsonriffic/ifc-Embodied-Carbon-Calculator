@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { uploadIfc } from "../api/api.jsx";
-function IfcDialog({ onClose, projectId }) {
+import { useNavigate } from "react-router-dom";
+function IfcDialog({ onClose, projectName, projectId }) {
   const [inputComment, setInputComment] = useState("");
   const [updateType, setUpdateType] = useState("Master File");
   const [selectedFile, setSelectedFile] = useState("null");
   const [uploadError, setUploadError] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
 
+  const navigate = useNavigate();
+  console.log(
+    "Project name and project id from ifc dialog is",
+    projectName,
+    projectId
+  );
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -37,7 +45,14 @@ function IfcDialog({ onClose, projectId }) {
       );
       setSuccessMessage(response.message);
       setUploadError(null);
-      onClose();
+      setShowSuccess(true);
+      // Navigate after 1 seconds
+      setTimeout(() => {
+        onClose();
+        navigate(`/project/${encodeURIComponent(projectName)}`, {
+          state: { projectId },
+        });
+      }, 1000);
     } catch (err) {
       setUploadError(
         err.response?.data?.detail || "An error occurred during upload."
@@ -50,6 +65,14 @@ function IfcDialog({ onClose, projectId }) {
       <div className="bg-white p-6 rounded shadow-lg">
         <h2 className="text-xl font-semibold mb-4">Upload IFC file</h2>
 
+        {showSuccess && (
+          <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg">
+            Upload successful! Directing to project page
+          </div>
+        )}
+        {uploadError && (
+          <div className="mb-4 text-red-600 font-semibold">{uploadError}</div>
+        )}
         {/*Upload form */}
         <div className="w-full max-w-xs">
           <form onSubmit={handleUpload} className="space-y-4">

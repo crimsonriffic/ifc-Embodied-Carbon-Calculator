@@ -75,11 +75,31 @@ export default function SankeyChart({ data }) {
         height={600}
         data={{ nodes, links }}
         nodePadding={50}
-        margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-        link={{ stroke: "#ccc" }}
+        margin={{ top: 20, right: 200, bottom: 20, left: 20 }}
+        link={{ stroke: "url(#gradient)", fill: "url(gradient)" }}
+        node={{
+          stroke: "#79E779",
+          strokeWidth: 2,
+          fill: "#79E779",
+          label: true,
+        }}
         onMouseEnter={(node) => setActiveNode(node)}
         onMouseLeave={() => setActiveNode(null)}
       >
+        <defs>
+          <linearGradient
+            id="gradient"
+            gradientUnits="Useron"
+            x1="0"
+            y1="0"
+            x2="1"
+            y2="0"
+          >
+            <stop offset="0%" stopColor="#B7D788" stopOpacity={1.0} />
+            <stop offset="50%" stopColor="#79E779" stopOpacity={1.0} />
+            <stop offset="100%" stopColor="#69F798" stopOpacity={1.0} />
+          </linearGradient>
+        </defs>
         <Tooltip />
       </Sankey>
     </div>

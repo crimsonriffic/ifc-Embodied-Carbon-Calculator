@@ -32,6 +32,7 @@ function ProjectPage() {
   const { projectName } = useParams();
 
   const { projectId } = location.state;
+  console.log("Project Name and project Id is ", projectName, projectId);
   const handleVersionClick = (e) => {
     setVersionNumber(e.target.value);
   };
@@ -222,7 +223,16 @@ function ProjectPage() {
                 {/** Card 2- Breakdown graphs */}
                 <div className=" flex-1 flex flex-col ">
                   <h1 className="font-bold">A1-A3 Embodied Carbon Data</h1>
-                  <div className="flex flex-row items-center gap-2 mt-1">
+                  <div className="flex flex-row">
+                    <p>Total Embodied Carbon: </p>
+                    <p className="font-bold">
+                      {projectHistory
+                        .find((item) => item.version === versionNumber)
+                        ?.total_ec.toFixed(0)}{" "}
+                      kgCO2eq
+                    </p>
+                  </div>
+                  <div className="flex flex-row items-center gap-2 mt-2">
                     <label
                       htmlFor="breakdownType"
                       className="inline-block text-sm font-medium text-gray-700"
