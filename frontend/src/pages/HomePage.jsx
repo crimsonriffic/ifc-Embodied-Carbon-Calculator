@@ -99,45 +99,46 @@ function HomePage() {
             </tr>
           </thead>
           <tbody>
-            {projects.map((project, index) => (
-              <tr key={index} className="hover:bg-gray-100">
-                <td className="border border-gray-300 px-4 py-2">
-                  {project.project_name}
-                </td>
-                <td className="border border-gray-300 px-4 py-2">
-                  {project.client_name}
-                </td>
-                <td className="border border-gray-300 px-4 py-2">
-                  {formatDate(project.last_edited_date)},{" "}
-                  {project.last_edited_user}
-                </td>
-                <td className="border border-gray-300 px-4 py-2 text-center">
-                  {/*Conditional upload icon rendering */}
-                  <button
-                    className="text-gray-600 hover:text-blue-500"
-                    onClick={() =>
-                      handleUploadClick(project._id, project.project_name)
-                    } // Pass the project ID
-                  >
-                    {project.filepath === "" ? (
+            {projects
+              .slice() // Create a copy to avoid mutating the original array
+              .sort(
+                (a, b) =>
+                  new Date(b.last_edited_date) - new Date(a.last_edited_date)
+              ) // Sort by latest date
+              .map((project, index) => (
+                <tr key={index} className="hover:bg-gray-100">
+                  <td className="border border-gray-300 px-4 py-2">
+                    {project.project_name}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2">
+                    {project.client_name}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2">
+                    {formatDate(project.last_edited_date)},{" "}
+                    {project.last_edited_user}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">
+                    <button
+                      className="text-gray-600 hover:text-blue-500"
+                      onClick={() =>
+                        handleUploadClick(project._id, project.project_name)
+                      }
+                    >
                       <ArrowUpTrayIcon className="w-6 h-6 text-gray-500" />
-                    ) : (
-                      <ArrowUpTrayIcon className="w-6 h-6 text-gray-500" />
-                    )}
-                  </button>
-                </td>
-                <td className="border border-gray-300 px-4 py-2 text-center">
-                  <button
-                    onClick={() =>
-                      handleGoToProject(project._id, project.project_name)
-                    }
-                    className="text-gray-600 hover:text-blue-500"
-                  >
-                    <ArrowRightIcon className="w-6 h-6 text-gray-500" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+                    </button>
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">
+                    <button
+                      onClick={() =>
+                        handleGoToProject(project._id, project.project_name)
+                      }
+                      className="text-gray-600 hover:text-blue-500"
+                    >
+                      <ArrowRightIcon className="w-6 h-6 text-gray-500" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
 

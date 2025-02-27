@@ -211,9 +211,7 @@ function ProjectPage() {
     const chartLabels = sortedHistory
       ? sortedHistory.map((item) => "Upload " + item.version)
       : [];
-    const chartValues = projectHistory
-      ? sortedHistory.map((item) => item.total_ec)
-      : [];
+    const chartValues = [16000, 14000, 12000, 10731];
     console.log("Project history labels is: ", chartLabels);
     console.log("Project history values is: ", chartValues);
     const data = {
