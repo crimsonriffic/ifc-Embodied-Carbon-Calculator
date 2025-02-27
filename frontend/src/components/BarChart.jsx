@@ -12,6 +12,7 @@ ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 const options = {
   responsive: true,
+  maintainAspectRatio: false,
 
   scales: {
     y: {
@@ -27,6 +28,7 @@ const options = {
         drawBorder: true, // Adds a border to X-axis
         borderColor: "black", // Set border color
         borderWidth: 2, // Set border thickness
+        display: false,
       },
     },
   },
