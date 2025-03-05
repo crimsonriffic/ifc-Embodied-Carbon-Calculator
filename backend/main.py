@@ -261,14 +261,18 @@ async def upload_ifc(
 
 # Get EC breakdown and ec value
 @app.get("/projects/{project_id}/get_breakdown", response_model=ProjectBreakdown)
-async def get_breakdown(project_id: str):
+async def get_breakdown(project_id: str, version: str = None):
     project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)}) 
    
     if not project:
        raise HTTPException(status_code=404, detail="Project not found")
-       
-    latest_version = str(project.get("current_version"))
-    ifc_data = project["ifc_versions"].get(latest_version, {})
+    
+    #TODO: Change this to version number that is specified in the api rather than the current version 
+    version_number = version if version else str(project.get("current_version"))
+    if version_number not in project["ifc_versions"]:
+        raise HTTPException(status_code=400, detail="Version not found")
+    # latest_version = str(project.get("current_version"))
+    ifc_data = project["ifc_versions"].get(version_number, {})
 
     # file_path = project["ifc_versions"][latest_version]["file_path"].replace(f"s3://{S3_BUCKET}/", "")
    
@@ -285,7 +289,7 @@ async def get_breakdown(project_id: str):
         gfa = gfa,
         ec_breakdown=ec_breakdown,
         last_calculated=project.get("last_calculated", datetime.now()),
-        version=latest_version
+        version=version_number
     )
 
 @app.get("/projects/{project_id}/get_project_info", response_model=ProjectBasicInfo)

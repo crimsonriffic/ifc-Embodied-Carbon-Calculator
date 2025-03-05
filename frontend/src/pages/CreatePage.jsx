@@ -54,7 +54,6 @@ export default function CreatePage() {
       {/* Banner Section */}
       <div className="bg-[#5B9130] text-white mx-8 mt-20 w-full mr-4 py-10 px-6 rounded-lg shadow-md text-left ml-0">
         <h1 className="text-3xl font-bold">Create a new project</h1>
-        <p className="mt-2 text-lg">Placeholder text</p>
       </div>
       {/* Create project form */}
       {/*Upload form */}
@@ -109,10 +108,11 @@ export default function CreatePage() {
               id="typology"
               value={typology}
               onChange={handleUpdateTypology}
-              className="w-full p-2 border border-gray-300 rounded-lg"
+              className="w-full max-w-xs p-2 border border-gray-300 rounded-lg"
             >
               <option value="Residential">Residential</option>
-              <option value="Commerical">Commerical</option>
+              <option value="Non-residential">Non-residential</option>
+              <option value="Industrial">Industrial</option>
             </select>
           </div>
 
@@ -128,10 +128,16 @@ export default function CreatePage() {
               id="status"
               value={status}
               onChange={handleUpdateStatus}
-              className="w-full p-2 border border-gray-300 rounded-lg"
+              className="w-full max-w-xs p-2 border border-gray-300 rounded-lg"
             >
-              <option value="Initial Design">Initial Design</option>
+              <option value="Conceptual Design">Conceptual Design</option>
+              <option value="Schematic Design">Schematic Design</option>
               <option value="Detailed Design">Detailed Design</option>
+              <option value="Construction Evaluation">
+                Construction Evaluaton
+              </option>
+              <option value="Final Assessment">Final Assessment</option>
+              <option value="Verification">Verification</option>
             </select>
           </div>
 

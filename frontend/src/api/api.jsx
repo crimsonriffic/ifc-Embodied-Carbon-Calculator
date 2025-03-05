@@ -84,9 +84,17 @@ export const createProject = async (
         role: "owner",
         permissions: ["read", "write", "upload", "delete", "admin"],
       },
-      user789: {
-        role: "viewer",
-        permissions: ["read"],
+      john: {
+        role: "editer",
+        permissions: ["read", "write", "upload"],
+      },
+      davis: {
+        role: "editer",
+        permissions: ["read", "write", "upload"],
+      },
+      vanessa: {
+        role: "editer",
+        permissions: ["read", "write", "upload"],
       },
     },
     edit_history: [
@@ -146,7 +154,13 @@ export const createProject = async (
   }
 };
 
-export const getProjectBreakdown = async (projectId) => {
-  console.log("getProjectBreakdown API is called with  ", projectId);
-  return api.get(`/projects/${projectId}/get_breakdown`);
+export const getProjectBreakdown = async (projectId, versionNumber) => {
+  console.log(
+    "getProjectBreakdown API is called with  ",
+    projectId,
+    "and version number ",
+    versionNumber
+  );
+  const versionQuery = versionNumber ? `?version=${versionNumber}` : "";
+  return api.get(`/projects/${projectId}/get_breakdown${versionQuery}`);
 };
