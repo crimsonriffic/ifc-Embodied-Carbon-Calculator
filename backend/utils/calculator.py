@@ -317,6 +317,7 @@ def calculate_slabs(slabs, to_ignore=[]):
     """Calculate embodied carbon for slabs, using material matching if needed"""
     total_ec = 0
     quantities = {}
+    slab_elements = [] 
 
     for slab in slabs:
         layer_thicknesses = {}
@@ -325,7 +326,8 @@ def calculate_slabs(slabs, to_ignore=[]):
         current_ec = None
         current_quantity = None
         current_material = None
-        
+        materials_breakdown = []
+
         if slab.id() in to_ignore:
             logger.info(f"Skipping slab {slab.id()} as its to be ignored")
             continue
@@ -385,9 +387,12 @@ def calculate_slabs(slabs, to_ignore=[]):
                             material_layers.append(layer.Material.Name)
                             current_material = layer.Material.Name
                             
-        if material_layers:
+        if material_layers and len(material_layers) > 1:
             logger.debug("Processing layered slab")
             # Multi-material slab
+            slab_total_ec = 0
+            slab_materials = []
+
             for mat in material_layers:
                 mat_ec_data = MaterialList.get(mat)
                 thickness = layer_thicknesses.get(mat, None)
@@ -452,9 +457,24 @@ def calculate_slabs(slabs, to_ignore=[]):
 
                 ec_per_kg, density = mat_ec_data
                 logger.debug(f"Layer info - thickness: {thickness}, area: {current_area}, ec_per_kg: {ec_per_kg}, density: {density}")
-                current_ec = ec_per_kg * density * (thickness/1000) * current_area
+                layer_ec  = ec_per_kg * density * (thickness/1000) * current_area
+
+                if layer_ec > 0:
+                    slab_materials.append({
+                        "material": mat,
+                        "ec": layer_ec
+                    })
+                    slab_total_ec += layer_ec
+
                 logger.debug(f"EC for material '{mat}' in {slab.Name} is {current_ec}")
-                total_ec += current_ec
+
+            if slab_total_ec > 0 and slab_materials:
+                total_ec += slab_total_ec
+                slab_elements.append({
+                        "element": "Slab",
+                        "ec": slab_total_ec,
+                        "materials": slab_materials
+                    })
                 continue
 
         if current_material is None:
@@ -503,6 +523,18 @@ def calculate_slabs(slabs, to_ignore=[]):
                     
             material_ec_perkg, material_density = current_material_ec
             current_ec = material_ec_perkg * material_density * current_quantity
+
+            materials_breakdown.append({
+                "material": current_material,
+                "ec": current_ec
+            })
+            
+            slab_elements.append({
+                "element": "Slab",
+                "ec": current_ec,
+                "materials": materials_breakdown
+            })
+
             logger.debug(f"EC for {slab.Name} is {current_ec}")
             total_ec += current_ec
             continue
@@ -550,11 +582,23 @@ def calculate_slabs(slabs, to_ignore=[]):
                     
             material_ec_perkg, material_density = current_material_ec
             current_ec = material_ec_perkg * material_density * current_quantity
+
+            materials_breakdown.append({
+                "material": current_material,
+                "ec": current_ec
+            })
+            
+            # Add this slab as an element
+            slab_elements.append({
+                "element": "Slab",
+                "ec": current_ec,
+                "materials": materials_breakdown
+            })
             logger.debug(f"EC for {slab.Name} is {current_ec}")
             total_ec += current_ec
 
     logger.debug(f"Total EC for slabs is {total_ec}")
-    return total_ec
+    return total_ec, slab_elements
 
 def calculate_walls(walls):
     """Calculate embodied carbon for walls, using material matching if needed"""
@@ -1985,7 +2029,7 @@ def calculate_embodied_carbon(filepath):
         total_ec += beams_ec
 
     if slabs:
-        slabs_ec= calculate_slabs(slabs, to_ignore=slabs_to_ignore)
+        slabs_ec, _ = calculate_slabs(slabs, to_ignore=slabs_to_ignore)
         total_ec += slabs_ec
 
     if walls:
