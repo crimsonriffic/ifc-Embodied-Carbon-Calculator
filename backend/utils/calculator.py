@@ -6,7 +6,11 @@ import ifcopenshell
 import ifcopenshell.geom
 import numpy as np
 import os 
-from . import calculator_utils 
+import math
+try:
+    from . import calculator_utils
+except ImportError:
+    import calculator_utils
 
 MaterialList = calculator_utils.MaterialList
 MaterialsToIgnore = calculator_utils.MaterialsToIgnore
@@ -162,7 +166,8 @@ def calculate_columns(columns):
         current_quantity = None
         current_material = None
         rebar = None
-
+        height = None
+        rebar_vol= None
         psets = get_psets(column)
         rebar_set = psets.get('Rebar Set')
         if rebar_set is None:
@@ -182,7 +187,7 @@ def calculate_columns(columns):
             else:
                 height = heightmm / 1000
         
-        if rebar:
+        if rebar and height:
             rebar_no, area = rebar.split("H")
             rebar_vol = height * int(rebar_no) * 3.14 * ((int(area)/2000) **2)
 
@@ -274,7 +279,7 @@ def calculate_columns(columns):
             
         material_ec_perkg, material_density = current_material_ec
         
-        if rebar == None:
+        if rebar_vol == None:
             current_ec = material_ec_perkg * material_density * current_quantity
         else:
             current_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
@@ -368,10 +373,10 @@ def calculate_slabs(slabs, to_ignore=[]):
                 thickness = layer_thicknesses.get(mat, None)
                 
                 if thickness is None:
-                    logger.warning(f"'{mat}' layer thickness not found, skipping EC calculation")
+                    logger.warning(f"'{mat}' layer thickness not found, skipping EC calculation, this is on {slab=}")
                     continue
                 if thickness <= 0:
-                    logger.warning(f"'{mat}' layer thickness <= 0, skipping EC calculation")
+                    logger.warning(f"'{mat}' layer thickness <= 0, skipping EC calculation, this is on {slab=}")
                     continue
                     
                 # Store this material in our database for future reference
@@ -430,8 +435,28 @@ def calculate_slabs(slabs, to_ignore=[]):
                 current_ec = ec_per_kg * density * (thickness/1000) * current_area
                 logger.debug(f"EC for material '{mat}' in {slab.Name} is {current_ec}")
                 total_ec += current_ec
+                continue
 
-        elif current_material:
+        if current_material is None:
+            logger.info("No materials found directly on slab, checking type definition")
+            if hasattr(slab, "IsTypedBy"):
+                for rel in slab.IsTypedBy:
+                    if rel.is_a("IfcRelDefinesByType"):
+                        type_obj = rel.RelatingType
+                        logger.info(f"Found type definition: {type_obj.Name}")
+                        
+                        # Look for materials in the type object
+                        if hasattr(type_obj, "HasAssociations"):
+                            for association in type_obj.HasAssociations:
+                                if association.is_a("IfcRelAssociatesMaterial"):
+                                    material = association.RelatingMaterial
+                                    
+                                    # Now check each material type as before
+                                    if material.is_a("IfcMaterial"):
+                                        logger.info(f"Found material '{material.Name}' in type")
+                                        current_material= material.Name
+
+        if current_material is not None:
             # Single-material slab
             current_material_ec = MaterialList.get(current_material, None) if current_material else None
 
@@ -460,7 +485,8 @@ def calculate_slabs(slabs, to_ignore=[]):
             current_ec = material_ec_perkg * material_density * current_quantity
             logger.debug(f"EC for {slab.Name} is {current_ec}")
             total_ec += current_ec
-        
+            continue
+
         if current_ec is None:
             logger.warning(f"EC calculation for slab failed, attempting manual volume method")
             # Attempts to retrieve the "correct" material from material layer set. Works if able to filter down to one possible material.
@@ -1200,7 +1226,7 @@ def calculate_stairs(stairs):
                 else:
                     logger.error(f"Default material '{default_material}' not found. Skipping this stair.")
                     continue
-            else:
+            else:   
                 # Use the most common material from material layers
                 MaterialList_filtered = [material for material in material_layers if material not in MaterialsToIgnore]
                 if len(MaterialList_filtered) > 0:
@@ -1675,7 +1701,7 @@ def calculate_piles(piles):
             continue
         
         material_ec_perkg, material_density = current_material_ec
-        print(current_quantity)
+        # print(current_quantity)
         if rebar == None:
             current_ec = material_ec_perkg * material_density * current_quantity
             
@@ -1844,7 +1870,7 @@ def calculate_footings(footings):
 
         else:
             rebar_vol = top_vol + bottom_vol + side_vol + stirrups_vol
-            print(rebar_vol)
+            # print(rebar_vol)
             current_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
             rebar_ec = rebar_vol  * 2.510 * 7850
             logger.debug(f"EC for {footing.Name}'s rebars is {rebar_ec}")
@@ -1868,6 +1894,9 @@ def calculate_embodied_carbon(filepath):
     
     
     slabs_to_ignore=[]
+    total_ec = columns_ec = beams_ec = slabs_ec = walls_ec = windows_ec = roofs_ec = doors_ec = stairs_ec = railings_ec = members_ec = plates_ec = piles_ec = footings_ec= 0
+    columns = beams = slabs = walls = windows = roofs = doors = stairs = railings = members = plates = piles= footings = None
+
     
     ifc_file = ifcopenshell.open(filepath)
 
@@ -1917,18 +1946,16 @@ def calculate_embodied_carbon(filepath):
     if roofs:
         for roof in roofs:
             aggregated_by = roof.IsDecomposedBy
-            print(aggregated_by)
+            # print(aggregated_by)
             for rel in aggregated_by:
                 if rel.is_a('IfcRelAggregates'):
-                    print(rel)
+                    # print(rel)
                     for part in rel.RelatedObjects:
                         print(f"child : {part.is_a()}")
                         if part.is_a('IfcSlab'):
                             slabs_to_ignore.append(part.id())
                     
     #print(slabs_to_ignore)
-
-    total_ec = columns_ec = beams_ec = slabs_ec = walls_ec = windows_ec = roofs_ec = doors_ec = stairs_ec = railings_ec = members_ec = plates_ec= 0
 
     if columns:
         columns_ec= calculate_columns(columns)
@@ -1974,10 +2001,6 @@ def calculate_embodied_carbon(filepath):
     if plates:
         plates_ec = calculate_plates(plates)
         total_ec += plates_ec
-    
-    if plates:
-        plates_ec = calculate_plates(plates)
-        total_ec += plates_ec
         
     if piles:
         piles_ec = calculate_piles(piles)
@@ -1989,7 +2012,14 @@ def calculate_embodied_carbon(filepath):
     
     
     logger.info(f"Total EC calculated: {total_ec}")
-
+    logger.info(f"Breakdown:\n {columns_ec=}\n {beams_ec=}\n {slabs_ec=}\n\
+{walls_ec=}\n {windows_ec=}\n {doors_ec=}\n {stairs_ec=} \n \
+{railings_ec=}\n {roofs_ec=}\n {members_ec=}\n {plates_ec=}\n \
+{piles_ec=}\n {footings_ec=}")
+    logger.info(f"Breakdown:\n {len(columns)=}\n {len(beams)=}\n {len(slabs)=}\n\
+{len(walls)=}\n {len(windows)=}\n {len(doors)=}\n {len(stairs)=} \n \
+{len(railings)=}\n {len(roofs)=}\n {len(members)=}\n {len(plates)=}\n \
+{len(piles)=}\n {len(footings)=}")
     return total_ec
 
 def calculate_gfa(filepath):
@@ -2023,7 +2053,8 @@ def calculate_gfa(filepath):
 
 if __name__ == "__main__":
     # Run the calculator on the specified IFC file
-    ifcpath = input("Enter path to IFC file: ")
+    # ifcpath = input("Enter path to IFC file: ")
+    ifcpath = "/mnt/c/Users/dczqd/Documents/SUTD/Capstone-calc/Complex 4.ifc"
     logger.info(f"Processing file: {ifcpath}")
     
     if not os.path.exists(ifcpath):

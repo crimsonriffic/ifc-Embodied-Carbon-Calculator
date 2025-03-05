@@ -37,7 +37,7 @@ def test_ec_calculations(s3_client, test_case):
         
         assert abs(result - expected) <= tolerance*expected, \
             f"EC calculation for {test_case['name']} failed. " \
-            f"Expected {expected} ± {tolerance}, got {result}"
+            f"Expected {expected} ± {tolerance}%, got {result}"
             
     except Exception as e:
         pytest.fail(f"Test failed for {test_case['ifc_path']}: {str(e)}")
@@ -62,7 +62,7 @@ def test_gfa_calculations(s3_client, test_case):
         
         assert abs(result - expected) <= tolerance*expected, \
             f"EC calculation for {test_case['name']} failed. " \
-            f"Expected {expected} ± {tolerance}, got {result}"
+            f"Expected {expected} ± {tolerance}%, got {result}"
             
     except Exception as e:
         pytest.fail(f"Test failed for {test_case['ifc_path']}: {str(e)}")
