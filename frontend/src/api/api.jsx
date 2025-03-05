@@ -84,9 +84,17 @@ export const createProject = async (
         role: "owner",
         permissions: ["read", "write", "upload", "delete", "admin"],
       },
-      user789: {
-        role: "viewer",
-        permissions: ["read"],
+      john: {
+        role: "editer",
+        permissions: ["read", "write", "upload"],
+      },
+      davis: {
+        role: "editer",
+        permissions: ["read", "write", "upload"],
+      },
+      vanessa: {
+        role: "editer",
+        permissions: ["read", "write", "upload"],
       },
     },
     edit_history: [

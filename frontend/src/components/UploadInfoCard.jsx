@@ -36,7 +36,7 @@ export default function UploadInfoCard({ uploadInfoData }) {
         <div className="flex justify-between border-b py-2">
           <span className="text-sm font-medium text-gray-600">Comments:</span>
           <span className="text-sm  text-gray-800">
-            {uploadInfo.comments || "N/A"}
+            {uploadInfo.comments || "Create project"}
           </span>
         </div>
         <div className="flex justify-between border-b py-2">

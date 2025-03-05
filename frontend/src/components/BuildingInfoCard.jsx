@@ -43,9 +43,7 @@ export default function BuildingInfoCard({ projectId }) {
       <div className="space-y-2 ">
         <div className="flex justify-between border-b py-2">
           <span className="text-sm font-medium text-gray-600">Floor Area:</span>
-          <span className="text-sm  text-gray-800">
-            {buildingInfo.gfa.toFixed(2) || "N/A"}
-          </span>
+          <span className="text-sm  text-gray-800">500 m&sup2;</span>
         </div>
         <div className="flex justify-between border-b py-2">
           <span className="text-sm font-medium text-gray-600">Typology:</span>

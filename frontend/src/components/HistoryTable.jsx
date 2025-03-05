@@ -20,7 +20,7 @@ const HistoryTable = ({ projectHistory }) => {
                 {entry.uploaded_by}
               </td>
               <td className="border border-black px-4 py-2">
-                {entry.comments}
+                {entry.comments || "Create project"}
               </td>
               <td className="border border-black px-4 py-2">
                 {new Date(entry.date_uploaded).toLocaleString()}

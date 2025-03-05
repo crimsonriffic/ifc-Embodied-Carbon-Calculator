@@ -3,7 +3,7 @@ import { uploadIfc } from "../api/api.jsx";
 import { useNavigate } from "react-router-dom";
 function IfcDialog({ onClose, projectName, projectId }) {
   const [inputComment, setInputComment] = useState("");
-  const [updateType, setUpdateType] = useState("Master File");
+  const [updateType, setUpdateType] = useState("Nil");
   const [selectedFile, setSelectedFile] = useState("null");
   const [uploadError, setUploadError] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
@@ -20,10 +20,6 @@ function IfcDialog({ onClose, projectName, projectId }) {
     if (file) {
       setSelectedFile(file);
     }
-  };
-
-  const handleUpdateTypeChange = (e) => {
-    setUpdateType(e.target.value);
   };
 
   const handleUpload = async (e) => {
@@ -82,24 +78,7 @@ function IfcDialog({ onClose, projectName, projectId }) {
               className="w-full mb-4 p-2 border border-gray-300 rounded-lg"
               required
             />
-            {/*Input update type */}
-            <div className="mb-4">
-              <label
-                htmlFor="updateType"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Update Type
-              </label>
-              <select
-                id="updateType"
-                value={updateType}
-                onChange={handleUpdateTypeChange}
-                className="w-full p-2 border border-gray-300 rounded-lg"
-              >
-                <option value="Master File">Master File</option>
-                <option value="Linked File">Linked File</option>
-              </select>
-            </div>
+
             {/*Input comment */}
             <div className="mb-4">
               <label
