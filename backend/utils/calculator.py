@@ -6,7 +6,8 @@ import ifcopenshell
 import ifcopenshell.geom
 import numpy as np
 import os 
-from . import calculator_utils 
+import calculator_utils 
+import math
 
 MaterialList = calculator_utils.MaterialList
 MaterialsToIgnore = calculator_utils.MaterialsToIgnore
@@ -162,6 +163,7 @@ def calculate_columns(columns):
         current_quantity = None
         current_material = None
         rebar = None
+        height = None
 
         psets = get_psets(column)
         rebar_set = psets.get('Rebar Set')
@@ -179,10 +181,11 @@ def calculate_columns(columns):
             heightmm = dimensions.get('Height')
             if heightmm is None:
                 logger.error("Height not found")
+                continue
             else:
                 height = heightmm / 1000
         
-        if rebar:
+        if rebar and height:
             rebar_no, area = rebar.split("H")
             rebar_vol = height * int(rebar_no) * 3.14 * ((int(area)/2000) **2)
 
@@ -274,7 +277,7 @@ def calculate_columns(columns):
             
         material_ec_perkg, material_density = current_material_ec
         
-        if rebar == None:
+        if rebar_vol == None:
             current_ec = material_ec_perkg * material_density * current_quantity
         else:
             current_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
@@ -793,6 +796,10 @@ def calculate_doors(doors):
             else:
                 logger.warning(f"Material '{current_material}' not found and no similar material found. Skipping this door.")
                 continue
+        
+        if current_material_ec is None:
+            logger.warning(f"Material '{current_material}' not found. Skipping this door.")
+            continue
         
         if current_quantity is None:
             logger.error(f"No area found for door {door.Name}. Skipping.")
@@ -2023,8 +2030,7 @@ def calculate_gfa(filepath):
 
 if __name__ == "__main__":
     # Run the calculator on the specified IFC file
-    ifcpath = input("Enter path to IFC file: ")
-    logger.info(f"Processing file: {ifcpath}")
+    ifcpath = "/Users/jk/Downloads/z. Complex Models/Complex 4.ifc"
     
     if not os.path.exists(ifcpath):
         logger.error(f"File not found: {ifcpath}")
