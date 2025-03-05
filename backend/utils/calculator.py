@@ -18,14 +18,13 @@ embedding_model = calculator_utils.embedding_model
 material_embeddings = calculator_utils.material_embeddings  
 material_data_df = calculator_utils.material_data_df
 
-MATERIAL_REAPLCE = False 
+MATERIAL_REAPLCE = False
 
 def calculate_beams(beams):
     """Calculate embodied carbon for beams, using material matching if needed"""
     total_ec = 0
-    quantities = {}
-    materials = []
-    
+    beam_elements = []
+
     for beam in beams:
         current_quantity = None # in volume
         current_material = None
@@ -85,7 +84,6 @@ def calculate_beams(beams):
                     material = association.RelatingMaterial
                     if material.is_a("IfcMaterial"):
                         logger.debug(f"Found material '{material.Name}', as IfcMaterial")
-                        materials.append(material.Name)
                         current_material = material.Name
                         break
 
@@ -141,20 +139,42 @@ def calculate_beams(beams):
             continue
             
         material_ec_perkg, material_density = current_material_ec
-        
+        materials_breakdown = []
+
         if rebar_set == None:
-            current_ec = material_ec_perkg * material_density * current_quantity
+            concrete_ec = material_ec_perkg * material_density * current_quantity
+            materials_breakdown.append({
+                "material": current_material,
+                "ec": concrete_ec
+            })
+            current_ec = concrete_ec
         else:
-            current_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
+            concrete_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
             rebar_ec = rebar_vol * 2.510 * 7850
+
+            materials_breakdown.append({
+                "material": current_material,
+                "ec": concrete_ec
+            })
+            materials_breakdown.append({
+                "material": "Rebar",
+                "ec": rebar_ec
+            })
+
             logger.debug(f"EC for {beam.Name}'s rebars is {rebar_ec}")
-            total_ec += rebar_ec
-            
+            current_ec = concrete_ec + rebar_ec
+
         logger.debug(f"EC for {beam.Name} is {current_ec}")
+        beam_elements.append({
+            "element": "Beam",
+            "ec": current_ec,
+            "materials": materials_breakdown
+        })
+        
         total_ec += current_ec
     
     logger.debug(f"Total EC for beams is {total_ec}")
-    return total_ec
+    return total_ec, beam_elements
 
 def calculate_columns(columns):
     """Calculate embodied carbon for columns, using material matching if needed"""
@@ -1059,7 +1079,6 @@ def calculate_roofs(roofs):
     logger.debug(f"Total EC for roofs is {total_ec}")
     return total_ec
 
-
 def calculate_stairs(stairs):
     """Calculate embodied carbon for stairs, using material matching if needed"""
     total_ec = 0
@@ -1385,7 +1404,6 @@ def calculate_railings(railings):
     logger.debug(f"Total EC for railings is {total_ec}")
     return total_ec
 
-
 def calculate_members(members):
     """Calculate embodied carbon for structural members, using material matching if needed"""
     total_ec = 0
@@ -1491,6 +1509,7 @@ def calculate_members(members):
     
     logger.debug(f"Total EC for members is {total_ec}")
     return total_ec       
+
 def calculate_plates(plates):
     """Calculate embodied carbon for plates, using material matching if needed"""
     total_ec = 0
@@ -1962,7 +1981,7 @@ def calculate_embodied_carbon(filepath):
         total_ec += columns_ec
 
     if beams:
-        beams_ec= calculate_beams(beams)
+        beams_ec, _ = calculate_beams(beams)
         total_ec += beams_ec
 
     if slabs:
