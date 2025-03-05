@@ -181,15 +181,19 @@ def calculate_columns(columns):
     total_ec = 0
     quantities = {}
     materials = []
-    
+    column_elements = []
+
     for column in columns:
         current_quantity = None
         current_material = None
         rebar = None
         height = None
         rebar_vol= None
+        materials_breakdown = []
+
         psets = get_psets(column)
         rebar_set = psets.get('Rebar Set')
+
         if rebar_set is None:
             logger.error('Rebar set not found')
         if rebar_set:
@@ -300,18 +304,40 @@ def calculate_columns(columns):
         material_ec_perkg, material_density = current_material_ec
         
         if rebar_vol == None:
-            current_ec = material_ec_perkg * material_density * current_quantity
+            concrete_ec = material_ec_perkg * material_density * current_quantity
+            materials_breakdown.append({
+                "material": current_material,
+                "ec": concrete_ec
+            })
+            current_ec = concrete_ec
         else:
-            current_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
+            concrete_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
             rebar_ec = rebar_vol * 2.510 * 7850
+
+            materials_breakdown.append({
+                "material": current_material,
+                "ec": concrete_ec
+            })
+            
+            materials_breakdown.append({
+                "material": "Rebar",
+                "ec": rebar_ec
+            })
+
             logger.debug(f"EC for {column.Name}'s rebars is {rebar_ec}")
-            total_ec += rebar_ec
-        
+            current_ec = concrete_ec + rebar_ec
+
+        column_elements.append({
+            "element": "Column",  
+            "ec": current_ec,
+            "materials": materials_breakdown
+        })
+             
         logger.debug(f"EC for {column.Name} is {current_ec}")
         total_ec += current_ec
     
     logger.debug(f"Total EC for columns is {total_ec}")
-    return total_ec
+    return total_ec, column_elements  
 
 def calculate_slabs(slabs, to_ignore=[]):
     """Calculate embodied carbon for slabs, using material matching if needed"""
@@ -2021,13 +2047,13 @@ def calculate_embodied_carbon(filepath):
     #print(slabs_to_ignore)
 
     if columns:
-        columns_ec= calculate_columns(columns)
+        columns_ec, _ = calculate_columns(columns)
         total_ec += columns_ec
 
     if beams:
         beams_ec, _ = calculate_beams(beams)
         total_ec += beams_ec
-
+        
     if slabs:
         slabs_ec, _ = calculate_slabs(slabs, to_ignore=slabs_to_ignore)
         total_ec += slabs_ec
