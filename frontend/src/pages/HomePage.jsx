@@ -4,17 +4,15 @@ import IfcDialog from "./IfcDialog";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext.jsx";
-import {
-  ArrowUpTrayIcon,
-  DocumentIcon,
-  ArrowRightIcon,
-} from "@heroicons/react/24/solid";
+import { ArrowUpTrayIcon, ArrowRightIcon } from "@heroicons/react/24/solid";
 
 function HomePage() {
   const [projects, setProjects] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [error, setError] = useState(null); // State to store any errors
   const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [selectedProjectName, setSelectedProjectName] = useState(null);
+
   const { username } = useUser();
   const navigate = useNavigate();
   const formatDate = (dateString) => {
@@ -22,8 +20,9 @@ function HomePage() {
     return date.toLocaleDateString("en-GB"); // 'en-GB' ensures DD/MM/YYYY format
   };
 
-  const handleUploadClick = (projectId) => {
+  const handleUploadClick = (projectId, projectName) => {
     setSelectedProjectId(projectId);
+    setSelectedProjectName(projectName);
     setIsDialogOpen(true);
   };
   const handleCloseDialog = () => {
@@ -92,7 +91,7 @@ function HomePage() {
                 Latest Update
               </th>
               <th className="border border-gray-300 px-4 py-2 text-left">
-                IFC file
+                Upload IFC file
               </th>
               <th className="border border-gray-300 px-4 py-2 text-left">
                 Go To Project
@@ -100,43 +99,46 @@ function HomePage() {
             </tr>
           </thead>
           <tbody>
-            {projects.map((project, index) => (
-              <tr key={index} className="hover:bg-gray-100">
-                <td className="border border-gray-300 px-4 py-2">
-                  {project.project_name}
-                </td>
-                <td className="border border-gray-300 px-4 py-2">
-                  {project.client_name}
-                </td>
-                <td className="border border-gray-300 px-4 py-2">
-                  {formatDate(project.last_edited_date)},{" "}
-                  {project.last_edited_user}
-                </td>
-                <td className="border border-gray-300 px-4 py-2 text-center">
-                  {/*Conditional upload icon rendering */}
-                  <button
-                    className="text-gray-600 hover:text-blue-500"
-                    onClick={() => handleUploadClick(project._id)} // Pass the project ID
-                  >
-                    {project.filepath === "" ? (
+            {projects
+              .slice() // Create a copy to avoid mutating the original array
+              .sort(
+                (a, b) =>
+                  new Date(b.last_edited_date) - new Date(a.last_edited_date)
+              ) // Sort by latest date
+              .map((project, index) => (
+                <tr key={index} className="hover:bg-gray-100">
+                  <td className="border border-gray-300 px-4 py-2">
+                    {project.project_name}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2">
+                    {project.client_name}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2">
+                    {formatDate(project.last_edited_date)},{" "}
+                    {project.last_edited_user}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">
+                    <button
+                      className="text-gray-600 hover:text-blue-500"
+                      onClick={() =>
+                        handleUploadClick(project._id, project.project_name)
+                      }
+                    >
                       <ArrowUpTrayIcon className="w-6 h-6 text-gray-500" />
-                    ) : (
-                      <DocumentIcon className="w-6 h-6 text-blue-500" />
-                    )}
-                  </button>
-                </td>
-                <td className="border border-gray-300 px-4 py-2 text-center">
-                  <button
-                    onClick={() =>
-                      handleGoToProject(project._id, project.project_name)
-                    }
-                    className="text-gray-600 hover:text-blue-500"
-                  >
-                    <ArrowRightIcon className="w-6 h-6 text-gray-500" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+                    </button>
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-center">
+                    <button
+                      onClick={() =>
+                        handleGoToProject(project._id, project.project_name)
+                      }
+                      className="text-gray-600 hover:text-blue-500"
+                    >
+                      <ArrowRightIcon className="w-6 h-6 text-gray-500" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
 
@@ -144,6 +146,7 @@ function HomePage() {
         {isDialogOpen && (
           <IfcDialog
             onClose={handleCloseDialog}
+            projectName={selectedProjectName}
             projectId={selectedProjectId}
           />
         )}
