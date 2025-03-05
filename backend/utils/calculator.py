@@ -629,16 +629,17 @@ def calculate_slabs(slabs, to_ignore=[]):
 def calculate_walls(walls):
     """Calculate embodied carbon for walls, using material matching if needed"""
     total_ec = 0
-    
+    wall_elements = []
+
     for wall in walls:
         current_volume = None
         current_material = None
-        layer_area = None
         layer_thicknesses = {}
         layer_materials = []
         current_ec = None
         current_area = None
-        
+        materials_breakdown = [] 
+
         if hasattr(wall, "IsDefinedBy"):
             for definition in wall.IsDefinedBy:
                 if definition.is_a('IfcRelDefinesByProperties'):
@@ -708,10 +709,22 @@ def calculate_walls(walls):
                 
                 ec_per_kg, density = mat_ec_data
                 logger.debug(f"Layer info - thickness: {thickness}, area: {current_area}, ec_per_kg: {ec_per_kg}, density: {density}")
-                current_ec = ec_per_kg * density * (thickness/1000) * current_area
-                logger.debug(f"EC for material '{mat}' in {wall.Name} is {current_ec}")
-                total_ec += current_ec
-                
+                layer_ec = ec_per_kg * density * (thickness/1000) * current_area
+
+                materials_breakdown.append({
+                    "material": mat,
+                    "ec": layer_ec
+                })
+                logger.debug(f"EC for material '{mat}' in {wall.Name} is {layer_ec}")
+                current_ec += layer_ec
+
+            total_ec += current_ec   
+            wall_elements.append({
+                "element": "Wall",
+                "ec": current_ec,
+                "materials": materials_breakdown
+            })
+
         elif current_material:
             # Single-material wall
             mat_ec_data = MaterialList.get(current_material)
@@ -742,6 +755,17 @@ def calculate_walls(walls):
                 
             ec_per_kg, density = mat_ec_data
             current_ec = ec_per_kg * density * current_volume
+
+            materials_breakdown.append({
+                "material": current_material,
+                "ec": current_ec
+            })
+            wall_elements.append({
+                "element": "Wall",
+                "ec": current_ec,
+                "materials": materials_breakdown
+            })
+
             logger.debug(f"EC for {wall.Name} is {current_ec}")
             total_ec += current_ec
 
@@ -780,6 +804,19 @@ def calculate_walls(walls):
                 
                 ec_per_kg, density = mat_ec_data
                 current_ec = ec_per_kg * density * current_volume
+
+                materials_breakdown.append({
+                    "material": current_material,
+                    "ec": current_ec
+                })
+                
+                # Add this wall to elements
+                wall_elements.append({
+                    "element": "Wall",
+                    "ec": current_ec,
+                    "materials": materials_breakdown
+                })
+            
                 logger.debug(f"EC for {wall.Name} is {current_ec}")
                 total_ec += current_ec
             else:
@@ -787,7 +824,7 @@ def calculate_walls(walls):
                 continue
         
     logger.debug(f"Total EC for walls is {total_ec}")
-    return total_ec
+    return total_ec, wall_elements
 
 def calculate_windows(windows):
     """Calculate embodied carbon for windows, using material matching if needed"""
@@ -2053,13 +2090,13 @@ def calculate_embodied_carbon(filepath):
     if beams:
         beams_ec, _ = calculate_beams(beams)
         total_ec += beams_ec
-        
+
     if slabs:
         slabs_ec, _ = calculate_slabs(slabs, to_ignore=slabs_to_ignore)
         total_ec += slabs_ec
 
     if walls:
-        walls_ec = calculate_walls(walls)
+        walls_ec, _ = calculate_walls(walls)
         total_ec += walls_ec
 
     if windows:
