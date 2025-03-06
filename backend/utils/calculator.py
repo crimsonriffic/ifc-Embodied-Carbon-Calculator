@@ -830,11 +830,12 @@ def calculate_windows(windows):
     """Calculate embodied carbon for windows, using material matching if needed"""
     total_ec = 0
     quantities = {}
-    materials = []
+    window_elements = []
 
     for window in windows:
         current_quantity = None
         current_material = None
+        materials_breakdown = []
 
         if hasattr(window, "IsDefinedBy"):
             for definition in window.IsDefinedBy:
@@ -891,21 +892,32 @@ def calculate_windows(windows):
             standard_thickness = 0.025
             current_ec = material_ec_perkg * material_density * standard_thickness * current_quantity
 
+        materials_breakdown.append({
+            "material": current_material,
+            "ec": current_ec
+        })
+        window_elements.append({
+            "element": "Window",
+            "ec": current_ec,
+            "materials": materials_breakdown
+        })
+
         logger.debug(f"EC for {window.Name} is {current_ec}")
         total_ec += current_ec
     
     logger.debug(f"Total EC for windows is {total_ec}")
-    return total_ec
+    return total_ec, window_elements
 
 def calculate_doors(doors):
     """Calculate embodied carbon for doors, using material matching if needed"""
     total_ec = 0
     quantities = {}
-    materials = []
+    door_elements = []
 
     for door in doors:
         current_quantity = None
         current_material = None
+        materials_breakdown = []
 
         if hasattr(door, "IsDefinedBy"):
             for definition in door.IsDefinedBy:
@@ -962,11 +974,21 @@ def calculate_doors(doors):
             standard_thickness = 0.04
             current_ec = material_ec_perkg * material_density * standard_thickness * current_quantity
 
+        materials_breakdown.append({
+            "material": current_material,
+            "ec": current_ec
+        })
+        door_elements.append({
+            "element": "Door",
+            "ec": current_ec,
+            "materials": materials_breakdown
+        })
+
         logger.debug(f"EC for {door.Name} is {current_ec}")
         total_ec += current_ec
     
     logger.debug(f"Total EC for doors is {total_ec}")
-    return total_ec     
+    return total_ec, door_elements
     
 def calculate_roofs(roofs):
     """Calculate embodied carbon for roofs, using material matching if needed"""
@@ -2009,13 +2031,6 @@ def calculate_footings(footings):
 
     return total_ec
 
-
-
-    
-    logger.debug(f"Total EC for columns is {total_ec}")
-
-    return total_ec
-
 def calculate_embodied_carbon(filepath):
     
     
@@ -2100,13 +2115,15 @@ def calculate_embodied_carbon(filepath):
         total_ec += walls_ec
 
     if windows:
-        windows_ec = calculate_windows(windows)
+        windows_ec, windows_breakdown = calculate_windows(windows)
+        print(windows_breakdown)
         total_ec += windows_ec
 
     if doors:
-        doors_ec = calculate_doors(doors)
+        doors_ec, doors_breakdown = calculate_doors(doors)
+        print(doors_breakdown)
         total_ec += doors_ec
-
+    
     # IfcStairFlight only
     if stairs:
         stairs_ec = calculate_stairs(stairs)
