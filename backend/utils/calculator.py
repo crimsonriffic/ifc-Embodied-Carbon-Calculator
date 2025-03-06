@@ -1615,12 +1615,14 @@ def calculate_railings(railings):
 def calculate_members(members):
     """Calculate embodied carbon for structural members, using material matching if needed"""
     total_ec = 0
-    
+    member_elements = []
+
     for member in members:
         current_quantity = None
         current_material = None
         material_layers = []
-        
+        materials_breakdown = []
+
         # Get volume information
         if hasattr(member, "IsDefinedBy"):
             for definition in member.IsDefinedBy:
@@ -1712,11 +1714,23 @@ def calculate_members(members):
                 
         material_ec_perkg, material_density = current_material_ec
         current_ec = material_ec_perkg * material_density * current_quantity
+
+        materials_breakdown.append({
+            "material": current_material,
+            "ec": current_ec
+        })
+        
+        member_elements.append({
+            "element": "Member",  
+            "ec": current_ec,
+            "materials": materials_breakdown
+        })
+
         logger.debug(f"EC for {member.Name} is {current_ec}")
         total_ec += current_ec
     
     logger.debug(f"Total EC for members is {total_ec}")
-    return total_ec       
+    return total_ec, member_elements
 
 def calculate_plates(plates):
     """Calculate embodied carbon for plates, using material matching if needed"""
@@ -2110,138 +2124,275 @@ def calculate_footings(footings):
 
     return total_ec
 
-def calculate_embodied_carbon(filepath):
+def calculate_embodied_carbon(filepath, with_breakdown=False):
+    slabs_to_ignore = []
+    total_ec = columns_ec = beams_ec = slabs_ec = walls_ec = windows_ec = roofs_ec = doors_ec = stairs_ec = railings_ec = members_ec = plates_ec = piles_ec = footings_ec = 0
     
-    
-    slabs_to_ignore=[]
-    total_ec = columns_ec = beams_ec = slabs_ec = walls_ec = windows_ec = roofs_ec = doors_ec = stairs_ec = railings_ec = members_ec = plates_ec = piles_ec = footings_ec= 0
-    columns = beams = slabs = walls = windows = roofs = doors = stairs = railings = members = plates = piles= footings = None
-
+    # Create data structure for EC breakdown
+    ec_data = {
+        "total_ec": 0,
+        "ec_breakdown": [
+            {
+                "category": "Substructure",
+                "total_ec": 0,
+                "elements": []
+            },
+            {
+                "category": "Superstructure",
+                "total_ec": 0,
+                "elements": []
+            }
+        ]
+    }
     
     ifc_file = ifcopenshell.open(filepath)
 
+    # Get elements by level
+    substructure_elements = calculator_utils.get_substructure_elements(filepath)
+    
+    # Create sets for quick lookup
+    substructure_ids = {elem.id() for elem in substructure_elements}
+    
+    # Get all elements from the model
     columns = ifc_file.by_type('IfcColumn')
-    logger.info(f"Total columns found {len(columns)}")
-
     beams = ifc_file.by_type('IfcBeam')
-    logger.info(f"Total beams found {len(beams)}")
-
     slabs = ifc_file.by_type('IfcSlab')
-    logger.info(f"Total slabs found {len(slabs)}")
-    
-    roofs = ifc_file.by_type('IfcRoof')
-    logger.info(f"Total roofs found {len(roofs)}")
-
-    windows = ifc_file.by_type('IfcWindow')
-    logger.info(f"Total windows found {len(windows)}")
-
     walls = ifc_file.by_type('IfcWall')
-    logger.info(f"Total walls found {len(walls)}")
-
+    windows = ifc_file.by_type('IfcWindow')
+    roofs = ifc_file.by_type('IfcRoof')
     doors = ifc_file.by_type('IfcDoor')
-    logger.info(f"Total doors found {len(doors)}")
-
     stairs = ifc_file.by_type('IfcStairFlight')
-    logger.info(f"Total stairflights found {len(stairs)}")
-
     railings = ifc_file.by_type('IfcRailing')
-    logger.info(f"Total railings found {len(railings)}")
-
-    spaces = ifc_file.by_type('IfcSpace')
-    logger.info(f"Total spaces found {len(spaces)}")
-    
     members = ifc_file.by_type('IfcMember')
-    logger.info(f"Total members found {len(members)}")
-
     plates = ifc_file.by_type('IfcPlate')
-    logger.info(f"Total plates found {len(plates)}")
-    
     piles = ifc_file.by_type('IfcPile')
-    logger.info(f"Total piles found {len(piles)}")
-    
     footings = ifc_file.by_type('IfcFooting')
+
+    # Log element counts
+    logger.info(f"Total columns found {len(columns)}")
+    logger.info(f"Total beams found {len(beams)}")
+    logger.info(f"Total slabs found {len(slabs)}")
+    logger.info(f"Total roofs found {len(roofs)}")
+    logger.info(f"Total windows found {len(windows)}")
+    logger.info(f"Total walls found {len(walls)}")
+    logger.info(f"Total doors found {len(doors)}")
+    logger.info(f"Total stairflights found {len(stairs)}")
+    logger.info(f"Total railings found {len(railings)}")
+    logger.info(f"Total members found {len(members)}")
+    logger.info(f"Total plates found {len(plates)}")
+    logger.info(f"Total piles found {len(piles)}")
     logger.info(f"Total footings found {len(footings)}")
 
-
+    # Identify which slabs to ignore (those part of roofs)
     if roofs:
         for roof in roofs:
-            aggregated_by = roof.IsDecomposedBy
-            # print(aggregated_by)
-            for rel in aggregated_by:
-                if rel.is_a('IfcRelAggregates'):
-                    # print(rel)
-                    for part in rel.RelatedObjects:
-                        print(f"child : {part.is_a()}")
-                        if part.is_a('IfcSlab'):
-                            slabs_to_ignore.append(part.id())
-                    
-    #print(slabs_to_ignore)
-
+            if hasattr(roof, "IsDecomposedBy"):
+                for rel in roof.IsDecomposedBy:
+                    if rel.is_a('IfcRelAggregates'):
+                        for part in rel.RelatedObjects:
+                            if part.is_a('IfcSlab'):
+                                slabs_to_ignore.append(part.id())
+    
+    # Split elements into substructure and superstructure based on ID
+    # Columns
     if columns:
-        columns_ec, _ = calculate_columns(columns)
-        total_ec += columns_ec
+        substructure_columns = [c for c in columns if c.id() in substructure_ids]
+        superstructure_columns = [c for c in columns if c.id() not in substructure_ids]
+        
+        if substructure_columns:
+            sub_columns_ec, sub_columns_elements = calculate_columns(substructure_columns)
+            ec_data["ec_breakdown"][0]["elements"].extend(sub_columns_elements)
+            ec_data["ec_breakdown"][0]["total_ec"] += sub_columns_ec
+            columns_ec += sub_columns_ec
+        
+        if superstructure_columns:
+            super_columns_ec, super_columns_elements = calculate_columns(superstructure_columns)
+            ec_data["ec_breakdown"][1]["elements"].extend(super_columns_elements)
+            ec_data["ec_breakdown"][1]["total_ec"] += super_columns_ec
+            columns_ec += super_columns_ec
 
+    # Beams
     if beams:
-        beams_ec, _ = calculate_beams(beams)
-        total_ec += beams_ec
+        substructure_beams = [b for b in beams if b.id() in substructure_ids]
+        superstructure_beams = [b for b in beams if b.id() not in substructure_ids]
+        
+        if substructure_beams:
+            sub_beams_ec, sub_beams_elements = calculate_beams(substructure_beams)
+            ec_data["ec_breakdown"][0]["elements"].extend(sub_beams_elements)
+            ec_data["ec_breakdown"][0]["total_ec"] += sub_beams_ec
+            beams_ec += sub_beams_ec
+        
+        if superstructure_beams:
+            super_beams_ec, super_beams_elements = calculate_beams(superstructure_beams)
+            ec_data["ec_breakdown"][1]["elements"].extend(super_beams_elements)
+            ec_data["ec_breakdown"][1]["total_ec"] += super_beams_ec
+            beams_ec += super_beams_ec
 
+    # Slabs
     if slabs:
-        slabs_ec, _ = calculate_slabs(slabs, to_ignore=slabs_to_ignore)
-        total_ec += slabs_ec
+        valid_slabs = [s for s in slabs if s.id() not in slabs_to_ignore]
+        substructure_slabs = [s for s in valid_slabs if s.id() in substructure_ids]
+        superstructure_slabs = [s for s in valid_slabs if s.id() not in substructure_ids]
+        
+        if substructure_slabs:
+            sub_slabs_ec, sub_slabs_elements = calculate_slabs(substructure_slabs)
+            ec_data["ec_breakdown"][0]["elements"].extend(sub_slabs_elements)
+            ec_data["ec_breakdown"][0]["total_ec"] += sub_slabs_ec
+            slabs_ec += sub_slabs_ec
+        
+        if superstructure_slabs:
+            super_slabs_ec, super_slabs_elements = calculate_slabs(superstructure_slabs)
+            ec_data["ec_breakdown"][1]["elements"].extend(super_slabs_elements)
+            ec_data["ec_breakdown"][1]["total_ec"] += super_slabs_ec
+            slabs_ec += super_slabs_ec
 
+    # Walls
     if walls:
-        walls_ec, _ = calculate_walls(walls)
-        total_ec += walls_ec
+        substructure_walls = [w for w in walls if w.id() in substructure_ids]
+        superstructure_walls = [w for w in walls if w.id() not in substructure_ids]
+        
+        if substructure_walls:
+            sub_walls_ec, sub_walls_elements = calculate_walls(substructure_walls)
+            ec_data["ec_breakdown"][0]["elements"].extend(sub_walls_elements)
+            ec_data["ec_breakdown"][0]["total_ec"] += sub_walls_ec
+            walls_ec += sub_walls_ec
+        
+        if superstructure_walls:
+            super_walls_ec, super_walls_elements = calculate_walls(superstructure_walls)
+            ec_data["ec_breakdown"][1]["elements"].extend(super_walls_elements)
+            ec_data["ec_breakdown"][1]["total_ec"] += super_walls_ec
+            walls_ec += super_walls_ec
 
+    # Elements typically in superstructure only
+    
+    # Windows
     if windows:
-        windows_ec, windows_breakdown = calculate_windows(windows)
+        windows_ec, windows_elements = calculate_windows(windows)
+        ec_data["ec_breakdown"][1]["elements"].extend(windows_elements)
+        ec_data["ec_breakdown"][1]["total_ec"] += windows_ec
         total_ec += windows_ec
 
+    # Doors - can be in both, so check against substructure IDs
     if doors:
-        doors_ec, doors_breakdown = calculate_doors(doors)
-        total_ec += doors_ec
-    
-    # IfcStairFlight only
-    if stairs:
-        stairs_ec, stairs_breakdown = calculate_stairs(stairs)
-        total_ec += stairs_ec
+        substructure_doors = [d for d in doors if d.id() in substructure_ids]
+        superstructure_doors = [d for d in doors if d.id() not in substructure_ids]
+        
+        if substructure_doors:
+            sub_doors_ec, sub_doors_elements = calculate_doors(substructure_doors)
+            ec_data["ec_breakdown"][0]["elements"].extend(sub_doors_elements)
+            ec_data["ec_breakdown"][0]["total_ec"] += sub_doors_ec
+            doors_ec += sub_doors_ec
+            
+        if superstructure_doors:
+            super_doors_ec, super_doors_elements = calculate_doors(superstructure_doors)
+            ec_data["ec_breakdown"][1]["elements"].extend(super_doors_elements)
+            ec_data["ec_breakdown"][1]["total_ec"] += super_doors_ec
+            doors_ec += super_doors_ec
 
-    if railings:
-        railings_ec, railings_breakdown = calculate_railings(railings)
-        print(railings_breakdown)
-        total_ec += railings_ec
-    exit()
+    # Roofs are always in superstructure
     if roofs:
-        roofs_ec, roofs_breakdown = calculate_roofs(roofs)
+        roofs_ec, roofs_elements = calculate_roofs(roofs)
+        ec_data["ec_breakdown"][1]["elements"].extend(roofs_elements)
+        ec_data["ec_breakdown"][1]["total_ec"] += roofs_ec
         total_ec += roofs_ec
+    
+    # Stairs
+    if stairs:
+        substructure_stairs = [s for s in stairs if s.id() in substructure_ids]
+        superstructure_stairs = [s for s in stairs if s.id() not in substructure_ids]
+        
+        if substructure_stairs:
+            sub_stairs_ec, sub_stairs_elements = calculate_stairs(substructure_stairs)
+            ec_data["ec_breakdown"][0]["elements"].extend(sub_stairs_elements)
+            ec_data["ec_breakdown"][0]["total_ec"] += sub_stairs_ec
+            stairs_ec += sub_stairs_ec
+            
+        if superstructure_stairs:
+            super_stairs_ec, super_stairs_elements = calculate_stairs(superstructure_stairs)
+            ec_data["ec_breakdown"][1]["elements"].extend(super_stairs_elements)
+            ec_data["ec_breakdown"][1]["total_ec"] += super_stairs_ec
+            stairs_ec += super_stairs_ec
 
+    # Railings
+    if railings:
+        substructure_railings = [r for r in railings if r.id() in substructure_ids]
+        superstructure_railings = [r for r in railings if r.id() not in substructure_ids]
+        
+        if substructure_railings:
+            sub_railings_ec, sub_railings_elements = calculate_railings(substructure_railings)
+            ec_data["ec_breakdown"][0]["elements"].extend(sub_railings_elements)
+            ec_data["ec_breakdown"][0]["total_ec"] += sub_railings_ec
+            railings_ec += sub_railings_ec
+            
+        if superstructure_railings:
+            super_railings_ec, super_railings_elements = calculate_railings(superstructure_railings)
+            ec_data["ec_breakdown"][1]["elements"].extend(super_railings_elements)
+            ec_data["ec_breakdown"][1]["total_ec"] += super_railings_ec
+            railings_ec += super_railings_ec
+
+    # Members
     if members:
-        members_ec = calculate_members(members)
-        total_ec += members_ec
-    
-    if plates:
-        plates_ec = calculate_plates(plates)
-        total_ec += plates_ec
+        substructure_members = [m for m in members if m.id() in substructure_ids]
+        superstructure_members = [m for m in members if m.id() not in substructure_ids]
         
-    if piles:
-        piles_ec = calculate_piles(piles)
-        total_ec += piles_ec
+        if substructure_members:
+            sub_members_ec, sub_members_elements = calculate_members(substructure_members)
+            ec_data["ec_breakdown"][0]["elements"].extend(sub_members_elements)
+            ec_data["ec_breakdown"][0]["total_ec"] += sub_members_ec
+            members_ec += sub_members_ec
         
-    if footings:
-        footings_ec = calculate_footings(footings)
-        total_ec += footings_ec
+        if superstructure_members:
+            super_members_ec, super_members_elements = calculate_members(superstructure_members)
+            ec_data["ec_breakdown"][1]["elements"].extend(super_members_elements)
+            ec_data["ec_breakdown"][1]["total_ec"] += super_members_ec
+            members_ec += super_members_ec
+
+    # # Plates
+    # if plates:
+    #     substructure_plates = [p for p in plates if p.id() in substructure_ids]
+    #     superstructure_plates = [p for p in plates if p.id() not in substructure_ids]
+        
+    #     if substructure_plates:
+    #         sub_plates_ec, sub_plates_elements = calculate_plates(substructure_plates)
+    #         ec_data["ec_breakdown"][0]["elements"].extend(sub_plates_elements)
+    #         ec_data["ec_breakdown"][0]["total_ec"] += sub_plates_ec
+    #         plates_ec += sub_plates_ec
+        
+    #     if superstructure_plates:
+    #         super_plates_ec, super_plates_elements = calculate_plates(superstructure_plates)
+    #         ec_data["ec_breakdown"][1]["elements"].extend(super_plates_elements)
+    #         ec_data["ec_breakdown"][1]["total_ec"] += super_plates_ec
+    #         plates_ec += super_plates_ec
+
+    # # Piles and footings are always in substructure by definition
+    # if piles:
+    #     piles_ec, piles_elements = calculate_piles(piles)
+    #     ec_data["ec_breakdown"][0]["elements"].extend(piles_elements)
+    #     ec_data["ec_breakdown"][0]["total_ec"] += piles_ec
+    #     total_ec += piles_ec
+        
+    # if footings:
+    #     footings_ec, footings_elements = calculate_footings(footings)
+    #     ec_data["ec_breakdown"][0]["elements"].extend(footings_elements)
+    #     ec_data["ec_breakdown"][0]["total_ec"] += footings_ec
+    #     total_ec += footings_ec
     
+    # Calculate total EC by summing individual categories
+    total_ec = columns_ec + beams_ec + slabs_ec + walls_ec + windows_ec + doors_ec + \
+               stairs_ec + railings_ec + roofs_ec + members_ec + plates_ec + piles_ec + footings_ec
+    ec_data["total_ec"] = total_ec
     
     logger.info(f"Total EC calculated: {total_ec}")
     logger.info(f"Breakdown:\n {columns_ec=}\n {beams_ec=}\n {slabs_ec=}\n\
 {walls_ec=}\n {windows_ec=}\n {doors_ec=}\n {stairs_ec=} \n \
 {railings_ec=}\n {roofs_ec=}\n {members_ec=}\n {plates_ec=}\n \
 {piles_ec=}\n {footings_ec=}")
-    logger.info(f"Breakdown:\n {len(columns)=}\n {len(beams)=}\n {len(slabs)=}\n\
-{len(walls)=}\n {len(windows)=}\n {len(doors)=}\n {len(stairs)=} \n \
-{len(railings)=}\n {len(roofs)=}\n {len(members)=}\n {len(plates)=}\n \
-{len(piles)=}\n {len(footings)=}")
-    return total_ec
+    logger.info(f"Breakdown by category: Substructure EC: {ec_data['ec_breakdown'][0]['total_ec']}, Superstructure EC: {ec_data['ec_breakdown'][1]['total_ec']}")
+    # print(ec_data)
+    if with_breakdown:
+        return total_ec, ec_data
+    else:
+        return total_ec
 
 def calculate_gfa(filepath):
 
