@@ -36,78 +36,220 @@ function ProjectPage() {
     setVersionNumber(e.target.value);
   };
   // DUMMY DATA FOR SANKEY
+  // const data = {
+  //   total_ec: 10731.417534758186,
+  //   ec_breakdown: [
+  //     {
+  //       category: "Substructure",
+  //       total_ec: 5342.13,
+  //       elements: [
+  //         {
+  //           element: "Slab",
+  //           ec: 1291.952,
+  //           materials: [{ material: "Concrete", ec: 1291.952 }],
+  //         },
+  //         {
+  //           element: "Wall",
+  //           ec: 1096.68,
+  //           materials: [{ material: "Concrete", ec: 1096.68 }],
+  //         },
+  //         {
+  //           element: "Wall",
+  //           ec: 1012.32,
+  //           materials: [{ material: "Concrete", ec: 1012.32 }],
+  //         },
+  //         {
+  //           element: "Wall",
+  //           ec: 1012.32,
+  //           materials: [{ material: "Concrete", ec: 1012.32 }],
+  //         },
+  //         {
+  //           element: "Wall",
+  //           ec: 927.96,
+  //           materials: [{ material: "Concrete", ec: 927.96 }],
+  //         },
+  //       ],
+  //     },
+  //     {
+  //       category: "Superstructure",
+  //       total_ec: 5389.2875,
+  //       elements: [
+  //         {
+  //           element: "Roof",
+  //           ec: 481.5187485187485,
+  //           materials: [{ material: "Concrete", ec: 481.5187485187485 }],
+  //         },
+  //         {
+  //           element: "Slab",
+  //           ec: 645.5215,
+  //           materials: [{ material: "Concrete", ec: 645.5215 }],
+  //         },
+  //         {
+  //           element: "Wall",
+  //           ec: 1154.4,
+  //           materials: [{ material: "Concrete", ec: 1154.4 }],
+  //         },
+  //         {
+  //           element: "Wall",
+  //           ec: 1065.6,
+  //           materials: [{ material: "Concrete", ec: 1065.6 }],
+  //         },
+  //         {
+  //           element: "Wall",
+  //           ec: 1065.6,
+  //           materials: [{ material: "Concrete", ec: 1065.6 }],
+  //         },
+  //         {
+  //           element: "Wall",
+  //           ec: 976.8,
+  //           materials: [{ material: "Concrete", ec: 976.8 }],
+  //         },
+  //       ],
+  //     },
+  //   ],
+  // };
+
+  // TESTING DAVIS CODE DATA
   const data = {
     total_ec: 10731.417534758186,
     ec_breakdown: [
       {
         category: "Substructure",
-        total_ec: 5342.13,
+        total_ec: 5342.129999999996,
         elements: [
           {
             element: "Slab",
-            ec: 1291.952,
-            materials: [{ material: "Concrete", ec: 1291.952 }],
+            ec: 1292.8500000000004,
+            materials: [
+              {
+                material: "Concrete, Grade 40",
+                ec: 1292.8500000000004,
+              },
+            ],
           },
           {
             element: "Wall",
-            ec: 1096.68,
-            materials: [{ material: "Concrete", ec: 1096.68 }],
+            ec: 1096.6800000000028,
+            materials: [
+              {
+                material: "Concrete, Precast, Ordinary Portland Cement",
+                ec: 1096.6800000000028,
+              },
+            ],
+          },
+          {
+            element: "Wall",
+            ec: 1012.3199999999965,
+            materials: [
+              {
+                material: "Concrete, Precast, Ordinary Portland Cement",
+                ec: 1012.3199999999965,
+              },
+            ],
           },
           {
             element: "Wall",
             ec: 1012.32,
-            materials: [{ material: "Concrete", ec: 1012.32 }],
+            materials: [
+              {
+                material: "Concrete, Precast, Ordinary Portland Cement",
+                ec: 1012.32,
+              },
+            ],
           },
           {
             element: "Wall",
-            ec: 1012.32,
-            materials: [{ material: "Concrete", ec: 1012.32 }],
-          },
-          {
-            element: "Wall",
-            ec: 927.96,
-            materials: [{ material: "Concrete", ec: 927.96 }],
+            ec: 927.9599999999963,
+            materials: [
+              {
+                material: "Concrete, Precast, Ordinary Portland Cement",
+                ec: 927.9599999999963,
+              },
+            ],
           },
         ],
       },
       {
         category: "Superstructure",
-        total_ec: 5389.2875,
+        total_ec: 5389.28753475819,
         elements: [
           {
-            element: "Roof",
-            ec: 481.5187485187485,
-            materials: [{ material: "Concrete", ec: 481.5187485187485 }],
-          },
-          {
             element: "Slab",
-            ec: 645.5215,
-            materials: [{ material: "Concrete", ec: 645.5215 }],
+            ec: 645.3687500000002,
+            materials: [
+              {
+                material: "Concrete, Grade 25",
+                ec: 645.3687500000002,
+              },
+            ],
           },
           {
             element: "Wall",
-            ec: 1154.4,
-            materials: [{ material: "Concrete", ec: 1154.4 }],
+            ec: 1154.400000000003,
+            materials: [
+              {
+                material: "Concrete, Precast, Ordinary Portland Cement",
+                ec: 1154.400000000003,
+              },
+            ],
           },
           {
             element: "Wall",
-            ec: 1065.6,
-            materials: [{ material: "Concrete", ec: 1065.6 }],
+            ec: 1065.5999999999995,
+            materials: [
+              {
+                material: "Concrete, Precast, Ordinary Portland Cement",
+                ec: 1065.5999999999995,
+              },
+            ],
           },
           {
             element: "Wall",
-            ec: 1065.6,
-            materials: [{ material: "Concrete", ec: 1065.6 }],
+            ec: 1065.6000000000001,
+            materials: [
+              {
+                material: "Concrete, Precast, Ordinary Portland Cement",
+                ec: 1065.6000000000001,
+              },
+            ],
           },
           {
             element: "Wall",
-            ec: 976.8,
-            materials: [{ material: "Concrete", ec: 976.8 }],
+            ec: 976.7999999999994,
+            materials: [
+              {
+                material: "Concrete, Precast, Ordinary Portland Cement",
+                ec: 976.7999999999994,
+              },
+            ],
+          },
+          {
+            element: "Roof",
+            ec: 481.51878475818745,
+            materials: [
+              {
+                material: "Concrete, General",
+                ec: 120.37969618954686,
+              },
+              {
+                material: "Concrete, General",
+                ec: 120.37969618954686,
+              },
+              {
+                material: "Concrete, General",
+                ec: 120.37969618954686,
+              },
+              {
+                material: "Concrete, General",
+                ec: 120.37969618954686,
+              },
+            ],
           },
         ],
       },
     ],
   };
+
   /* Initial API calls to fetch project history and breakdown data */
   useEffect(() => {
     const fetchData = async () => {
