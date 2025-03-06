@@ -993,13 +993,14 @@ def calculate_doors(doors):
 def calculate_roofs(roofs):
     """Calculate embodied carbon for roofs, using material matching if needed"""
     total_ec = 0
-    quantities = {}
-    materials = []
+    roof_elements = []
 
     for roof in roofs:
         slabs = []
         roof_ec = 0
         current_ec = 0
+        roof_materials = []  
+
         if hasattr(roof, "IsDecomposedBy"):
             for rel in roof.IsDecomposedBy:
                 if rel.is_a("IfcRelAggregates"):
@@ -1015,7 +1016,8 @@ def calculate_roofs(roofs):
             current_ec = None
             current_quantity = None
             current_material = None
-            
+            slab_materials = [] 
+
             if hasattr(slab, "IsDefinedBy"):
                 for definition in slab.IsDefinedBy:
                     if definition.is_a('IfcRelDefinesByProperties'):
@@ -1123,9 +1125,15 @@ def calculate_roofs(roofs):
 
                     ec_per_kg, density = mat_ec_data
                     logger.debug(f"Layer info - thickness: {thickness}, area: {current_area}, ec_per_kg: {ec_per_kg}, density: {density}")
-                    current_ec = ec_per_kg * density * (thickness/1000) * current_area
+                    layer_ec = ec_per_kg * density * (thickness/1000) * current_area
+
+                    slab_materials.append({
+                        "material": mat,
+                        "ec": layer_ec
+                    })
+                    
                     logger.debug(f"EC for material '{mat}' in {slab.Name} is {current_ec}")
-                    roof_ec += current_ec
+                    roof_ec += layer_ec
 
             elif current_material:
                 # Single-material slab
@@ -1154,6 +1162,12 @@ def calculate_roofs(roofs):
                         
                 material_ec_perkg, material_density = current_material_ec
                 current_ec = material_ec_perkg * material_density * current_quantity
+
+                slab_materials.append({
+                    "material": current_material,
+                    "ec": current_ec
+                })
+
                 logger.debug(f"EC for {slab.Name} is {current_ec}")
                 roof_ec += current_ec
             
@@ -1199,14 +1213,27 @@ def calculate_roofs(roofs):
                 
                 material_ec_perkg, material_density = current_material_ec
                 current_ec = material_ec_perkg * material_density * current_quantity
+
+                slab_materials.append({
+                    "material": current_material,
+                    "ec": current_ec
+                })
+
                 logger.debug(f"EC for {slab.Name} is {current_ec}")
                 roof_ec += current_ec
 
+            roof_materials.extend(slab_materials)
+
+        roof_elements.append({
+            "element": "Roof",
+            "ec": roof_ec,
+            "materials": roof_materials
+        })
         logger.debug(f"EC for {roof.Name} is {roof_ec}")
         total_ec += roof_ec
     
     logger.debug(f"Total EC for roofs is {total_ec}")
-    return total_ec
+    return total_ec, roof_elements
 
 def calculate_stairs(stairs):
     """Calculate embodied carbon for stairs, using material matching if needed"""
@@ -2169,9 +2196,10 @@ def calculate_embodied_carbon(filepath):
         total_ec += railings_ec
     
     if roofs:
-        roofs_ec = calculate_roofs(roofs)
+        roofs_ec, roofs_breakdown = calculate_roofs(roofs)
+        print(roofs_breakdown)
         total_ec += roofs_ec
-    
+    exit()
     if members:
         members_ec = calculate_members(members)
         total_ec += members_ec
