@@ -1211,7 +1211,8 @@ def calculate_roofs(roofs):
 def calculate_stairs(stairs):
     """Calculate embodied carbon for stairs, using material matching if needed"""
     total_ec = 0
-    
+    stair_elements = []
+
     for stair in stairs:
         current_quantity = None
         current_material = None
@@ -1219,6 +1220,8 @@ def calculate_stairs(stairs):
         current_ec = None
         layer_thicknesses = {}
         material_layers = []
+        material_breakdown = []
+        stair_total_ec = 0
 
         # Get volume information
         if hasattr(stair, "IsDefinedBy"):
@@ -1322,9 +1325,22 @@ def calculate_stairs(stairs):
                 material_ec_perkg, material_density = mat_ec_data
                 # For layered materials, divide the volume by the number of materials
                 volume_per_material = current_quantity / len(material_layers)
-                current_ec = material_ec_perkg * material_density * volume_per_material
-                logger.debug(f"EC for material '{mat}' in {stair.Name} is {current_ec}")
-                total_ec += current_ec
+                layer_ec = material_ec_perkg * material_density * volume_per_material
+
+                material_breakdown.append({
+                    "material": mat,
+                    "ec": layer_ec
+                })
+
+                logger.debug(f"EC for material '{mat}' in {stair.Name} is {layer_ec}")
+                stair_total_ec += layer_ec
+            
+            stair_elements.append({
+                "element": "Stair",
+                "ec": stair_total_ec,
+                "materials": material_breakdown
+            })
+            total_ec += stair_total_ec
 
         elif current_material:
             # Single-material stair
@@ -1359,6 +1375,16 @@ def calculate_stairs(stairs):
                 
             material_ec_perkg, material_density = current_material_ec
             current_ec = material_ec_perkg * material_density * current_quantity
+
+            material_breakdown.append({
+                "material": current_material,
+                "ec": current_ec
+            })
+            stair_elements.append({
+                "element": "Stair",
+                "ec": current_ec,
+                "materials": material_breakdown
+            })
             logger.debug(f"EC for {stair.Name} is {current_ec}")
             total_ec += current_ec
         
@@ -1412,11 +1438,22 @@ def calculate_stairs(stairs):
             
             material_ec_perkg, material_density = current_material_ec
             current_ec = material_ec_perkg * material_density * current_quantity
+
+            material_breakdown.append({
+                "material": current_material,
+                "ec": current_ec
+            })
+            stair_elements.append({
+                "element": "Stair",
+                "ec": current_ec,
+                "materials": material_breakdown
+            })
+
             logger.debug(f"EC for {stair.Name} is {current_ec}")
             total_ec += current_ec
 
     logger.debug(f"Total EC for stairs is {total_ec}")
-    return total_ec
+    return total_ec, stair_elements
 
 def calculate_railings(railings):
     """Calculate embodied carbon for railings, using material matching if needed"""
@@ -2116,19 +2153,17 @@ def calculate_embodied_carbon(filepath):
 
     if windows:
         windows_ec, windows_breakdown = calculate_windows(windows)
-        print(windows_breakdown)
         total_ec += windows_ec
 
     if doors:
         doors_ec, doors_breakdown = calculate_doors(doors)
-        print(doors_breakdown)
         total_ec += doors_ec
     
     # IfcStairFlight only
     if stairs:
-        stairs_ec = calculate_stairs(stairs)
+        stairs_ec, stairs_breakdown = calculate_stairs(stairs)
         total_ec += stairs_ec
-    
+
     if railings:
         railings_ec = calculate_railings(railings)
         total_ec += railings_ec
