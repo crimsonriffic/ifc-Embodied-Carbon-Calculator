@@ -1485,12 +1485,14 @@ def calculate_stairs(stairs):
 def calculate_railings(railings):
     """Calculate embodied carbon for railings, using material matching if needed"""
     total_ec = 0
-    
+    railing_elements = []  
+
     for railing in railings:
         current_quantity = None
         current_material = None
         current_ec = None
         material_layers = []
+        materials_breakdown = [] 
 
         # Get volume information
         if hasattr(railing, "IsDefinedBy"):
@@ -1591,11 +1593,24 @@ def calculate_railings(railings):
         
         material_ec_perkg, material_density = current_material_ec
         current_ec = material_ec_perkg * material_density * current_quantity
+
+        materials_breakdown.append({
+            "material": current_material,
+            "ec": current_ec
+        })
+        
+        # Add this railing as an element
+        railing_elements.append({
+            "element": "Railing",
+            "ec": current_ec,
+            "materials": materials_breakdown
+        })
+
         logger.debug(f"EC for {railing.Name} is {current_ec}, volume is {current_quantity}")
         total_ec += current_ec
 
     logger.debug(f"Total EC for railings is {total_ec}")
-    return total_ec
+    return total_ec, railing_elements
 
 def calculate_members(members):
     """Calculate embodied carbon for structural members, using material matching if needed"""
@@ -2192,14 +2207,14 @@ def calculate_embodied_carbon(filepath):
         total_ec += stairs_ec
 
     if railings:
-        railings_ec = calculate_railings(railings)
+        railings_ec, railings_breakdown = calculate_railings(railings)
+        print(railings_breakdown)
         total_ec += railings_ec
-    
+    exit()
     if roofs:
         roofs_ec, roofs_breakdown = calculate_roofs(roofs)
-        print(roofs_breakdown)
         total_ec += roofs_ec
-    exit()
+
     if members:
         members_ec = calculate_members(members)
         total_ec += members_ec
