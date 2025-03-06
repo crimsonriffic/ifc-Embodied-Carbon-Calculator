@@ -511,3 +511,27 @@ def initialize_material_database(ifc_file=None):
     
     logger.info(f"Material database initialized with {len(material_data_df) if material_data_df is not None else 0} materials")
     return success
+
+def get_substructure_elements(ifc_file_path): 
+    """ Returns all elements associated with substructure levels (Level 0 or any Basement). """
+    model = ifcopenshell.open(ifc_file_path)
+    
+    # Find ALL target storeys
+    storeys = model.by_type("IfcBuildingStorey")
+    substructure_storeys = [s for s in storeys if s.Name == 'Level 0' or "Basement" in s.Name]
+    
+    if not substructure_storeys:
+        logger.warning("No substructure levels (Level 0 or Basement) found.")
+        return []
+
+    # Collect elements assigned to ANY substructure storey
+    elements = []
+    for rel in model.by_type("IfcRelContainedInSpatialStructure"):
+        if rel.RelatingStructure in substructure_storeys:
+            for elem in rel.RelatedElements:
+                elements.append(elem)
+
+    substructure_names = [s.Name for s in substructure_storeys]
+    logger.info(f"Total elements found in substructure levels {substructure_names}: {len(elements)}")
+    logger.info(f"Element types found in substructure: {set(e.is_a() for e in elements)}")
+    return elements
