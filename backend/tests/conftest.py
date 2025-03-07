@@ -2,8 +2,9 @@ import boto3
 import pytest
 import dotenv
 import os
+import sys
 dotenv.load_dotenv()
-
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 @pytest.fixture
 def s3_client():
     """
