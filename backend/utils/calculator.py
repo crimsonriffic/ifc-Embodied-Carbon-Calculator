@@ -164,6 +164,7 @@ def calculate_columns(columns):
         current_material = None
         rebar = None
         height = None
+        rebar_vol = None
 
         psets = get_psets(column)
         rebar_set = psets.get('Rebar Set')
@@ -181,7 +182,6 @@ def calculate_columns(columns):
             heightmm = dimensions.get('Height')
             if heightmm is None:
                 logger.error("Height not found")
-                continue
             else:
                 height = heightmm / 1000
         
@@ -1920,7 +1920,6 @@ def calculate_embodied_carbon(filepath):
     footings = ifc_file.by_type('IfcFooting')
     logger.info(f"Total footings found {len(footings)}")
 
-
     if roofs:
         for roof in roofs:
             aggregated_by = roof.IsDecomposedBy
@@ -1994,6 +1993,8 @@ def calculate_embodied_carbon(filepath):
         footings_ec = calculate_footings(footings)
         total_ec += footings_ec
     
+    print(ifc_file.by_type('IfcElement'))
+
     
     logger.info(f"Total EC calculated: {total_ec}")
 
@@ -2030,7 +2031,7 @@ def calculate_gfa(filepath):
 
 if __name__ == "__main__":
     # Run the calculator on the specified IFC file
-    ifcpath = "/Users/jk/Downloads/z. Complex Models/Complex 4.ifc"
+    ifcpath = "/Users/jk/Downloads/B. Column & Beams/ColumnRebar 1.ifc"
     
     if not os.path.exists(ifcpath):
         logger.error(f"File not found: {ifcpath}")
