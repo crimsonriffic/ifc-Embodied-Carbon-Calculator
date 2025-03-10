@@ -310,6 +310,7 @@ def calculate_columns(columns):
                 "ec": concrete_ec
             })
             current_ec = concrete_ec
+            
         else:
             concrete_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
             rebar_ec = rebar_vol * 2.510 * 7850
@@ -958,6 +959,10 @@ def calculate_doors(doors):
             else:
                 logger.warning(f"Material '{current_material}' not found and no similar material found. Skipping this door.")
                 continue
+        
+        if current_material_ec is None:
+            logger.warning(f"Material '{current_material}' not found. Skipping this door.")
+            continue
         
         if current_quantity is None:
             logger.error(f"No area found for door {door.Name}. Skipping.")
@@ -2380,8 +2385,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     # Calculate total EC by summing individual categories
     total_ec = columns_ec + beams_ec + slabs_ec + walls_ec + windows_ec + doors_ec + \
                stairs_ec + railings_ec + roofs_ec + members_ec + plates_ec + piles_ec + footings_ec
-    ec_data["total_ec"] = total_ec
-    
+    ec_data["total_ec"] = total_ec    
     logger.info(f"Total EC calculated: {total_ec}")
     logger.info(f"Breakdown:\n {columns_ec=}\n {beams_ec=}\n {slabs_ec=}\n\
 {walls_ec=}\n {windows_ec=}\n {doors_ec=}\n {stairs_ec=} \n \

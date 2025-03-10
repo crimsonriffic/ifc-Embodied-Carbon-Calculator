@@ -9,7 +9,7 @@ import ifcopenshell.geom
 import numpy as np
 from numpy import abs as np_abs
 
-from .calculator import calculate_beams, calculate_columns, calculate_doors, calculate_embodied_carbon, calculate_railings, calculate_slabs, calculate_stairs, calculate_walls,calculate_roofs, calculate_windows,calculate_gfa
+from .calculator import calculate_beams, calculate_columns, calculate_doors, calculate_embodied_carbon, calculate_railings, calculate_slabs, calculate_stairs, calculate_walls, calculate_roofs, calculate_windows,calculate_gfa
 
 
 ## Helper functions
@@ -30,6 +30,7 @@ def get_slabs_to_ignore(ifc_file):
 def calculate_elements_ec(elements, slabs_to_ignore=[] ,**kwargs):
    
     total_ec = 0
+    element_ec = 0
      # Dictionary of element types mapped to their EC calculation functions
     ec_functions = {
         "IfcColumn": calculate_columns,
@@ -47,6 +48,7 @@ def calculate_elements_ec(elements, slabs_to_ignore=[] ,**kwargs):
         element_type = element.is_a()  # Get IFC element type
         if element_type in ec_functions:
             total_ec += ec_functions[element_type]([element], **kwargs)  # Call the correct function
+
 
     return total_ec
 
@@ -138,27 +140,39 @@ def breakdown_by_materials(filepath):
     # Fetch all elements in the IFC file
     all_elements = ifc_file.by_type("IfcElement")
  
-     # Get slabs that are part of roofs
+    # Get slabs that are part of roofs
     slabs_to_ignore = get_slabs_to_ignore(ifc_file)  # Use the helper function
     logger.info(f"Slabs to ignore (roof slabs): {len(slabs_to_ignore)} | IDs: {slabs_to_ignore}")
 
-
-    logger.info(f"Slabs to ignore (roof slabs): {slabs_to_ignore}")
-    ignored_count = 0
-    for element in all_elements:
-        if element.is_a("IfcSlab") and element.id() in slabs_to_ignore:
-            
-            continue  # Skip roof slabs
+    def process_element(element, store_as):    
         material_sets = element.HasAssociations  # Extract materials associated with the element
-        for rel in material_sets:
+        for rel in material_sets: 
             if rel.is_a("IfcRelAssociatesMaterial") and rel.RelatingMaterial:
                 material_name = rel.RelatingMaterial.Name  # Extract material name
+                logger.info(material_name)
                 category = extract_material_type(material_name)
                 if not category:
                     logger.warning(f"Material '{material_name}' not categorized for element {element.GlobalId}")
-
                 if category:
-                    elements_by_material[category].append(element)  # Categorize the element
+                    elements_by_material[category].append(store_as)  # Categorize the element
+                    
+    for element in all_elements:
+        logger.info(element.is_a)
+        if element.is_a("IfcSlab") and element.id() in slabs_to_ignore:
+            continue  # Skip roof slabs
+        
+        if element.is_a("IfcRoof"):
+            if hasattr(element, "IsDecomposedBy"):
+                for rel in element.IsDecomposedBy:
+                    if rel.is_a("IfcRelAggregates"):
+                        for slab in rel.RelatedObjects:
+                            if slab.is_a("IfcSlab"):
+                                process_element(slab, element)
+                                break
+                                
+        process_element(element, element)
+
+                    
     logger.info(f"Total elements processed: {len(all_elements)}")
     # Debugging: Log categorized elements
     for material, elements in elements_by_material.items():
@@ -296,7 +310,7 @@ def check_roof_hierarchy(filepath):
 
 if __name__ == "__main__":
     #ifcpath = os.path.join(r"C:\Users\dczqd\Documents\SUTD\Capstone-calc", "Window 1.ifc")
-    ifcpath = os.path.join(r"C:\Users\Carina\Downloads", "Complex 1.ifc")
+    ifcpath = os.path.join(r"/Users/jk/Downloads/z. Complex Models/Complex 1.ifc")
     logger.info(f"{ifcpath=}")
     sub_ec = calculate_substructure_ec(ifcpath)
     super_ec = calculate_superstructure_ec(ifcpath)
