@@ -2129,7 +2129,7 @@ def calculate_footings(footings):
 
     return total_ec
 
-async def calculate_embodied_carbon(filepath, with_breakdown=False):
+def calculate_embodied_carbon(filepath, with_breakdown=False):
     slabs_to_ignore = []
     total_ec = columns_ec = beams_ec = slabs_ec = walls_ec = windows_ec = roofs_ec = doors_ec = stairs_ec = railings_ec = members_ec = plates_ec = piles_ec = footings_ec = 0
     

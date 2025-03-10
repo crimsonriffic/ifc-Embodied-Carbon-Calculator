@@ -209,16 +209,16 @@ async def upload_ifc(
         with utils.temp_ifc_file(file_content) as tmp_path:
             #ec_data = await ec_breakdown.overall_ec_breakdown(tmp_path)
             print(tmp_path)
-            total_ec, ec_data = await calculator.calculate_embodied_carbon(tmp_path, with_breakdown=True)
+            total_ec, ec_data = calculator.calculate_embodied_carbon(tmp_path, with_breakdown=True)
 
         # Update the ec_breakdown collection 
         ec_breakdown_entry = {
             "project_id": ObjectId(project_id),
             "ifc_version": new_version,
-            "total_ec": ec_data["total_ec"],
-            "breakdown": ec_data["ec_breakdown"],
+            "breakdown": ec_data,
             "timestamp": datetime.now()
         }
+        print(ec_breakdown_entry)
 
         ec_breakdown_result = await app.mongodb.ec_breakdown.insert_one(ec_breakdown_entry)
         ec_breakdown_id = ec_breakdown_result.inserted_id  # Reference ID
@@ -236,8 +236,8 @@ async def upload_ifc(
                         "comments": comments,
                         "update_type": update_type,
                         "file_path": f"s3://{S3_BUCKET}/{s3_path}",
-                        "gfa": ec_data["gfa"],
-                        "total_ec": ec_data["total_ec"],
+                        "gfa": 0,
+                        "total_ec": total_ec,
                         "ec_breakdown_id": ec_breakdown_id  # Reference to ec_breakdown collection
                     }
                 },
@@ -252,39 +252,6 @@ async def upload_ifc(
             }
         )
 
-        # update_result = await app.mongodb.projects.update_one(
-        #     {"_id": ObjectId(project_id)},
-        #     {
-        #         "$set": {
-        #             "current_version": int(new_version),
-        #             "last_edited_date": datetime.now(),
-        #             "last_edited_user": user_id,
-        #             f"ifc_versions.{new_version}": {
-                        
-        #                 "date_uploaded": datetime.now(),
-        #                 "uploaded_by": user_id,
-        #                 "comments":comments,
-        #                 "update_type": update_type,
-        #                 "file_path": f"s3://{S3_BUCKET}/{s3_path}",
-        #                 "gfa":ec_data["gfa"],
-        #                 "total_ec": ec_data["total_ec"], 
-        #                 "ec_breakdown":{
-        #                     "by_building_system":ec_data["by_building_system"],
-        #                     "by_material":ec_data["by_material"],
-        #                     "by_element":ec_data["by_element"],
-        #                 }
-        #             }
-        #         },
-        #         "$push": {
-        #             "edit_history": {
-        #                 "timestamp": datetime.now(),
-        #                 "user": user_id,
-        #                 "action": "uploaded_ifc",
-        #                 "description": f"Uploaded version {new_version}"
-        #             }
-        #         }
-        #     }
-        # )
 
         return {
             "success": True,
