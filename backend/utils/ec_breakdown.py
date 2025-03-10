@@ -9,7 +9,7 @@ import ifcopenshell.geom
 import numpy as np
 from numpy import abs as np_abs
 
-from .calculator import calculate_beams, calculate_columns, calculate_doors, calculate_embodied_carbon, calculate_railings, calculate_slabs, calculate_stairs, calculate_walls, calculate_roofs, calculate_windows,calculate_gfa
+from calculator import calculate_beams, calculate_columns, calculate_doors, calculate_embodied_carbon, calculate_railings, calculate_slabs, calculate_stairs, calculate_walls, calculate_roofs, calculate_windows,calculate_gfa
 
 
 ## Helper functions
@@ -30,7 +30,6 @@ def get_slabs_to_ignore(ifc_file):
 def calculate_elements_ec(elements, slabs_to_ignore=[] ,**kwargs):
    
     total_ec = 0
-    element_ec = 0
      # Dictionary of element types mapped to their EC calculation functions
     ec_functions = {
         "IfcColumn": calculate_columns,
@@ -47,13 +46,17 @@ def calculate_elements_ec(elements, slabs_to_ignore=[] ,**kwargs):
     for element in elements:
         element_type = element.is_a()  # Get IFC element type
         if element_type in ec_functions:
-            total_ec += ec_functions[element_type]([element], **kwargs)  # Call the correct function
+            element_ec, elements = ec_functions[element_type]([element], **kwargs)  # Call the correct function
+            total_ec += element_ec
+            
 
 
     return total_ec
 
 ## Hardcoded material type from database  
 def extract_material_type(material_name):
+    if material_name == None:
+        return "None"
     material_name = material_name.lower()
 
     if "concrete" in material_name:
@@ -129,7 +132,7 @@ def calculate_superstructure_ec(filepath):
     
     return superstructure_ec
 
-
+    
 ## EC Breakdowns
 ## EC Breakdown by materials 
 def breakdown_by_materials(filepath):
@@ -144,18 +147,31 @@ def breakdown_by_materials(filepath):
     slabs_to_ignore = get_slabs_to_ignore(ifc_file)  # Use the helper function
     logger.info(f"Slabs to ignore (roof slabs): {len(slabs_to_ignore)} | IDs: {slabs_to_ignore}")
 
-    def process_element(element, store_as):    
-        material_sets = element.HasAssociations  # Extract materials associated with the element
-        for rel in material_sets: 
-            if rel.is_a("IfcRelAssociatesMaterial") and rel.RelatingMaterial:
-                material_name = rel.RelatingMaterial.Name  # Extract material name
-                logger.info(material_name)
-                category = extract_material_type(material_name)
-                if not category:
-                    logger.warning(f"Material '{material_name}' not categorized for element {element.GlobalId}")
-                if category:
-                    elements_by_material[category].append(store_as)  # Categorize the element
-                    
+    def process_element(element, store_as):
+        material_name = None
+        if element.is_a("IfcDoor") or element.is_a("IfcWindow"):
+            psets = get_psets(element)
+            if 'Pset_WindowCommon' in psets and 'Reference' in psets['Pset_WindowCommon']:
+                material_name = psets['Pset_WindowCommon']['Reference']
+            elif 'Pset_DoorCommon' in psets and 'Reference' in psets['Pset_DoorCommon']:
+                material_name = psets['Pset_DoorCommon']['Reference']
+        else:    
+            material_sets = element.HasAssociations  # Extract materials associated with the element
+            for rel in material_sets: 
+                if rel.is_a("IfcRelAssociatesMaterial") and rel.RelatingMaterial:
+                    material_name = rel.RelatingMaterial.Name  # Extract material name
+                    logger.info(material_name)
+        logger.info(material_name)
+        if material_name is None:
+            logger.warning(f"No material found for element {element.GlobalId}")
+            return
+        category = extract_material_type(material_name)
+        if category == "None" or not category:
+            logger.warning(f"Material '{material_name}' not categorized for element {element.GlobalId}")
+        else:
+            elements_by_material[category].append(store_as)  # Categorize the element
+        return
+
     for element in all_elements:
         logger.info(element.is_a)
         if element.is_a("IfcSlab") and element.id() in slabs_to_ignore:
@@ -169,6 +185,7 @@ def breakdown_by_materials(filepath):
                             if slab.is_a("IfcSlab"):
                                 process_element(slab, element)
                                 break
+            continue
                                 
         process_element(element, element)
 
@@ -232,7 +249,7 @@ def breakdown_by_elements(filepath):
         if elements_list:
             func = calculation_functions.get(key)
             if func:
-                ec = func(elements_list)
+                ec, element = func(elements_list)
                 total_ec += ec
                 breakdown[key] = ec  # Store breakdown by element type
 
@@ -310,7 +327,7 @@ def check_roof_hierarchy(filepath):
 
 if __name__ == "__main__":
     #ifcpath = os.path.join(r"C:\Users\dczqd\Documents\SUTD\Capstone-calc", "Window 1.ifc")
-    ifcpath = os.path.join(r"/Users/jk/Downloads/z. Complex Models/Complex 1.ifc")
+    ifcpath = os.path.join(r"/Users/jk/Downloads/z. Complex Models/Complex 4.ifc")
     logger.info(f"{ifcpath=}")
     sub_ec = calculate_substructure_ec(ifcpath)
     super_ec = calculate_superstructure_ec(ifcpath)
