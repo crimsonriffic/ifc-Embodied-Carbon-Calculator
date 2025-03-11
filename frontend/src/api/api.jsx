@@ -29,8 +29,8 @@ export const uploadIfc = async (
       updateType
     );
     // Upload file using Axios
-    const response = await axios.post(
-      `http://localhost:8000/projects/${projectId}/upload_ifc`, // Dynamically add project ID
+    const response = await api.post(
+      `/projects/${projectId}/upload_ifc`, // Dynamically add project ID
       formData, // Form data with the file
       {
         params: {
@@ -111,15 +111,11 @@ export const createProject = async (
   console.log("Project Data:", projectData);
   try {
     // Send project data to create project
-    const response = await axios.post(
-      `http://localhost:8000/create_project`,
-      projectData,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await api.post("create_project", projectData, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
     console.log("Project created successfully: ", response.data);
 
     // Extract the project Id from the response
@@ -130,8 +126,8 @@ export const createProject = async (
     formData.append("file", file);
     console.log("The uploadIFC inputs are", projectId, file, userId);
     // Upload file using Axios
-    const fileResponse = await axios.post(
-      `http://localhost:8000/projects/${projectId}/upload_ifc`, // Dynamically add project ID
+    const fileResponse = await api.post(
+      `/projects/${projectId}/upload_ifc`, // Dynamically add project ID
       formData, // Form data with the file
       {
         params: {

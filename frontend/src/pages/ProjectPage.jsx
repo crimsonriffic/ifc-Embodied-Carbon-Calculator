@@ -30,7 +30,6 @@ function ProjectPage() {
     datasets: [],
   });
   const { projectName } = useParams();
-
   const { projectId } = location.state;
   console.log("Project Name and project Id is ", projectName, projectId);
   const handleVersionClick = (e) => {
