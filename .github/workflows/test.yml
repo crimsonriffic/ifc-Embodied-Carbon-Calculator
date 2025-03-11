@@ -2,11 +2,11 @@ name: Test and Deploy to ECS
 
 on:
   push:
-    branches: [main, automated_testing]
+    branches: [main, deployment]
     paths:
       - "backend/**"
   pull_request:
-    branches: [main, automated_testing]
+    branches: [main, deployment]
     paths:
       - "backend/**"
 
