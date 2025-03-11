@@ -2181,19 +2181,19 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     footings = ifc_file.by_type('IfcFooting')
 
     # Log element counts
-    logger.info(f"Total columns found {len(columns)}")
-    logger.info(f"Total beams found {len(beams)}")
-    logger.info(f"Total slabs found {len(slabs)}")
-    logger.info(f"Total roofs found {len(roofs)}")
-    logger.info(f"Total windows found {len(windows)}")
-    logger.info(f"Total walls found {len(walls)}")
-    logger.info(f"Total doors found {len(doors)}")
-    logger.info(f"Total stairflights found {len(stairs)}")
-    logger.info(f"Total railings found {len(railings)}")
-    logger.info(f"Total members found {len(members)}")
-    logger.info(f"Total plates found {len(plates)}")
-    logger.info(f"Total piles found {len(piles)}")
-    logger.info(f"Total footings found {len(footings)}")
+    # logger.info(f"Total columns found {len(columns)}")
+    # logger.info(f"Total beams found {len(beams)}")
+    # logger.info(f"Total slabs found {len(slabs)}")
+    # logger.info(f"Total roofs found {len(roofs)}")
+    # logger.info(f"Total windows found {len(windows)}")
+    # logger.info(f"Total walls found {len(walls)}")
+    # logger.info(f"Total doors found {len(doors)}")
+    # logger.info(f"Total stairflights found {len(stairs)}")
+    # logger.info(f"Total railings found {len(railings)}")
+    # logger.info(f"Total members found {len(members)}")
+    # logger.info(f"Total plates found {len(plates)}")
+    # logger.info(f"Total piles found {len(piles)}")
+    # logger.info(f"Total footings found {len(footings)}")
 
     # Identify which slabs to ignore (those part of roofs)
     if roofs:
@@ -2439,14 +2439,15 @@ def calculate_gfa(filepath):
 if __name__ == "__main__":
     # Run the calculator on the specified IFC file
     # ifcpath = input("Enter path to IFC file: ")
-    ifcpath = "/Users/jk/Downloads/z. Complex Models/Complex 4.ifc"
+    #ifcpath = "/mnt/c/Users/dczqd/Documents/SUTD/Capstone-calc/Complex 4.ifc"
+    ifcpath = "/Users/Carina/Downloads/Complex 1.ifc"
     logger.info(f"Processing file: {ifcpath}")
     
     if not os.path.exists(ifcpath):
         logger.error(f"File not found: {ifcpath}")
         sys.exit(1)
         
-    total_ec = calculate_embodied_carbon(ifcpath)
+    total_ec, ec_data = calculate_embodied_carbon(ifcpath, with_breakdown=True)
     total_gfa = calculate_gfa(ifcpath)
     
     if total_gfa > 0:
@@ -2454,7 +2455,8 @@ if __name__ == "__main__":
         logger.info(f"Embodied carbon per m²: {ec_per_m2} kgCO2e/m²")
     
     print(f"\nResults for {os.path.basename(ifcpath)}:")
-    print(f"Total Embodied Carbon: {total_ec:.2f} kgCO2e")
+    print(f"Total Embodied Carbon: {total_ec} kgCO2e")
+    print(f"Breakdown: {ec_data}")
     if total_gfa > 0:
-        print(f"Total Gross Floor Area: {total_gfa:.2f} m²")
-        print(f"Embodied Carbon per m²: {ec_per_m2:.2f} kgCO2e/m²")
+        print(f"Total Gross Floor Area: {total_gfa} m²")
+        print(f"Embodied Carbon per m²: {ec_per_m2} kgCO2e/m²")

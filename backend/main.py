@@ -119,12 +119,29 @@ class Project(BaseModel):
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
+class Material(BaseModel):
+    material: str
+    ec: float
+
+class Element(BaseModel):
+    element: str
+    ec: float
+    materials: List[Material]
+
+class Category(BaseModel):
+    category: str
+    total_ec: float
+    elements: List[Element]
+
+class ECBreakdown(BaseModel):
+    total_ec: float
+    ec_breakdown: List[Category]
 
 class ProjectBreakdown(BaseModel):
     project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    total_ec: float
     gfa: float
-    ec_breakdown: dict
+    summary: dict
+    ec_breakdown: ECBreakdown
     last_calculated: datetime
     version: str
 
@@ -220,11 +237,29 @@ async def upload_ifc(
             Body=file_content,
             ContentType="application/octet-stream",
         )
-
+        print("uploaded the file to s3")
         # Use temporary file for EC breakdown calculation
         with utils.temp_ifc_file(file_content) as tmp_path:
-            ec_data = await ec_breakdown.overall_ec_breakdown(tmp_path)
+            summary_data = ec_breakdown.overall_ec_breakdown(tmp_path)
+            
+            total_ec, ec_data = calculator.calculate_embodied_carbon(tmp_path, with_breakdown=True)
+        print("Summary data is: ",summary_data)
+        print("ec_data is ", ec_data)
+        print("ec_data[ec_breakdown]", ec_data["ec_breakdown"])
+        # Update the ec_breakdown collection 
+        ec_breakdown_entry = {
+            "project_id": ObjectId(project_id),
+            "ifc_version": new_version,
+            "total_ec": total_ec,
+            "summary": summary_data,
+            "breakdown": ec_data,
+            "timestamp": datetime.now()
+        }
+        
+        print("EC_breakdown entry is" , ec_breakdown_entry)
 
+        ec_breakdown_result = await app.mongodb.ec_breakdown.insert_one(ec_breakdown_entry)
+        ec_breakdown_id = ec_breakdown_result.inserted_id  # Reference ID
         # Update MongoDB
         update_result = await app.mongodb.projects.update_one(
             {"_id": ObjectId(project_id)},
@@ -239,14 +274,10 @@ async def upload_ifc(
                         "comments": comments,
                         "update_type": update_type,
                         "file_path": f"s3://{S3_BUCKET}/{s3_path}",
-                        "gfa": ec_data["gfa"],
-                        "total_ec": ec_data["total_ec"],
-                        "ec_breakdown": {
-                            "by_building_system": ec_data["by_building_system"],
-                            "by_material": ec_data["by_material"],
-                            "by_element": ec_data["by_element"],
-                        },
-                    },
+                        "gfa": 0,
+                        "total_ec": total_ec,
+                        "ec_breakdown_id": ec_breakdown_id  # Reference to ec_breakdown collection
+                    }
                 },
                 "$push": {
                     "edit_history": {
@@ -258,6 +289,7 @@ async def upload_ifc(
                 },
             },
         )
+
 
         return {
             "success": True,
@@ -282,23 +314,22 @@ async def get_breakdown(project_id: str, version: str = None):
     version_number = version if version else str(project.get("current_version"))
     if version_number not in project["ifc_versions"]:
         raise HTTPException(status_code=400, detail="Version not found")
-    # latest_version = str(project.get("current_version"))
     ifc_data = project["ifc_versions"].get(version_number, {})
-
-    # file_path = project["ifc_versions"][latest_version]["file_path"].replace(f"s3://{S3_BUCKET}/", "")
 
     # Retrieve stored EC values and breakdowns
     total_ec = ifc_data.get("total_ec", 0)
-    ec_breakdown = ifc_data.get("ec_breakdown", {})
+    ec_breakdown_id = ifc_data.get("ec_breakdown_id")
+    print(ec_breakdown_id)
     gfa = ifc_data.get("gfa", 0)
-
-    print("ec breakdown is,", ec_breakdown)
-
+    ec_breakdown_data = await app.mongodb.ec_breakdown.find_one({"_id": ec_breakdown_id}) 
+    
+    print("ec breakdown summary is,",ec_breakdown_data["summary"])
+    print("ec_breakdown_data[breakdown] is,",ec_breakdown_data["breakdown"])
     return ProjectBreakdown(
         project_id=str(project["_id"]),
-        total_ec=total_ec,
-        gfa=gfa,
-        ec_breakdown=ec_breakdown,
+        gfa = gfa,
+        summary = ec_breakdown_data["summary"],
+        ec_breakdown=ec_breakdown_data["breakdown"],
         last_calculated=project.get("last_calculated", datetime.now()),
         version=version_number,
     )

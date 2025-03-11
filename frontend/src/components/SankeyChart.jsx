@@ -3,6 +3,7 @@ import { useState } from "react";
 
 const transformDataForSankey = (data) => {
   // Create nodes first
+
   const nodes = [
     { name: "Total EC" },
     { name: "Substructure" },
@@ -22,6 +23,25 @@ const transformDataForSankey = (data) => {
     return acc;
   }, {});
 
+  // Calculate sums for different element types in each category
+  const substructureElements = data.ec_breakdown[0].elements.reduce(
+    (acc, element) => {
+      if (!acc[element.element]) acc[element.element] = 0;
+      acc[element.element] += element.ec;
+      return acc;
+    },
+    {}
+  );
+
+  const superstructureElements = data.ec_breakdown[1].elements.reduce(
+    (acc, element) => {
+      if (!acc[element.element]) acc[element.element] = 0;
+      acc[element.element] += element.ec;
+      return acc;
+    },
+    {}
+  );
+
   // Create links
   const links = [
     // Total EC to categories
@@ -40,46 +60,58 @@ const transformDataForSankey = (data) => {
     {
       source: nodeMap["Substructure"],
       target: nodeMap["Wall"],
-      value: 4050.28, // Sum of all walls in substructure
+      // value: 4050.28, //TODO: i dont want it to be hardcoded
+      value: substructureElements["Wall"] || 0,
     },
     {
       source: nodeMap["Substructure"],
       target: nodeMap["Slab"],
-      value: 1291.952,
+      // value: 1291.952, //TODO: i dont want it to be hardcoded
+      value: superstructureElements["Wall"] || 0,
     },
 
     // Superstructure to elements
     {
       source: nodeMap["Superstructure"],
       target: nodeMap["Wall"],
-      value: 4262.4, // Sum of all walls in superstructure
+      // value: 4262.4, //TODO: i dont want it to be hardcoded
+      value: superstructureElements["Wall"] || 0,
     },
     {
       source: nodeMap["Superstructure"],
       target: nodeMap["Slab"],
-      value: 645.5215,
+      // value: 645.5215, //TODO: i dont want it to be hardcoded
+      value: superstructureElements["Slab"] || 0,
     },
     {
       source: nodeMap["Superstructure"],
       target: nodeMap["Roof"],
-      value: 481.5187485187485,
+      // value: 481.5187485187485, //TODO: i dont want it to be hardcoded
+      value: superstructureElements["Roof"] || 0,
     },
 
     // Elements to Concrete
     {
       source: nodeMap["Wall"],
       target: nodeMap["Concrete"],
-      value: 8312.68,
+      // value: 8312.68, //TODO: i dont want it to be hardcoded
+      value:
+        (substructureElements["Wall"] || 0) +
+        (superstructureElements["Wall"] || 0),
     },
     {
       source: nodeMap["Slab"],
       target: nodeMap["Concrete"],
-      value: 1937.4735,
+      // value: 1937.4735, //TODO: i dont want it to be hardcoded
+      value:
+        (substructureElements["Slab"] || 0) +
+        (superstructureElements["Slab"] || 0),
     },
     {
       source: nodeMap["Roof"],
       target: nodeMap["Concrete"],
-      value: 481.5187485187485,
+      // value: 481.5187485187485, //TODO: i dont want it to be hardcoded
+      value: superstructureElements["Roof"] || 0,
     },
   ];
 
@@ -124,6 +156,7 @@ function CustomNode({ x, y, width, height, index, payload, containerWidth }) {
 }
 
 export default function SankeyChart({ data }) {
+  console.log("SankeyChart received data:", data); // Debugging line
   const { nodes, links } = transformDataForSankey(data);
   const [activeNode, setActiveNode] = useState(null);
 

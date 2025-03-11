@@ -39,6 +39,7 @@ export const uploadIfc = async (
         headers: {
           "Content-Type": "multipart/form-data", // Set the correct content type for file uploads
         },
+        timeout: 60000,
       }
     );
 
