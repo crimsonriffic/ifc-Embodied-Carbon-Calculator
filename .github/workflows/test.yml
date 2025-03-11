@@ -3,13 +3,8 @@ name: Test and Deploy to ECS
 on:
   push:
     branches: [main, deployment]
-    paths:
-      - "backend/**"
   pull_request:
     branches: [main, deployment]
-    paths:
-      - "backend/**"
-
 jobs:
   test:
     runs-on: ubuntu-latest
