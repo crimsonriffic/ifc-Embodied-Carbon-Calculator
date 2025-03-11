@@ -226,6 +226,8 @@ async def upload_ifc(
 
     try:
         file_content = await file.read()
+        
+
         new_version = str(project.get("current_version", 0) + 1)
 
         s3_path = f"ifc_files/{project_id}/{new_version}_{file.filename}"

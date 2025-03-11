@@ -79,7 +79,7 @@ export const createProject = async (
     last_edited_date: new Date().toISOString(), // Current timestamp
     last_edited_user: userId,
     user_job_role: "Senior Architect", // Replace with actual role
-    current_version: 1,
+    current_version: 0,
     access_control: {
       user123: {
         role: "owner",
