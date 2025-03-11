@@ -207,9 +207,15 @@ def calculate_columns(columns):
         if dimensions:
             heightmm = dimensions.get('Height')
             if heightmm is None:
-                logger.error("Height not found")
+                heightmm = dimensions.get('Length')
+                if heightmm is None:
+                    logger.error("Height not found")
+                else:
+                    height = heightmm / 1000
             else:
                 height = heightmm / 1000
+
+            
         
         if rebar and height:
             rebar_no, area = rebar.split("H")
@@ -310,6 +316,7 @@ def calculate_columns(columns):
                 "ec": concrete_ec
             })
             current_ec = concrete_ec
+            
         else:
             concrete_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
             rebar_ec = rebar_vol * 2.510 * 7850
@@ -958,6 +965,10 @@ def calculate_doors(doors):
             else:
                 logger.warning(f"Material '{current_material}' not found and no similar material found. Skipping this door.")
                 continue
+        
+        if current_material_ec is None:
+            logger.warning(f"Material '{current_material}' not found. Skipping this door.")
+            continue
         
         if current_quantity is None:
             logger.error(f"No area found for door {door.Name}. Skipping.")
@@ -1891,6 +1902,7 @@ def calculate_piles(piles):
                 logger.error("Length not found")
             else:
                 length = lengthmm / 1000
+                logger.info(f'Length is: {length}')
         
         if rebar:
             rebar_no, area = rebar.split("H")
@@ -1903,7 +1915,7 @@ def calculate_piles(piles):
                     if property_def.is_a('IfcElementQuantity') and property_def.Name == 'Qto_PileBaseQuantities':
                         for quantity in property_def.Quantities:
                             if quantity.is_a('IfcQuantityVolume') and quantity.Name == 'NetVolume':
-                                logger.debug(f'Found NetVolume  for {pile.Name}')
+                                logger.debug(f'Found NetVolume  for {pile.Name}: {quantity.VolumeValue}')
                                 quantities[quantity.Name] = quantity.VolumeValue
                                 current_quantity = quantity.VolumeValue
                                 break
@@ -1949,7 +1961,7 @@ def calculate_piles(piles):
         else:
             current_ec = material_ec_perkg * material_density * (current_quantity - rebar_vol)
             rebar_ec = rebar_vol * 2.510 * 7850
-            logger.debug(f"EC for {pile.Name}'s rebars is {rebar_ec}")
+            logger.debug(f"EC for {pile.Name}'s rebars is {rebar_ec} for volume of {rebar_vol}")
             total_ec += rebar_ec
         
         
@@ -2169,19 +2181,19 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     footings = ifc_file.by_type('IfcFooting')
 
     # Log element counts
-    logger.info(f"Total columns found {len(columns)}")
-    logger.info(f"Total beams found {len(beams)}")
-    logger.info(f"Total slabs found {len(slabs)}")
-    logger.info(f"Total roofs found {len(roofs)}")
-    logger.info(f"Total windows found {len(windows)}")
-    logger.info(f"Total walls found {len(walls)}")
-    logger.info(f"Total doors found {len(doors)}")
-    logger.info(f"Total stairflights found {len(stairs)}")
-    logger.info(f"Total railings found {len(railings)}")
-    logger.info(f"Total members found {len(members)}")
-    logger.info(f"Total plates found {len(plates)}")
-    logger.info(f"Total piles found {len(piles)}")
-    logger.info(f"Total footings found {len(footings)}")
+    # logger.info(f"Total columns found {len(columns)}")
+    # logger.info(f"Total beams found {len(beams)}")
+    # logger.info(f"Total slabs found {len(slabs)}")
+    # logger.info(f"Total roofs found {len(roofs)}")
+    # logger.info(f"Total windows found {len(windows)}")
+    # logger.info(f"Total walls found {len(walls)}")
+    # logger.info(f"Total doors found {len(doors)}")
+    # logger.info(f"Total stairflights found {len(stairs)}")
+    # logger.info(f"Total railings found {len(railings)}")
+    # logger.info(f"Total members found {len(members)}")
+    # logger.info(f"Total plates found {len(plates)}")
+    # logger.info(f"Total piles found {len(piles)}")
+    # logger.info(f"Total footings found {len(footings)}")
 
     # Identify which slabs to ignore (those part of roofs)
     if roofs:
@@ -2347,30 +2359,32 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["total_ec"] += super_members_ec
             members_ec += super_members_ec
 
-    # # Plates
-    # if plates:
-    #     substructure_plates = [p for p in plates if p.id() in substructure_ids]
-    #     superstructure_plates = [p for p in plates if p.id() not in substructure_ids]
+    # Plates
+    if plates:
+        substructure_plates = [p for p in plates if p.id() in substructure_ids]
+        superstructure_plates = [p for p in plates if p.id() not in substructure_ids]
         
-    #     if substructure_plates:
-    #         sub_plates_ec, sub_plates_elements = calculate_plates(substructure_plates)
-    #         ec_data["ec_breakdown"][0]["elements"].extend(sub_plates_elements)
-    #         ec_data["ec_breakdown"][0]["total_ec"] += sub_plates_ec
-    #         plates_ec += sub_plates_ec
+        if substructure_plates:
+            sub_plates_ec, sub_plates_elements = calculate_plates(substructure_plates)
+            ec_data["ec_breakdown"][0]["elements"].extend(sub_plates_elements)
+            ec_data["ec_breakdown"][0]["total_ec"] += sub_plates_ec
+            plates_ec += sub_plates_ec
         
-    #     if superstructure_plates:
-    #         super_plates_ec, super_plates_elements = calculate_plates(superstructure_plates)
-    #         ec_data["ec_breakdown"][1]["elements"].extend(super_plates_elements)
-    #         ec_data["ec_breakdown"][1]["total_ec"] += super_plates_ec
-    #         plates_ec += super_plates_ec
+        if superstructure_plates:
+            super_plates_ec, super_plates_elements = calculate_plates(superstructure_plates)
+            ec_data["ec_breakdown"][1]["elements"].extend(super_plates_elements)
+            ec_data["ec_breakdown"][1]["total_ec"] += super_plates_ec
+            plates_ec += super_plates_ec
 
-    # # Piles and footings are always in substructure by definition
+    piles_ec = calculate_piles(piles)
+    # Piles and footings are always in substructure by definition
     # if piles:
     #     piles_ec, piles_elements = calculate_piles(piles)
     #     ec_data["ec_breakdown"][0]["elements"].extend(piles_elements)
     #     ec_data["ec_breakdown"][0]["total_ec"] += piles_ec
     #     total_ec += piles_ec
         
+    footings_ec = calculate_footings(footings)
     # if footings:
     #     footings_ec, footings_elements = calculate_footings(footings)
     #     ec_data["ec_breakdown"][0]["elements"].extend(footings_elements)
@@ -2380,8 +2394,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     # Calculate total EC by summing individual categories
     total_ec = columns_ec + beams_ec + slabs_ec + walls_ec + windows_ec + doors_ec + \
                stairs_ec + railings_ec + roofs_ec + members_ec + plates_ec + piles_ec + footings_ec
-    ec_data["total_ec"] = total_ec
-    
+    ec_data["total_ec"] = total_ec    
     logger.info(f"Total EC calculated: {total_ec}")
     logger.info(f"Breakdown:\n {columns_ec=}\n {beams_ec=}\n {slabs_ec=}\n\
 {walls_ec=}\n {windows_ec=}\n {doors_ec=}\n {stairs_ec=} \n \
@@ -2426,14 +2439,15 @@ def calculate_gfa(filepath):
 if __name__ == "__main__":
     # Run the calculator on the specified IFC file
     # ifcpath = input("Enter path to IFC file: ")
-    ifcpath = "/mnt/c/Users/dczqd/Documents/SUTD/Capstone-calc/Complex 4.ifc"
+    #ifcpath = "/mnt/c/Users/dczqd/Documents/SUTD/Capstone-calc/Complex 4.ifc"
+    ifcpath = "/Users/Carina/Downloads/Complex 1.ifc"
     logger.info(f"Processing file: {ifcpath}")
     
     if not os.path.exists(ifcpath):
         logger.error(f"File not found: {ifcpath}")
         sys.exit(1)
         
-    total_ec = calculate_embodied_carbon(ifcpath)
+    total_ec, ec_data = calculate_embodied_carbon(ifcpath, with_breakdown=True)
     total_gfa = calculate_gfa(ifcpath)
     
     if total_gfa > 0:
@@ -2441,7 +2455,8 @@ if __name__ == "__main__":
         logger.info(f"Embodied carbon per m²: {ec_per_m2} kgCO2e/m²")
     
     print(f"\nResults for {os.path.basename(ifcpath)}:")
-    print(f"Total Embodied Carbon: {total_ec:.2f} kgCO2e")
+    print(f"Total Embodied Carbon: {total_ec} kgCO2e")
+    print(f"Breakdown: {ec_data}")
     if total_gfa > 0:
-        print(f"Total Gross Floor Area: {total_gfa:.2f} m²")
-        print(f"Embodied Carbon per m²: {ec_per_m2:.2f} kgCO2e/m²")
+        print(f"Total Gross Floor Area: {total_gfa} m²")
+        print(f"Embodied Carbon per m²: {ec_per_m2} kgCO2e/m²")
