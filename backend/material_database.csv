@@ -1,3 +1,0 @@
-material_name,element_type,material_type,volume,area,layer_count,material_description,ec_per_kg,density
-"Concrete, Cast In Situ",IfcBeam,single,0.3006000000000056,,0,"ElementType:IfcBeam Volume:0.301 MaterialType:single MaterialName:Concrete, Cast In Situ HasRebar:true",0.103,2350
-"Concrete, General",IfcStairFlight,layered,0.525261003198831,,1,"ElementType:IfcStairFlight Volume:0.525 MaterialType:layered MaterialName:Concrete, General LayerCount:1 Layers:Concrete, General",0.112,2350

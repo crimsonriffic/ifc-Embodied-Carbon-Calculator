@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Form, UploadFile, HTTPException, Query
+from fastapi import FastAPI, Form, UploadFile, HTTPException, Query, Path
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Literal
 from pydantic import BaseModel, Field
 from datetime import datetime
 import uvicorn
@@ -164,6 +164,201 @@ class VersionHistory(BaseModel):
 
 class ProjectHistoryResponse(BaseModel):
     history: List
+
+
+class Material(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    material_type: str
+    specified_material: str
+    density: Optional[float] = None
+    embodied_carbon: float
+    unit: Literal["kg", "m2"]
+    database_source: Literal["Custom", "System"]
+    created_by: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+class MaterialCreate(BaseModel):
+    material_type: str
+    specified_material: str
+    density: Optional[float] = None
+    embodied_carbon: float
+    unit: Literal["kg", "m2"]
+    database_source: Literal["Custom", "System"] = "Custom"
+
+
+@app.get("/materials", response_model=List[Material])
+async def get_materials(
+    material_name: Optional[str] = Query(
+        None, description="Filter by specified material name"
+    )
+):
+    """
+    Retrieve a list of materials, optionally filtered by specified material name.
+    If material_name is provided, it should return exactly one matching material.
+    """
+    query = {}
+    if material_name:
+        query["specified_material"] = material_name
+
+    materials = await app.mongodb.materials.find(query).to_list(1000)
+
+    if not materials and material_name:
+        # If filtering by name and no match found, return 404
+        raise HTTPException(
+            status_code=404, detail=f"Material '{material_name}' not found"
+        )
+    elif not materials:
+        # Return empty list if no materials exist yet and no filter was applied
+        return []
+
+    # Convert ObjectId to string for each material
+    for material in materials:
+        material["_id"] = str(material["_id"])
+
+    return materials
+
+
+@app.post("/materials", response_model=Material)
+async def upload_material(
+    material: MaterialCreate,
+    user_id: str = Query(..., description="ID of the user adding the material"),
+):
+    """
+    Add a new material to the database.
+    """
+    # Check if a material with the same type and specification already exists
+    existing_material = await app.mongodb.materials.find_one(
+        {
+            "material_type": material.material_type,
+            "specified_material": material.specified_material,
+        }
+    )
+
+    if existing_material:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Material '{material.specified_material}' of type '{material.material_type}' already exists",
+        )
+
+    # Create new material document
+    new_material = Material(
+        material_type=material.material_type,
+        specified_material=material.specified_material,
+        density=material.density,
+        embodied_carbon=material.embodied_carbon,
+        unit=material.unit,
+        database_source=material.database_source,
+        created_by=user_id,
+        created_at=datetime.now(),
+    )
+
+    # Insert into database
+    result = await app.mongodb.materials.insert_one(
+        new_material.dict(by_alias=True, exclude={"id"})
+    )
+
+    # Retrieve created material
+    created_material = await app.mongodb.materials.find_one({"_id": result.inserted_id})
+
+    return created_material
+
+
+@app.delete("/materials/{material_id}", response_model=Dict[str, Any])
+async def delete_material(
+    material_id: str = Path(..., description="ID of the material to delete"),
+    user_id: str = Query(..., description="ID of the user deleting the material"),
+):
+    """
+    Delete a material from the database.
+    """
+    # Check if material exists
+    material = await app.mongodb.materials.find_one({"_id": ObjectId(material_id)})
+
+    if not material:
+        raise HTTPException(
+            status_code=404, detail=f"Material with ID {material_id} not found"
+        )
+
+    # Check if the material is a system default or created by the user
+    # Optional: You might want to restrict deletion of system materials
+    if (
+        material.get("database_source") == "System"
+        and material.get("created_by") != user_id
+    ):
+        raise HTTPException(
+            status_code=403, detail="Cannot delete system-provided materials"
+        )
+
+    # Delete the material
+    result = await app.mongodb.materials.delete_one({"_id": ObjectId(material_id)})
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=500, detail="Failed to delete material")
+
+    return {
+        "success": True,
+        "message": f"Material '{material.get('specified_material')}' deleted successfully",
+        "material_id": material_id,
+    }
+
+
+# Optional: Add an endpoint to update existing materials
+@app.put("/materials/{material_id}", response_model=Material)
+async def update_material(
+    material_id: str,
+    material_update: MaterialCreate,
+    user_id: str = Query(..., description="ID of the user updating the material"),
+):
+    """
+    Update an existing material.
+    """
+    # Check if material exists
+    material = await app.mongodb.materials.find_one({"_id": ObjectId(material_id)})
+
+    if not material:
+        raise HTTPException(
+            status_code=404, detail=f"Material with ID {material_id} not found"
+        )
+
+    # Check if the material is a system default or created by the user
+    # Optional: You might want to restrict updates of system materials
+    if (
+        material.get("database_source") == "System"
+        and material.get("created_by") != user_id
+    ):
+        raise HTTPException(
+            status_code=403, detail="Cannot update system-provided materials"
+        )
+
+    # Update the material
+    result = await app.mongodb.materials.update_one(
+        {"_id": ObjectId(material_id)},
+        {
+            "$set": {
+                "material_type": material_update.material_type,
+                "specified_material": material_update.specified_material,
+                "embodied_carbon": material_update.embodied_carbon,
+                "database_source": material_update.database_source,
+                "updated_at": datetime.now(),
+                "updated_by": user_id,
+            }
+        },
+    )
+
+    if result.modified_count == 0:
+        raise HTTPException(status_code=500, detail="Failed to update material")
+
+    # Retrieve the updated material
+    updated_material = await app.mongodb.materials.find_one(
+        {"_id": ObjectId(material_id)}
+    )
+    return updated_material
 
 
 @app.get("/test_db_connection")
