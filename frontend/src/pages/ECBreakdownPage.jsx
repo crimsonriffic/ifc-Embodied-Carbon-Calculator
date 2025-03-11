@@ -140,11 +140,11 @@ function ECBreakdownPage() {
   }
 
   if (loading) {
-    return <p>Loading building system information...</p>; // Show loading state
+    return <p className="mt-16">Loading building system information...</p>; // Show loading state
   }
 
   if (error) {
-    return <p className="text-red-500">{error}</p>; // Display error message
+    return <p className="text-red-500 mt-16">{error}</p>; // Display error message
   }
 
   if (!buildingInfo) {
