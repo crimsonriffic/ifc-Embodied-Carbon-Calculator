@@ -119,12 +119,29 @@ class Project(BaseModel):
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
+class Material(BaseModel):
+    material: str
+    ec: float
+
+class Element(BaseModel):
+    element: str
+    ec: float
+    materials: List[Material]
+
+class Category(BaseModel):
+    category: str
+    total_ec: float
+    elements: List[Element]
+
+class ECBreakdown(BaseModel):
+    total_ec: float
+    ec_breakdown: List[Category]
 
 class ProjectBreakdown(BaseModel):
     project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    total_ec: float
     gfa: float
-    ec_breakdown: dict
+    summary: dict
+    ec_breakdown: ECBreakdown
     last_calculated: datetime
     version: str
 
@@ -227,10 +244,13 @@ async def upload_ifc(
             
             total_ec, ec_data = calculator.calculate_embodied_carbon(tmp_path, with_breakdown=True)
         print("Summary data is: ",summary_data)
+        print("ec_data is ", ec_data)
+        print("ec_data[ec_breakdown]", ec_data["ec_breakdown"])
         # Update the ec_breakdown collection 
         ec_breakdown_entry = {
             "project_id": ObjectId(project_id),
             "ifc_version": new_version,
+            "total_ec": total_ec,
             "summary": summary_data,
             "breakdown": ec_data,
             "timestamp": datetime.now()
@@ -294,10 +314,7 @@ async def get_breakdown(project_id: str, version: str = None):
     version_number = version if version else str(project.get("current_version"))
     if version_number not in project["ifc_versions"]:
         raise HTTPException(status_code=400, detail="Version not found")
-    # latest_version = str(project.get("current_version"))
     ifc_data = project["ifc_versions"].get(version_number, {})
-
-    # file_path = project["ifc_versions"][latest_version]["file_path"].replace(f"s3://{S3_BUCKET}/", "")
 
     # Retrieve stored EC values and breakdowns
     total_ec = ifc_data.get("total_ec", 0)
@@ -306,12 +323,12 @@ async def get_breakdown(project_id: str, version: str = None):
     gfa = ifc_data.get("gfa", 0)
     ec_breakdown_data = await app.mongodb.ec_breakdown.find_one({"_id": ec_breakdown_id}) 
     
-    print("ec breakdown is,",ec_breakdown_data["breakdown"])
-
+    print("ec breakdown summary is,",ec_breakdown_data["summary"])
+    print("ec_breakdown_data[breakdown] is,",ec_breakdown_data["breakdown"])
     return ProjectBreakdown(
         project_id=str(project["_id"]),
-        total_ec=total_ec,
         gfa = gfa,
+        summary = ec_breakdown_data["summary"],
         ec_breakdown=ec_breakdown_data["breakdown"],
         last_calculated=project.get("last_calculated", datetime.now()),
         version=version_number,

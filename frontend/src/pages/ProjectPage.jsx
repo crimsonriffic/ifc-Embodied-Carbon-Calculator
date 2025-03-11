@@ -17,7 +17,7 @@ function ProjectPage() {
   const [error, setError] = useState(null);
   const [sankeyData, setSankeyData] = useState([]);
   const [projectHistory, setProjectHistory] = useState([]);
-  const [breakdownData, setBreakdownData] = useState([]);
+  const [summaryData, setSummaryData] = useState([]);
   const [selectedBreakdownType, setSelectedBreakdownType] = useState("");
   const [versionNumber, setVersionNumber] = useState("");
   const [versionArray, setVersionArray] = useState([]);
@@ -111,7 +111,7 @@ function ProjectPage() {
   // };
 
   // TESTING DAVIS CODE DATA
-  const davisData = {
+  const data = {
     total_ec: 10731.417534758186,
     ec_breakdown: [
       {
@@ -269,13 +269,14 @@ function ProjectPage() {
           projectId,
           versionToFetch
         );
+        console.log("Breakdown response data: ", breakdownResponse.data);
         console.log(
-          "Breakdown response data: ",
+          "Sankey data that i want: ",
           breakdownResponse.data.ec_breakdown
         );
-
         setProjectHistory(historyResponse.data.history);
-        setBreakdownData(breakdownResponse.data.ec_breakdown);
+        setSummaryData(breakdownResponse.data.summary);
+        //setSankeyData(breakdownResponse.data.ec_breakdown);
         setSelectedBreakdownType("by_material");
         // Set latest version only if history exists
         // Set the versionNumber state if it's empty
@@ -304,10 +305,11 @@ function ProjectPage() {
     console.log("Selected Breakdown Type is : ", selectedBreakdownType);
     console.log(
       "Data of the selected breakdown type is : ",
-      breakdownData[selectedBreakdownType]
+      summaryData[selectedBreakdownType]
     );
+    console.log("Sankey data is", sankeyData);
 
-    const breakdownValues = breakdownData[selectedBreakdownType];
+    const breakdownValues = summaryData[selectedBreakdownType];
 
     // Extract labels (keys) and data (values)
     const labels = Object.keys(breakdownValues).map(
