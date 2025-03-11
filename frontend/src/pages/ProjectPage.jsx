@@ -15,6 +15,7 @@ function ProjectPage() {
   const location = useLocation();
   const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null);
+  const [sankeyData, setSankeyData] = useState([]);
   const [projectHistory, setProjectHistory] = useState([]);
   const [breakdownData, setBreakdownData] = useState([]);
   const [selectedBreakdownType, setSelectedBreakdownType] = useState("");
@@ -110,7 +111,7 @@ function ProjectPage() {
   // };
 
   // TESTING DAVIS CODE DATA
-  const data = {
+  const davisData = {
     total_ec: 10731.417534758186,
     ec_breakdown: [
       {

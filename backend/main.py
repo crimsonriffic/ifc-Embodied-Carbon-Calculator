@@ -207,18 +207,20 @@ async def upload_ifc(
         print("uploaded the file to s3")
         # Use temporary file for EC breakdown calculation
         with utils.temp_ifc_file(file_content) as tmp_path:
-            #ec_data = await ec_breakdown.overall_ec_breakdown(tmp_path)
-            print(tmp_path)
+            summary_data = ec_breakdown.overall_ec_breakdown(tmp_path)
+            
             total_ec, ec_data = calculator.calculate_embodied_carbon(tmp_path, with_breakdown=True)
-
+        print("Summary data is: ",summary_data)
         # Update the ec_breakdown collection 
         ec_breakdown_entry = {
             "project_id": ObjectId(project_id),
             "ifc_version": new_version,
+            "summary": summary_data,
             "breakdown": ec_data,
             "timestamp": datetime.now()
         }
-        print(ec_breakdown_entry)
+        
+        print("EC_breakdown entry is" , ec_breakdown_entry)
 
         ec_breakdown_result = await app.mongodb.ec_breakdown.insert_one(ec_breakdown_entry)
         ec_breakdown_id = ec_breakdown_result.inserted_id  # Reference ID
@@ -286,16 +288,18 @@ async def get_breakdown(project_id: str, version: str = None):
    
     # Retrieve stored EC values and breakdowns
     total_ec = ifc_data.get("total_ec", 0)
-    ec_breakdown = ifc_data.get("ec_breakdown", {})
+    ec_breakdown_id = ifc_data.get("ec_breakdown_id")
+    print(ec_breakdown_id)
     gfa = ifc_data.get("gfa", 0)
+    ec_breakdown_data = await app.mongodb.ec_breakdown.find_one({"_id": ec_breakdown_id}) 
     
-    print("ec breakdown is,",ec_breakdown)
+    print("ec breakdown is,",ec_breakdown_data["breakdown"])
 
     return ProjectBreakdown(
         project_id=str(project["_id"]),
         total_ec=total_ec,
         gfa = gfa,
-        ec_breakdown=ec_breakdown,
+        ec_breakdown=ec_breakdown_data["breakdown"],
         last_calculated=project.get("last_calculated", datetime.now()),
         version=version_number
     )
