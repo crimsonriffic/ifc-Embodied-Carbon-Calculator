@@ -3,6 +3,7 @@ import { useState } from "react";
 
 const transformDataForSankey = (data) => {
   // Create nodes first
+
   const nodes = [
     { name: "Total EC" },
     { name: "Substructure" },
@@ -155,6 +156,7 @@ function CustomNode({ x, y, width, height, index, payload, containerWidth }) {
 }
 
 export default function SankeyChart({ data }) {
+  console.log("SankeyChart received data:", data); // Debugging line
   const { nodes, links } = transformDataForSankey(data);
   const [activeNode, setActiveNode] = useState(null);
 

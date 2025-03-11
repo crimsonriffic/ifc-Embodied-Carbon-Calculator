@@ -276,7 +276,7 @@ function ProjectPage() {
         );
         setProjectHistory(historyResponse.data.history);
         setSummaryData(breakdownResponse.data.summary);
-        //setSankeyData(breakdownResponse.data.ec_breakdown);
+        setSankeyData(breakdownResponse.data.ec_breakdown);
         setSelectedBreakdownType("by_material");
         // Set latest version only if history exists
         // Set the versionNumber state if it's empty
@@ -451,7 +451,7 @@ function ProjectPage() {
                     </p>
                   </div>
                   {/** Card 2 - Sankey chart  */}
-                  <SankeyChart data={data} />
+                  <SankeyChart data={sankeyData} />
                 </div>
                 <div className="flex flex-1 flex-col">
                   {/** Card 3- Breakdown graphs */}
