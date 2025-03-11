@@ -37,7 +37,7 @@ jobs:
 
   deploy:
     needs: test # This ensures deploy only runs if tests pass
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' # Only deploy on push to main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/deployment'
     runs-on: ubuntu-latest
 
     steps:
