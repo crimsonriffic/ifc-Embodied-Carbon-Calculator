@@ -14,7 +14,6 @@ export default {
     "./src/components/ElementInfoCard.jsx",
     "./src/components/BarChart.jsx",
     "./src/components/AwardCard.jsx",
-    "./src/pages/ECBreakdownPage.jsx",
     "./src/Layout.jsx",
     "./src/components/SankeyChart.jsx",
     "./src/pages/DraftPage.jsx",

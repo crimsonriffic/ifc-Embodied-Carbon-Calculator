@@ -421,7 +421,14 @@ async def upload_ifc(
 
     try:
         file_content = await file.read()
-        new_version = str(project.get("current_version", 0) + 1)
+        
+        current_version = project.get("current_version")
+        if current_version is None:
+            new_version = "1"  # Start new projects with version "1"
+        elif current_version == 1:
+            new_version = "1"  # Keep it as "1"
+        else:
+            new_version = str(current_version + 1)  # Increment for later versions
 
         s3_path = f"ifc_files/{project_id}/{new_version}_{file.filename}"
 

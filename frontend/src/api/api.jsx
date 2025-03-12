@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:8000", // Replace with your backend's base URL
+  baseURL: import.meta.env.VITE_BACKEND_URL || "http://localhost:8000", // Replace with your backend's base URL
 });
 export const getProjectsByUsername = (user_id) => {
   console.log("api.jsx being called");
@@ -29,8 +29,8 @@ export const uploadIfc = async (
       updateType
     );
     // Upload file using Axios
-    const response = await axios.post(
-      `http://localhost:8000/projects/${projectId}/upload_ifc`, // Dynamically add project ID
+    const response = await api.post(
+      `/projects/${projectId}/upload_ifc`, // Dynamically add project ID
       formData, // Form data with the file
       {
         params: {
@@ -79,7 +79,7 @@ export const createProject = async (
     last_edited_date: new Date().toISOString(), // Current timestamp
     last_edited_user: userId,
     user_job_role: "Senior Architect", // Replace with actual role
-    current_version: 1,
+    current_version: 0,
     access_control: {
       user123: {
         role: "owner",
@@ -111,15 +111,11 @@ export const createProject = async (
   console.log("Project Data:", projectData);
   try {
     // Send project data to create project
-    const response = await axios.post(
-      `http://localhost:8000/create_project`,
-      projectData,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await api.post("create_project", projectData, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
     console.log("Project created successfully: ", response.data);
 
     // Extract the project Id from the response
@@ -130,8 +126,8 @@ export const createProject = async (
     formData.append("file", file);
     console.log("The uploadIFC inputs are", projectId, file, userId);
     // Upload file using Axios
-    const fileResponse = await axios.post(
-      `http://localhost:8000/projects/${projectId}/upload_ifc`, // Dynamically add project ID
+    const fileResponse = await api.post(
+      `/projects/${projectId}/upload_ifc`, // Dynamically add project ID
       formData, // Form data with the file
       {
         params: {
