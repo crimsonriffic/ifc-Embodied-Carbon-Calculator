@@ -158,7 +158,7 @@ class VersionHistory(BaseModel):
     uploaded_by: str
     date_uploaded: datetime
     comments: str
-    update_type: str
+    status: str
     total_ec: float
 
 
@@ -399,7 +399,7 @@ async def upload_ifc(
     file: UploadFile,
     user_id: str = Query(..., description="ID of the user uploading the file"),
     comments: str = Form(""),  # Default to empty string if not provided
-    update_type: str = Form(""),  # Default to empty string if not provided
+    status: str = Form(""),
 ):
     if not file.filename.lower().endswith(".ifc"):
         raise HTTPException(
@@ -474,7 +474,7 @@ async def upload_ifc(
                         "date_uploaded": datetime.now(),
                         "uploaded_by": user_id,
                         "comments": comments,
-                        "update_type": update_type,
+                        "status":status,
                         "file_path": f"s3://{S3_BUCKET}/{s3_path}",
                         "gfa": 0,
                         "total_ec": total_ec,
@@ -557,7 +557,7 @@ async def get_project_info(project_id: str):
     )
 
 
-# Get latest edits history (top 4 history, get the uploaded_by, date_uploaded, comments, update_type)
+# Get latest edits history (top 4 history, get the uploaded_by, date_uploaded, comments, status)
 @app.get("/projects/{project_id}/get_history", response_model=ProjectHistoryResponse)
 async def get_project_history(project_id: str):
     project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
@@ -580,7 +580,7 @@ async def get_project_history(project_id: str):
                 uploaded_by=version_data.get("uploaded_by", ""),
                 date_uploaded=version_data.get("date_uploaded", datetime.now()),
                 comments=version_data.get("comments", ""),
-                update_type=version_data.get("update_type", ""),
+                status = version_data.get("status", ""),
                 total_ec=version_data.get("total_ec", 0.0),
             )
         )
