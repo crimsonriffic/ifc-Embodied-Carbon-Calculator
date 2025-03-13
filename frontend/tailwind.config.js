@@ -18,6 +18,12 @@ export default {
     "./src/components/SankeyChart.jsx",
     "./src/pages/DraftPage.jsx",
     "./src/components/HistoryTable.jsx",
+    "./src/pages/EditPage1.jsx",
+    "./src/components/Stepper.jsx",
+    "./src/components/MaterialTable.jsx",
+    "./src/pages/MaterialInfoPage.jsx",
+    "./src/pages/ProjectInfoPage.jsx",
+    "./src/pages/UploadConfirmationPage.jsx",
   ],
   theme: {
     extend: {},

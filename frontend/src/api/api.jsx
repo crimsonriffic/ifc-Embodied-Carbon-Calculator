@@ -7,26 +7,20 @@ export const getProjectsByUsername = (user_id) => {
   console.log("api.jsx being called");
   return api.get("/projects", { params: { user_id } });
 };
-export const uploadIfc = async (
-  projectId,
-  file,
-  userId,
-  comments,
-  updateType
-) => {
+export const uploadIfc = async (projectId, file, userId, comments, status) => {
   try {
     // Create FormData to send the file
     const formData = new FormData();
     formData.append("file", file);
     formData.append("comments", comments);
-    formData.append("update_type", updateType);
+    formData.append("status", status);
     console.log(
       "The uploadIFC inputs are",
       projectId,
       file,
       userId,
       comments,
-      updateType
+      status
     );
     // Upload file using Axios
     const response = await api.post(
@@ -160,4 +154,50 @@ export const getProjectBreakdown = async (projectId, versionNumber) => {
   );
   const versionQuery = versionNumber ? `?version=${versionNumber}` : "";
   return api.get(`/projects/${projectId}/get_breakdown${versionQuery}`);
+};
+
+export const getMaterialDatabase = async () => {
+  console.log("getMaterialDatabase API is called");
+  return api.get("/materials");
+};
+
+export const uploadMaterial = async (
+  userId,
+  material_type,
+  specified_material,
+  density,
+  embodied_carbon,
+  unit
+) => {
+  console.log("Calling upload material API");
+
+  //Construct the project data object
+  const materialData = {
+    material_type: material_type,
+    specified_material: specified_material,
+    density: density || null,
+    embodied_carbon: embodied_carbon || "0.00",
+    unit: unit,
+    database_source: "Custom",
+  };
+  console.log("Material Data:", materialData);
+  try {
+    // Send project data to create project
+    const response = await api.post(
+      `materials?user_id=${userId}`,
+      materialData,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    console.log("Material Uploaded successfully: ", response.data);
+
+    // Return the project and file upload response
+    return response.data;
+  } catch (err) {
+    console.error("Failed to upload material: ", err);
+    throw err; // Re-throw the error for handling in the calling function
+  }
 };
