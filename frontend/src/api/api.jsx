@@ -160,3 +160,44 @@ export const getMaterialDatabase = async () => {
   console.log("getMaterialDatabase API is called");
   return api.get("/materials");
 };
+
+export const uploadMaterial = async (
+  userId,
+  material_type,
+  specified_material,
+  density,
+  embodied_carbon,
+  unit
+) => {
+  console.log("Calling upload material API");
+
+  //Construct the project data object
+  const materialData = {
+    material_type: material_type,
+    specified_material: specified_material,
+    density: density || null,
+    embodied_carbon: embodied_carbon || "0.00",
+    unit: unit,
+    database_source: "Custom",
+  };
+  console.log("Material Data:", materialData);
+  try {
+    // Send project data to create project
+    const response = await api.post(
+      `materials?user_id=${userId}`,
+      materialData,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    console.log("Material Uploaded successfully: ", response.data);
+
+    // Return the project and file upload response
+    return response.data;
+  } catch (err) {
+    console.error("Failed to upload material: ", err);
+    throw err; // Re-throw the error for handling in the calling function
+  }
+};

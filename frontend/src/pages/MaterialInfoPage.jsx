@@ -2,7 +2,12 @@ import Navbar from "../components/NavBar";
 import Stepper from "../components/Stepper";
 import MaterialTable from "../components/MaterialTable";
 import HistoryTable from "../components/HistoryTable";
-import { getMaterialDatabase, getProjectHistory, uploadIfc } from "../api/api";
+import {
+  getMaterialDatabase,
+  getProjectHistory,
+  uploadIfc,
+  uploadMaterial,
+} from "../api/api";
 
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -33,10 +38,28 @@ function MaterialInfoPage() {
     setMaterialType(e.target.value);
   };
 
-  const handleUpload = (e) => {
+  const handleUpload = async (e) => {
+    e.preventDefault();
     console.log("Handle Upload Called");
-    setShowSuccess(true);
-    setSuccessMessage("Material successfully uploaded");
+
+    try {
+      const userId = "user123";
+      const response = await uploadMaterial(
+        userId,
+        materialType,
+        specifiedMaterial,
+        density,
+        ec,
+        unit
+      );
+      setSuccessMessage(response.message);
+      setUploadError(null);
+      setShowSuccess(true);
+    } catch (err) {
+      setUploadError(
+        err.response?.data?.detail || "An error occurred during upload."
+      );
+    }
   };
   useEffect(() => {
     const fetchData = async () => {
@@ -85,12 +108,15 @@ function MaterialInfoPage() {
           <form onSubmit={handleUpload} className="space-y-4">
             <div className="max-w-md">
               {/*Input Material type */}
-              <label htmlFor="status" className="block text-gray-700 mb-1">
+              <label
+                htmlFor="materialType"
+                className="block text-gray-700 mb-1"
+              >
                 Material Type
               </label>
               <select
                 id="material-type"
-                value={status}
+                value={materialType}
                 onChange={handleUpdateMaterialType}
                 className="p-2 border w-80 border-gray-200 shadow-md mb-4"
               >
@@ -145,18 +171,19 @@ function MaterialInfoPage() {
             </div>
 
             {/** Unit*/}
-            <div className="mb-4">
-              <label htmlFor="client" className="block text-gray-700 mb-1">
+            <div className="max-w-md">
+              <label htmlFor="status" className="block text-gray-700 mb-1">
                 Unit
               </label>
-              <input
-                type="text"
+              <select
                 id="unit"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
-                className="p-2 w-80 border border-gray-200 shadow-md focus:outline-none resize-none"
-                required
-              />
+                className="p-2 border w-80 border-gray-200 shadow-md mb-4"
+              >
+                <option value="kg">kg</option>
+                <option value="m2">m2</option>
+              </select>
             </div>
 
             {/**Upload Button */}
