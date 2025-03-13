@@ -7,26 +7,20 @@ export const getProjectsByUsername = (user_id) => {
   console.log("api.jsx being called");
   return api.get("/projects", { params: { user_id } });
 };
-export const uploadIfc = async (
-  projectId,
-  file,
-  userId,
-  comments,
-  updateType
-) => {
+export const uploadIfc = async (projectId, file, userId, comments, status) => {
   try {
     // Create FormData to send the file
     const formData = new FormData();
     formData.append("file", file);
     formData.append("comments", comments);
-    formData.append("update_type", updateType);
+    formData.append("status", status);
     console.log(
       "The uploadIFC inputs are",
       projectId,
       file,
       userId,
       comments,
-      updateType
+      status
     );
     // Upload file using Axios
     const response = await api.post(
@@ -160,4 +154,9 @@ export const getProjectBreakdown = async (projectId, versionNumber) => {
   );
   const versionQuery = versionNumber ? `?version=${versionNumber}` : "";
   return api.get(`/projects/${projectId}/get_breakdown${versionQuery}`);
+};
+
+export const getMaterialDatabase = async () => {
+  console.log("getMaterialDatabase API is called");
+  return api.get("/materials");
 };

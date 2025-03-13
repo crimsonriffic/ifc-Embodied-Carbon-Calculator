@@ -27,7 +27,9 @@ function HomePage() {
   const handleUploadClick = (projectId, projectName) => {
     setSelectedProjectId(projectId);
     setSelectedProjectName(projectName);
-    navigate(`/editProject/${encodeURIComponent(projectName)}`);
+    navigate(`/editProject/${encodeURIComponent(projectName)}`, {
+      state: { projectId },
+    });
     setIsDialogOpen(true);
   };
   const handleCloseDialog = () => {

@@ -20,6 +20,7 @@ export default {
     "./src/components/HistoryTable.jsx",
     "./src/pages/EditPage1.jsx",
     "./src/components/Stepper.jsx",
+    "./src/components/MaterialTable.jsx",
   ],
   theme: {
     extend: {},
