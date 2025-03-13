@@ -4,7 +4,11 @@ import IfcDialog from "./IfcDialog";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext.jsx";
-import { ArrowUpTrayIcon, ArrowRightIcon } from "@heroicons/react/24/solid";
+import {
+  ArrowUpTrayIcon,
+  ArrowRightIcon,
+  PencilSquareIcon,
+} from "@heroicons/react/24/solid";
 
 function HomePage() {
   const [projects, setProjects] = useState([]);
@@ -23,6 +27,7 @@ function HomePage() {
   const handleUploadClick = (projectId, projectName) => {
     setSelectedProjectId(projectId);
     setSelectedProjectName(projectName);
+    navigate(`/editProject/${encodeURIComponent(projectName)}`);
     setIsDialogOpen(true);
   };
   const handleCloseDialog = () => {
@@ -93,13 +98,16 @@ function HomePage() {
                   Client Name
                 </th>
                 <th className="border border-gray-300 px-4 py-2 text-left">
+                  Typology
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left">
                   Latest Update
                 </th>
                 <th className="border border-gray-300 px-4 py-2 text-left">
-                  Upload IFC file
+                  Edit Project
                 </th>
                 <th className="border border-gray-300 px-4 py-2 text-left">
-                  Go To Project
+                  View results
                 </th>
               </tr>
             </thead>
@@ -119,6 +127,9 @@ function HomePage() {
                       {project.client_name}
                     </td>
                     <td className="border border-gray-300 px-4 py-2">
+                      {project.typology}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
                       {formatDate(project.last_edited_date)},{" "}
                       {project.last_edited_user}
                     </td>
@@ -129,7 +140,7 @@ function HomePage() {
                           handleUploadClick(project._id, project.project_name)
                         }
                       >
-                        <ArrowUpTrayIcon className="w-6 h-6 text-gray-500" />
+                        <PencilSquareIcon className="w-6 h-6 " />
                       </button>
                     </td>
                     <td className="border border-gray-300 px-4 py-2 text-center">
