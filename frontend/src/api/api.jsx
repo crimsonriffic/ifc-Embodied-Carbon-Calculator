@@ -1,36 +1,30 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:8000", // Replace with your backend's base URL
+  baseURL: import.meta.env.VITE_BACKEND_URL || "http://localhost:8000", // Replace with your backend's base URL
 });
 export const getProjectsByUsername = (user_id) => {
   console.log("api.jsx being called");
   return api.get("/projects", { params: { user_id } });
 };
-export const uploadIfc = async (
-  projectId,
-  file,
-  userId,
-  comments,
-  updateType
-) => {
+export const uploadIfc = async (projectId, file, userId, comments, status) => {
   try {
     // Create FormData to send the file
     const formData = new FormData();
     formData.append("file", file);
     formData.append("comments", comments);
-    formData.append("update_type", updateType);
+    formData.append("status", status);
     console.log(
       "The uploadIFC inputs are",
       projectId,
       file,
       userId,
       comments,
-      updateType
+      status
     );
     // Upload file using Axios
-    const response = await axios.post(
-      `http://localhost:8000/projects/${projectId}/upload_ifc`, // Dynamically add project ID
+    const response = await api.post(
+      `/projects/${projectId}/upload_ifc`, // Dynamically add project ID
       formData, // Form data with the file
       {
         params: {
@@ -79,7 +73,7 @@ export const createProject = async (
     last_edited_date: new Date().toISOString(), // Current timestamp
     last_edited_user: userId,
     user_job_role: "Senior Architect", // Replace with actual role
-    current_version: 1,
+    current_version: 0,
     access_control: {
       user123: {
         role: "owner",
@@ -111,15 +105,11 @@ export const createProject = async (
   console.log("Project Data:", projectData);
   try {
     // Send project data to create project
-    const response = await axios.post(
-      `http://localhost:8000/create_project`,
-      projectData,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await api.post("create_project", projectData, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
     console.log("Project created successfully: ", response.data);
 
     // Extract the project Id from the response
@@ -130,8 +120,8 @@ export const createProject = async (
     formData.append("file", file);
     console.log("The uploadIFC inputs are", projectId, file, userId);
     // Upload file using Axios
-    const fileResponse = await axios.post(
-      `http://localhost:8000/projects/${projectId}/upload_ifc`, // Dynamically add project ID
+    const fileResponse = await api.post(
+      `/projects/${projectId}/upload_ifc`, // Dynamically add project ID
       formData, // Form data with the file
       {
         params: {
@@ -164,4 +154,50 @@ export const getProjectBreakdown = async (projectId, versionNumber) => {
   );
   const versionQuery = versionNumber ? `?version=${versionNumber}` : "";
   return api.get(`/projects/${projectId}/get_breakdown${versionQuery}`);
+};
+
+export const getMaterialDatabase = async () => {
+  console.log("getMaterialDatabase API is called");
+  return api.get("/materials");
+};
+
+export const uploadMaterial = async (
+  userId,
+  material_type,
+  specified_material,
+  density,
+  embodied_carbon,
+  unit
+) => {
+  console.log("Calling upload material API");
+
+  //Construct the project data object
+  const materialData = {
+    material_type: material_type,
+    specified_material: specified_material,
+    density: density || null,
+    embodied_carbon: embodied_carbon || "0.00",
+    unit: unit,
+    database_source: "Custom",
+  };
+  console.log("Material Data:", materialData);
+  try {
+    // Send project data to create project
+    const response = await api.post(
+      `materials?user_id=${userId}`,
+      materialData,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    console.log("Material Uploaded successfully: ", response.data);
+
+    // Return the project and file upload response
+    return response.data;
+  } catch (err) {
+    console.error("Failed to upload material: ", err);
+    throw err; // Re-throw the error for handling in the calling function
+  }
 };
