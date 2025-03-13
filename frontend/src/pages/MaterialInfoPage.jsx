@@ -13,11 +13,12 @@ import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
 function MaterialInfoPage() {
-  const [materialType, setMaterialType] = useState("");
+  const [materialType, setMaterialType] = useState("Concrete");
   const [specifiedMaterial, setSpecifiedMaterial] = useState("");
   const [density, setDensity] = useState("");
   const [ec, setEc] = useState("");
-  const [unit, setUnit] = useState("");
+  const [unit, setUnit] = useState("kg");
+  const [newMaterialId, setNewMaterialId] = useState("");
   const [uploadError, setUploadError] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
@@ -28,9 +29,9 @@ function MaterialInfoPage() {
   const { projectId } = location.state;
   const { projectName } = useParams();
 
-  const handleProceed = (e) => {
+  const handleProceed = (projectId, projectName) => {
     console.log("HandleProceed called");
-    navigate(`/materialInfo/${encodeURIComponent(projectName)}`, {
+    navigate(`/uploadConfirm/${encodeURIComponent(projectName)}`, {
       state: { projectId },
     });
   };
@@ -52,9 +53,21 @@ function MaterialInfoPage() {
         ec,
         unit
       );
+      console.log("Response from upload material is, ", response);
+      // After successful upload, fetch updated materials
+      const materialData = await getMaterialDatabase();
+      setMaterialDatabase(materialData.data);
+
+      // Store the new material's ID to highlight it
+      setNewMaterialId(response._id); // Add this state variable
       setSuccessMessage(response.message);
       setUploadError(null);
       setShowSuccess(true);
+
+      // Remove highlight after 3 seconds
+      setTimeout(() => {
+        setNewMaterialId(null);
+      }, 3000);
     } catch (err) {
       setUploadError(
         err.response?.data?.detail || "An error occurred during upload."
@@ -68,12 +81,8 @@ function MaterialInfoPage() {
 
         setMaterialDatabase(materialData.data);
         console.log("Material Database set as : ", materialData.data);
-
-        setError(null);
-        setLoading(false);
       } catch (err) {
         console.error("Failed to data: ", err);
-        setError("Failed to fetch material data."); // Set error message
       }
     };
     if (projectId) {
@@ -89,7 +98,7 @@ function MaterialInfoPage() {
         <h1 className="text-3xl font-bold">Upload Information</h1>
       </div>
       <div className="mt-6">
-        <Stepper currentStep={2} />
+        <Stepper currentStep={3} />
       </div>
       <div className="bg-[#A9C0A0] text-white rounded-lg px-4 py-2 flex items-center shadow-md mt-4 mb-6 sm:max-w-md">
         <h1 className="text-2xl font-semibold tracking-wide">
@@ -204,7 +213,7 @@ function MaterialInfoPage() {
           <button
             className="px-4 py-2 mt-6 w-28 bg-[#9FD788] text-black rounded"
             onClick={() => {
-              handleProceed;
+              handleProceed(projectId, projectName);
             }}
           >
             Proceed
@@ -216,7 +225,10 @@ function MaterialInfoPage() {
           <h1 className="text-2xl font-semibold tracking-wide mb-2">
             Material Database
           </h1>
-          <MaterialTable materialDatabase={materialDatabase} />
+          <MaterialTable
+            materialDatabase={materialDatabase}
+            newMaterialId={newMaterialId}
+          />
         </div>
       </div>
     </div>

@@ -7,7 +7,7 @@ import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
 function EditPage1() {
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState("Conceptual Design");
   const [selectedFile, setSelectedFile] = useState(null);
   const [inputComment, setInputComment] = useState("");
   const [projectHistory, setProjectHistory] = useState([]);
@@ -100,7 +100,7 @@ function EditPage1() {
         <h1 className="text-3xl font-bold">Upload Information</h1>
       </div>
       <div className="mt-6">
-        <Stepper currentStep={1} />
+        <Stepper currentStep={2} />
       </div>
       <div className="bg-[#A9C0A0] text-white rounded-lg px-4 py-2 flex items-center shadow-md mt-4 mb-6 sm:max-w-md">
         <h1 className="text-2xl font-semibold tracking-wide">

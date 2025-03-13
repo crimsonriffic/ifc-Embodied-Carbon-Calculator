@@ -1,4 +1,4 @@
-const MaterialTable = ({ materialDatabase }) => {
+const MaterialTable = ({ materialDatabase, newMaterialId }) => {
   return (
     <div className="overflow-x-auto h-96">
       <table className="min-w-full border relative border-gray-300 bg-white shadow-md rounded-lg">
@@ -20,7 +20,12 @@ const MaterialTable = ({ materialDatabase }) => {
         </thead>
         <tbody>
           {materialDatabase.map((entry, index) => (
-            <tr key={entry.id} className="border-b">
+            <tr
+              className={`border-b ${
+                entry.id === newMaterialId ? "bg-green-300" : ""
+              }`}
+              key={entry.id}
+            >
               <td className="border border-gray-300 px-4 py-2 text-center">
                 {entry.material_type}
               </td>

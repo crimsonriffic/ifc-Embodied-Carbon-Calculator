@@ -21,6 +21,9 @@ export default {
     "./src/pages/EditPage1.jsx",
     "./src/components/Stepper.jsx",
     "./src/components/MaterialTable.jsx",
+    "./src/pages/MaterialInfoPage.jsx",
+    "./src/pages/ProjectInfoPage.jsx",
+    "./src/pages/UploadConfirmationPage.jsx",
   ],
   theme: {
     extend: {},

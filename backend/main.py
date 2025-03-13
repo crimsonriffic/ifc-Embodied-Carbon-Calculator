@@ -148,6 +148,8 @@ class ProjectBreakdown(BaseModel):
 
 class ProjectBasicInfo(BaseModel):
     project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    project_name: str
+    client_name:str
     gfa: float
     typology: str
     status: str
@@ -551,6 +553,8 @@ async def get_project_info(project_id: str):
 
     return ProjectBasicInfo(
         _id=project["_id"],
+        project_name =project.get("project_name"),
+        client_name=project.get("client_name"),
         gfa=gfa,
         typology=project.get("typology", "Not Specified"),
         status=project.get("status", "Not Specified"),
