@@ -1,5 +1,5 @@
 import Navbar from "../components/NavBar";
-import { Link, useParams, useLocation } from "react-router-dom";
+import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, version } from "react";
 import { getProjectHistory, getProjectBreakdown } from "../api/api";
 import ProjectErrorDialog from "./ProjectErrorDialog";
@@ -31,11 +31,17 @@ function ProjectPage() {
   });
   const { projectName } = useParams();
   const { projectId } = location.state;
+  const navigate = useNavigate();
   console.log("Project Name and project Id is ", projectName, projectId);
   const handleVersionClick = (e) => {
     setVersionNumber(e.target.value);
   };
-
+  const handleMoreDetails = (projectId, projectName) => {
+    console.log("HandleMoreDetails called");
+    navigate(`/breakdown/${encodeURIComponent(projectName)}`, {
+      state: { projectId },
+    });
+  };
   /* Initial API calls to fetch project history and breakdown data */
   useEffect(() => {
     const fetchData = async () => {
@@ -209,7 +215,7 @@ function ProjectPage() {
                 </select>
               </div>
 
-              <div className="flex flex-row mt-2 justify-between gap-x-12">
+              <div className="flex flex-row mt-2 justify-between gap-x-96">
                 {/** Card 1 - Building Info*/}
                 <div className="flex-1 flex-col sm:max-w-md ">
                   <h1 className="font-bold">Upload Information</h1>
@@ -223,7 +229,18 @@ function ProjectPage() {
                 </div>
 
                 <div className=" flex-1 flex flex-col ">
-                  <h1 className="font-bold">A1-A3 Embodied Carbon Data</h1>
+                  <div className="flex items-center gap-2">
+                    <h1 className="font-bold">A1-A3 Embodied Carbon Data</h1>
+                    <button
+                      className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-800 rounded-md hover:bg-green-200"
+                      onClick={() => {
+                        handleMoreDetails(projectId, projectName);
+                      }}
+                    >
+                      More details
+                      <span>→</span>
+                    </button>
+                  </div>
                   <div className="flex flex-row">
                     <p>Total Embodied Carbon: </p>
                     <p className="font-bold">
@@ -237,34 +254,6 @@ function ProjectPage() {
                   </div>
                   {/** Card 2 - Sankey chart  */}
                   <SankeyChart data={sankeyData} />
-                </div>
-                <div className="flex flex-1 flex-col">
-                  {/** Card 3- Breakdown graphs */}
-
-                  <div className="flex flex-row items-center gap-2 mt-4">
-                    <label
-                      htmlFor="breakdownType"
-                      className="inline-block text-sm font-medium text-gray-700"
-                    >
-                      Compare by:
-                    </label>
-
-                    <select
-                      id="breakdownType"
-                      value={selectedBreakdownType}
-                      onChange={handleUpdateTypeChange}
-                      className="font-semibold rounded-lg"
-                    >
-                      <option value="by_material">Building Material</option>
-                      <option value="by_element">Building Element</option>
-                      <option value="by_building_system">
-                        Building System
-                      </option>
-                    </select>
-                  </div>
-                  <div className="h-[200px]">
-                    <BarChart data={breakdownBar} />
-                  </div>
                 </div>
               </div>
             </div>
