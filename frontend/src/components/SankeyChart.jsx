@@ -120,6 +120,8 @@ const transformDataForSankey = (data) => {
 
 function CustomNode({ x, y, width, height, index, payload, containerWidth }) {
   const isOut = x + width + 6 > containerWidth;
+  const showEC = width > 400;
+  console.log("width is ", width, showEC);
   return (
     <Layer key={`CustomNode${index}`}>
       <Rectangle
@@ -141,30 +143,33 @@ function CustomNode({ x, y, width, height, index, payload, containerWidth }) {
       >
         {payload.name}
       </text>
-      <text
-        textAnchor={isOut ? "end" : "start"}
-        x={isOut ? x - 6 : x + width + 6}
-        y={y + height / 2 + 13}
-        fontSize="12"
-        stroke="#333"
-        strokeOpacity="0.5"
-      >
-        {Math.round(payload.value)} kgCO2eq
-      </text>
+      {showEC && (
+        <text
+          textAnchor={isOut ? "end" : "start"}
+          x={isOut ? x - 6 : x + width + 6}
+          y={y + height / 2 + 13}
+          fontSize="12"
+          stroke="#333"
+          strokeOpacity="0.5"
+        >
+          {Math.round(payload.value)} kgCO2eq
+        </text>
+      )}
     </Layer>
   );
 }
 
-export default function SankeyChart({ data }) {
+export default function SankeyChart({ data, width, height }) {
   console.log("SankeyChart received data:", data); // Debugging line
   const { nodes, links } = transformDataForSankey(data);
   const [activeNode, setActiveNode] = useState(null);
+  // Determine dimensions based on size prop
 
   return (
     <div className="w-full h-full">
       <Sankey
-        width={600}
-        height={300}
+        width={width}
+        height={height}
         data={{ nodes, links }}
         nodePadding={50}
         margin={{ top: 20, right: 100, bottom: 20, left: 0 }}
@@ -173,7 +178,7 @@ export default function SankeyChart({ data }) {
           fill: "none",
           opacity: 1,
         }}
-        node={<CustomNode />}
+        node={<CustomNode width={width} />}
         onMouseEnter={(node) => setActiveNode(node)}
         onMouseLeave={() => setActiveNode(null)}
       >
