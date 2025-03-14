@@ -13,6 +13,7 @@ export default function CreatePage() {
   const [status, setStatus] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false); // State for IfcDialog
   const [loading, setLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const { username } = useUser();
   const navigate = useNavigate();
