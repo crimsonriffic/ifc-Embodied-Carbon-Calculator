@@ -11,7 +11,7 @@ import math
 try:
     from calculator_processor.utils import calculator_utils
 except ImportError:
-    from utils import calculator_utils
+    from . import calculator_utils
 
 
 MaterialList = calculator_utils.MaterialList
