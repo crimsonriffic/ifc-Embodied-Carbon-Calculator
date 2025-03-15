@@ -1,9 +1,7 @@
-import asyncio
 import os
 import ifcopenshell
 from ifcopenshell.util.element import get_psets
 from loguru import logger
-import sys
 import ifcopenshell
 import ifcopenshell.geom
 import numpy as np
@@ -61,7 +59,7 @@ def calculate_elements_ec(elements, slabs_to_ignore=[], **kwargs):
     for element in elements:
         element_type = element.is_a()  # Get IFC element type
         if element_type in ec_functions:
-            element_ec, elements,missing_mat = ec_functions[element_type](
+            element_ec, elements, missing_mat = ec_functions[element_type](
                 [element], **kwargs
             )  # Call the correct function
             total_ec += element_ec
@@ -281,7 +279,7 @@ def breakdown_by_elements(filepath):
         if elements_list:
             func = calculation_functions.get(key)
             if func:
-                ec, element,missing_mat = func(elements_list)
+                ec, element, missing_mat = func(elements_list)
                 total_ec += ec
                 breakdown[key] = ec  # Store breakdown by element type
 
@@ -307,12 +305,12 @@ def overall_ec_breakdown(filepath: str):
     by_materials = breakdown_by_materials(filepath)
     total_ec, by_elements = breakdown_by_elements(filepath)
     by_building_system = breakdown_by_building_system(filepath)
-    #gfa = calculate_gfa(filepath)
+    # gfa = calculate_gfa(filepath)
 
     # Example: Dummy EC breakdown data
     return {
-        #"total_ec": total_ec,
-        #"gfa": gfa,
+        # "total_ec": total_ec,
+        # "gfa": gfa,
         "by_building_system": by_building_system,
         "by_material": by_materials,
         "by_element": by_elements,
@@ -364,7 +362,7 @@ def check_roof_hierarchy(filepath):
 
 if __name__ == "__main__":
     # ifcpath = os.path.join(r"C:\Users\dczqd\Documents\SUTD\Capstone-calc", "Window 1.ifc")
-    #ifcpath = os.path.join(r"/Users/jk/Downloads/z. Complex Models/Complex 4.ifc")
+    # ifcpath = os.path.join(r"/Users/jk/Downloads/z. Complex Models/Complex 4.ifc")
     ifcpath = os.path.join(r"/Users/Carina/Downloads/Complex 1.ifc")
     logger.info(f"{ifcpath=}")
     sub_ec = calculate_substructure_ec(ifcpath)

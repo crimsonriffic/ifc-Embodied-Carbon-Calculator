@@ -1,0 +1,13 @@
+pymongo
+boto3
+pytest
+pandas
+loguru
+sentence-transformers
+ifcopenshell
+scikit-learn
+fastapi
+uvicorn
+
+
+
