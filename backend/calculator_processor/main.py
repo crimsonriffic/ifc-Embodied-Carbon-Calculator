@@ -25,8 +25,7 @@ s3_client = boto3.client("s3")
 sqs_client = boto3.client("sqs")
 
 # Environment variables
-MONGODB_URI = os.environ.get("MONGODB_URI")
-MONGODB_DB = os.environ.get("MONGODB_DB")
+MONGODB_URI = os.environ.get("MONGODB_URL")
 QUEUE_URL = os.environ.get("SQS_QUEUE_URL")
 
 # Import calculation modules
@@ -55,12 +54,15 @@ def extract_s3_info(s3_path):
 
 def connect_to_mongodb():
     """Connect to MongoDB and return database client"""
-    if not MONGODB_URI or not MONGODB_DB:
+    if not MONGODB_URI:
         logger.error("MongoDB configuration missing")
         raise ValueError("MongoDB environment variables not configured")
 
+    # Get database name from environment variable with fallback
+    db_name = os.environ.get("DB_NAME")
+
     client = pymongo.MongoClient(MONGODB_URI)
-    return client[MONGODB_DB]
+    return client[db_name]
 
 
 def process_ifc_file(s3_path):
