@@ -41,21 +41,17 @@ export default function BuildingInfoCard({ projectId }) {
   return (
     <div className="bg-white rounded-lg sm:max-w-md ">
       <div className="space-y-2 ">
-        <div className="flex justify-between border-b py-2">
-          <span className="text-sm font-medium text-gray-600">Floor Area:</span>
-          <span className="text-sm  text-gray-800">500 m&sup2;</span>
+        <div className="flex justify-between  py-2">
+          <span>Floor Area:</span>
+          <span>500 m&sup2;</span>
         </div>
-        <div className="flex justify-between border-b py-2">
-          <span className="text-sm font-medium text-gray-600">Typology:</span>
-          <span className="text-sm  text-gray-800">
-            {buildingInfo.typology || "N/A"}
-          </span>
+        <div className="flex justify-between py-2">
+          <span>Typology:</span>
+          <span>{buildingInfo.typology || "N/A"}</span>
         </div>
-        <div className="flex justify-between border-b py-2">
-          <span className="text-sm font-medium text-gray-600">Status:</span>
-          <span className="text-sm  text-gray-800">
-            {buildingInfo.status || "N/A"}
-          </span>
+        <div className="flex justify-between  py-2">
+          <span>Status:</span>
+          <span>{buildingInfo.status || "N/A"}</span>
         </div>
       </div>
     </div>

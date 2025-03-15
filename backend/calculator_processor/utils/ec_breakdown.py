@@ -61,7 +61,7 @@ def calculate_elements_ec(elements, slabs_to_ignore=[], **kwargs):
     for element in elements:
         element_type = element.is_a()  # Get IFC element type
         if element_type in ec_functions:
-            element_ec, elements = ec_functions[element_type](
+            element_ec, elements,missing_mat = ec_functions[element_type](
                 [element], **kwargs
             )  # Call the correct function
             total_ec += element_ec
@@ -281,7 +281,7 @@ def breakdown_by_elements(filepath):
         if elements_list:
             func = calculation_functions.get(key)
             if func:
-                ec, element = func(elements_list)
+                ec, element,missing_mat = func(elements_list)
                 total_ec += ec
                 breakdown[key] = ec  # Store breakdown by element type
 

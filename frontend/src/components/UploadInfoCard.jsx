@@ -25,27 +25,19 @@ export default function UploadInfoCard({ uploadInfoData }) {
     return <p>No upload information available.</p>;
   }
   return (
-    <div className="bg-white rounded-lg sm:max-w-md ">
+    <div className="bg-white rounded-lg  ">
       <div className="space-y-2 ">
-        <div className="flex justify-between border-b py-2">
-          <span className="text-sm font-medium text-gray-600">User:</span>
-          <span className="text-sm  text-gray-800">
-            {uploadInfo.uploaded_by || "N/A"}
-          </span>
+        <div className="flex justify-between  py-2">
+          <span>User:</span>
+          <span>{uploadInfo.uploaded_by || "N/A"}</span>
         </div>
-        <div className="flex justify-between border-b py-2">
-          <span className="text-sm font-medium text-gray-600">Comments:</span>
-          <span className="text-sm  text-gray-800">
-            {uploadInfo.comments || "Create project"}
-          </span>
+        <div className="flex justify-between py-2">
+          <span>Comments:</span>
+          <span>{uploadInfo.comments || "Create project"}</span>
         </div>
-        <div className="flex justify-between border-b py-2">
-          <span className="text-sm font-medium text-gray-600">
-            Upload Time:
-          </span>
-          <span className="text-sm  text-gray-800">
-            {formatDate(uploadInfo.date_uploaded) || "N/A"}
-          </span>
+        <div className="flex justify-between py-2">
+          <span>Upload Time:</span>
+          <span>{formatDate(uploadInfo.date_uploaded) || "N/A"}</span>
         </div>
       </div>
     </div>

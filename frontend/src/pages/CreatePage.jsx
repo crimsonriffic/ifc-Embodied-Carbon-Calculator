@@ -12,12 +12,14 @@ export default function CreatePage() {
   const [typology, setTypology] = useState("");
   const [status, setStatus] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false); // State for IfcDialog
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+
   const { username } = useUser();
   const navigate = useNavigate();
   const handleUpload = async (e) => {
     e.preventDefault();
     console.log("Handle Upload with user:", username);
+    setLoading(true);
     try {
       const response = await createProject(
         projectName,
@@ -32,6 +34,8 @@ export default function CreatePage() {
     } catch (err) {
       console.error("Faild to create project", err);
       alert("Failed to create projec!");
+    } finally {
+      setLoading(false);
     }
   };
   const handleFileChange = (e) => {
@@ -159,7 +163,7 @@ export default function CreatePage() {
 
           <div className="flex justify-end space-x-2">
             <button className="px-4 py-2 bg-[#5B9130] text-white rounded">
-              Create Project
+              {loading ? "Creating project..." : "Create Project"}
             </button>
           </div>
         </form>
