@@ -1,7 +1,0 @@
-material_name,element_type,material_type,volume,area,layer_count,material_description,ec_per_kg,density
-"Concrete, Cast In Situ",IfcColumn,single,1.0178624002790886,,0,"ElementType:IfcColumn Volume:1.018 MaterialType:single MaterialName:Concrete, Cast In Situ",0.103,2350
-"Concrete, Grade 25",IfcBeam,single,4.883432412053416,,0,"ElementType:IfcBeam Volume:4.883 MaterialType:single MaterialName:Concrete, Grade 25",0.13,2350
-"Concrete, General",IfcBeam,single,4.883432412053416,,0,"ElementType:IfcBeam Volume:4.883 MaterialType:single MaterialName:Concrete, General",0.112,2350
-"Tiles, Granite",IfcSlab,layered,55.0799999999999,323.99999999999943,2,"ElementType:IfcSlab Volume:55.080 Area:324.000 MaterialType:layered MaterialName:Tiles, Granite LayerCount:2 Layers:Tiles, Granite,Concrete, Grade 40",0.7,2650
-"Concrete, Grade 40",IfcSlab,layered,55.0799999999999,323.99999999999943,2,"ElementType:IfcSlab Volume:55.080 Area:324.000 MaterialType:layered MaterialName:Concrete, Grade 40 LayerCount:2 Layers:Tiles, Granite,Concrete, Grade 40",0.17,2400
-Plywood,IfcSlab,layered,53.45999999999991,323.99999999999943,2,"ElementType:IfcSlab Volume:53.460 Area:324.000 MaterialType:layered MaterialName:Plywood LayerCount:2 Layers:Plywood,Concrete, Grade 25",0.91,600
