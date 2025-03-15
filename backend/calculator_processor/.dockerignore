@@ -7,4 +7,3 @@ conftest.py
 .github/
 *.csv
 *.npy
-calculator_processor/
