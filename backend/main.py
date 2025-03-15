@@ -154,7 +154,7 @@ class ProjectBreakdown(BaseModel):
 class ProjectBasicInfo(BaseModel):
     project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     project_name: str
-    client_name:str
+    client_name: str
     gfa: float
     typology: str
     status: str
@@ -428,7 +428,7 @@ async def upload_ifc(
 
     try:
         file_content = await file.read()
-        
+
         current_version = project.get("current_version")
         if current_version is None:
             new_version = "1"  # Start new projects with version "1"
@@ -479,9 +479,10 @@ async def upload_ifc(
                         "date_uploaded": datetime.now(),
                         "uploaded_by": user_id,
                         "comments": comments,
-                        "status":status,
+                        "status": status,
                         "file_path": f"s3://{S3_BUCKET}/{s3_path}",
                         "gfa": 0,
+                        "total_ec": 0,
                         "calculation_status": "queued",
                     },
                 },
@@ -556,7 +557,7 @@ async def get_project_info(project_id: str):
 
     return ProjectBasicInfo(
         _id=project["_id"],
-        project_name =project.get("project_name"),
+        project_name=project.get("project_name"),
         client_name=project.get("client_name"),
         gfa=gfa,
         typology=project.get("typology", "Not Specified"),
@@ -587,7 +588,7 @@ async def get_project_history(project_id: str):
                 uploaded_by=version_data.get("uploaded_by", ""),
                 date_uploaded=version_data.get("date_uploaded", datetime.now()),
                 comments=version_data.get("comments", ""),
-                status = version_data.get("status", ""),
+                status=version_data.get("status", ""),
                 total_ec=version_data.get("total_ec", 0.0),
             )
         )
