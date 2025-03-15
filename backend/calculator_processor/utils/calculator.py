@@ -9,13 +9,13 @@ import os
 import math
 
 try:
-    from . import calculator_utils
+    from calculator_processor.utils import calculator_utils
 except ImportError:
-    import calculator_utils
+    from utils import calculator_utils
+
 
 MaterialList = calculator_utils.MaterialList
 MaterialsToIgnore = calculator_utils.MaterialsToIgnore
-embedding_model = calculator_utils.embedding_model
 material_embeddings = calculator_utils.material_embeddings
 material_data_df = calculator_utils.material_data_df
 

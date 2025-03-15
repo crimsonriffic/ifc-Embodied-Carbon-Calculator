@@ -11,8 +11,8 @@ from pymongo import AsyncMongoClient
 from bson import ObjectId
 from pydantic import BaseModel, Field
 from pydantic_core import core_schema
-from utils import calculator, utils, ec_breakdown
 from pymongo.errors import ServerSelectionTimeoutError
+import json
 
 dotenv.load_dotenv()
 
@@ -119,23 +119,28 @@ class Project(BaseModel):
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
+
 class Material(BaseModel):
     material: str
     ec: float
+
 
 class Element(BaseModel):
     element: str
     ec: float
     materials: List[Material]
 
+
 class Category(BaseModel):
     category: str
     total_ec: float
     elements: List[Element]
 
+
 class ECBreakdown(BaseModel):
     total_ec: float
     ec_breakdown: List[Category]
+
 
 class ProjectBreakdown(BaseModel):
     project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
@@ -433,28 +438,26 @@ async def upload_ifc(
             ContentType="application/octet-stream",
         )
         print("uploaded the file to s3")
-        # Use temporary file for EC breakdown calculation
-        with utils.temp_ifc_file(file_content) as tmp_path:
-            summary_data = ec_breakdown.overall_ec_breakdown(tmp_path)
-            
-            total_ec, ec_data = calculator.calculate_embodied_carbon(tmp_path, with_breakdown=True)
-        print("Summary data is: ",summary_data)
-        print("ec_data is ", ec_data)
-        print("ec_data[ec_breakdown]", ec_data["ec_breakdown"])
-        # Update the ec_breakdown collection 
-        ec_breakdown_entry = {
-            "project_id": ObjectId(project_id),
+        # Create a message for the SQS queue
+        message = {
+            "project_id": project_id,
             "ifc_version": new_version,
-            "total_ec": total_ec,
-            "summary": summary_data,
-            "breakdown": ec_data,
-            "timestamp": datetime.now()
+            "s3_path": f"s3://{S3_BUCKET}/{s3_path}",
+            "user_id": user_id,
+            "timestamp": datetime.now().isoformat(),
         }
-        
-        print("EC_breakdown entry is" , ec_breakdown_entry)
 
-        ec_breakdown_result = await app.mongodb.ec_breakdown.insert_one(ec_breakdown_entry)
-        ec_breakdown_id = ec_breakdown_result.inserted_id  # Reference ID
+        # Send message to SQS queue
+        sqs_client = boto3.client("sqs")
+        queue_url = os.environ.get("SQS_QUEUE_URL")
+
+        response = sqs_client.send_message(
+            QueueUrl=queue_url,
+            MessageBody=json.dumps(message),
+            MessageGroupId=project_id,  # Group messages by project ID
+            MessageDeduplicationId=f"{project_id}-{new_version}",  # Ensure idempotency
+        )
+
         # Update MongoDB
         update_result = await app.mongodb.projects.update_one(
             {"_id": ObjectId(project_id)},
@@ -470,9 +473,8 @@ async def upload_ifc(
                         "update_type": update_type,
                         "file_path": f"s3://{S3_BUCKET}/{s3_path}",
                         "gfa": 0,
-                        "total_ec": total_ec,
-                        "ec_breakdown_id": ec_breakdown_id  # Reference to ec_breakdown collection
-                    }
+                        "calculation_status": "queued",
+                    },
                 },
                 "$push": {
                     "edit_history": {
@@ -484,7 +486,6 @@ async def upload_ifc(
                 },
             },
         )
-
 
         return {
             "success": True,
@@ -516,14 +517,16 @@ async def get_breakdown(project_id: str, version: str = None):
     ec_breakdown_id = ifc_data.get("ec_breakdown_id")
     print(ec_breakdown_id)
     gfa = ifc_data.get("gfa", 0)
-    ec_breakdown_data = await app.mongodb.ec_breakdown.find_one({"_id": ec_breakdown_id}) 
-    
-    print("ec breakdown summary is,",ec_breakdown_data["summary"])
-    print("ec_breakdown_data[breakdown] is,",ec_breakdown_data["breakdown"])
+    ec_breakdown_data = await app.mongodb.ec_breakdown.find_one(
+        {"_id": ec_breakdown_id}
+    )
+
+    print("ec breakdown summary is,", ec_breakdown_data["summary"])
+    print("ec_breakdown_data[breakdown] is,", ec_breakdown_data["breakdown"])
     return ProjectBreakdown(
         project_id=str(project["_id"]),
-        gfa = gfa,
-        summary = ec_breakdown_data["summary"],
+        gfa=gfa,
+        summary=ec_breakdown_data["summary"],
         ec_breakdown=ec_breakdown_data["breakdown"],
         last_calculated=project.get("last_calculated", datetime.now()),
         version=version_number,
