@@ -6,10 +6,13 @@ import pymongo
 from datetime import datetime
 from bson.objectid import ObjectId
 import logging
+import time
+import signal
+import sys
 
 # Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Initialize AWS clients
 s3_client = boto3.client("s3")
@@ -24,6 +27,21 @@ QUEUE_URL = os.environ["SQS_QUEUE_URL"]
 from utils import ec_breakdown
 from utils import calculator
 
+# Flag to control the processing loop
+running = True
+
+
+def signal_handler(sig, frame):
+    """Handle termination signals"""
+    global running
+    logger.info("Received shutdown signal, finishing current tasks...")
+    running = False
+
+
+# Register signal handlers
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
 
 def extract_s3_info(s3_path):
     """Extract bucket and key from s3 path format 's3://bucket/key'"""
@@ -37,14 +55,6 @@ def connect_to_mongodb():
     """Connect to MongoDB and return database client"""
     client = pymongo.MongoClient(MONGODB_URI)
     return client[MONGODB_DB]
-
-
-def create_temp_file(file_content):
-    """Create a temporary file with the IFC content"""
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".ifc")
-    temp_file.write(file_content)
-    temp_file.close()
-    return temp_file.name
 
 
 def process_ifc_file(s3_path):
@@ -114,62 +124,94 @@ def update_mongodb(db, project_id, ifc_version, total_ec, summary_data, ec_data)
             {
                 "$set": {
                     f"ifc_versions.{ifc_version}.calculation_status": "failed",
+                    f"ifc_versions.{ifc_version}.failure_reason": str(e),
                 }
             },
         )
         raise
 
 
-def lambda_handler(event, context):
-    """Main Lambda function handler"""
+def process_sqs_message(db, message):
+    """Process a single SQS message"""
+    try:
+        # Parse message
+        message_body = json.loads(message["Body"])
+        logger.info(f"Processing message: {message_body}")
+
+        project_id = message_body["project_id"]
+        ifc_version = message_body["ifc_version"]
+        s3_path = message_body["s3_path"]
+
+        # Update status to 'processing'
+        db.projects.update_one(
+            {"_id": ObjectId(project_id)},
+            {
+                "$set": {
+                    f"ifc_versions.{ifc_version}.calculation_status": "processing",
+                }
+            },
+        )
+
+        # Calculate EC
+        total_ec, summary_data, ec_data = process_ifc_file(s3_path)
+
+        # Update MongoDB with results
+        ec_breakdown_id = update_mongodb(
+            db, project_id, ifc_version, total_ec, summary_data, ec_data
+        )
+
+        logger.info(
+            f"Successfully processed project {project_id}, version {ifc_version}"
+        )
+
+        # Delete message from queue
+        sqs_client.delete_message(
+            QueueUrl=QUEUE_URL, ReceiptHandle=message["ReceiptHandle"]
+        )
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Error processing message: {str(e)}")
+        # Don't delete the message from queue to allow for retry
+        return False
+
+
+def main():
+    """Main function that continuously polls SQS queue"""
+    logger.info("Starting EC Calculator Processor")
 
     # Connect to MongoDB
     db = connect_to_mongodb()
 
-    # Process each record from SQS
-    for record in event["Records"]:
+    while running:
         try:
-            # Parse message
-            message = json.loads(record["body"])
-            logger.info(f"Processing message: {message}")
-
-            project_id = message["project_id"]
-            ifc_version = message["ifc_version"]
-            s3_path = message["s3_path"]
-
-            # Update status to 'processing'
-            db.projects.update_one(
-                {"_id": ObjectId(project_id)},
-                {
-                    "$set": {
-                        f"ifc_versions.{ifc_version}.calculation_status": "processing",
-                    }
-                },
+            # Receive messages from SQS queue
+            response = sqs_client.receive_message(
+                QueueUrl=QUEUE_URL,
+                MaxNumberOfMessages=1,
+                WaitTimeSeconds=20,  # Long polling
+                VisibilityTimeout=300,  # 5 minutes
             )
 
-            # Calculate EC
-            total_ec, summary_data, ec_data = process_ifc_file(s3_path)
+            # Check if any messages were received
+            messages = response.get("Messages", [])
 
-            # Update MongoDB with results
-            ec_breakdown_id = update_mongodb(
-                db, project_id, ifc_version, total_ec, summary_data, ec_data
-            )
+            if not messages:
+                logger.info("No messages in queue, waiting...")
+                continue
 
-            logger.info(
-                f"Successfully processed project {project_id}, version {ifc_version}"
-            )
-
-            # Delete message from queue
-            sqs_client.delete_message(
-                QueueUrl=QUEUE_URL, ReceiptHandle=record["receiptHandle"]
-            )
+            # Process each message
+            for message in messages:
+                process_sqs_message(db, message)
 
         except Exception as e:
-            logger.error(f"Error processing message: {str(e)}")
-            # Don't delete the message from queue to allow for retry
-            # Consider implementing a dead-letter queue (DLQ) for failed messages
+            logger.error(f"Error in main processing loop: {str(e)}")
+            # Short sleep to prevent tight loops in error conditions
+            time.sleep(5)
 
-            # Continue processing other messages
-            continue
+    logger.info("Processor shutting down gracefully")
 
-    return {"statusCode": 200, "body": json.dumps("IFC processing completed")}
+
+if __name__ == "__main__":
+    main()
