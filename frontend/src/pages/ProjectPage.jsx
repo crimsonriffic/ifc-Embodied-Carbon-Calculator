@@ -32,6 +32,7 @@ function ProjectPage() {
   });
   const { projectName } = useParams();
   const { projectId } = location.state;
+  const fromHomePage = location.state?.fromHomePage === true;
   const navigate = useNavigate();
   console.log("Project Name and project Id is ", projectName, projectId);
   const handleVersionClick = (e) => {
@@ -192,9 +193,7 @@ function ProjectPage() {
       <div className="bg-[#5B9130] text-white mx-8 mt-20 w-full mr-4 py-6 px-6 rounded-lg shadow-md text-left ml-0">
         <h1 className="text-3xl font-bold">Detailed Results</h1>
       </div>
-      <div className="mt-6">
-        <Stepper currentStep={5} />
-      </div>
+      <div className="mt-6">{!fromHomePage && <Stepper currentStep={5} />}</div>
       {/**Check if project name exists */}
 
       <div className="bg-[#A9C0A0] text-white rounded-lg px-4 py-2 flex items-center shadow-md mt-4 mb-6 sm:max-w-md">
