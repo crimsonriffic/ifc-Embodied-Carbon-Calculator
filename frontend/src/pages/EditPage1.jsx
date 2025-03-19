@@ -38,6 +38,7 @@ function EditPage1() {
       state: { projectId },
     });
   };
+
   const handleUpload = async (e) => {
     e.preventDefault();
     console.log("Uploading for project ID:", projectId);
@@ -184,6 +185,7 @@ function EditPage1() {
               )}
             </div>
           </form>
+
           <button
             className="px-4 py-2 mt-6 w-28 bg-[#9FD788] text-black rounded"
             onClick={() => {

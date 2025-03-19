@@ -42,7 +42,7 @@ function HomePage() {
   const handleGoToProject = (projectId, projectName) => {
     console.log("HandleGoToProject called");
     navigate(`/project/${encodeURIComponent(projectName)}`, {
-      state: { projectId },
+      state: { fromHomePage: true, projectId },
     });
   };
   // Re-fetch files whenever the dialog is closed

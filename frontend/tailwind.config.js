@@ -24,6 +24,7 @@ export default {
     "./src/pages/MaterialInfoPage.jsx",
     "./src/pages/ProjectInfoPage.jsx",
     "./src/pages/UploadConfirmationPage.jsx",
+    "./src/pages/BreakdownPage.jsx",
   ],
   theme: {
     extend: {},

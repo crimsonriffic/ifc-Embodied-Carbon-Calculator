@@ -432,8 +432,8 @@ async def upload_ifc(
         current_version = project.get("current_version")
         if current_version is None:
             new_version = "1"  # Start new projects with version "1"
-        elif current_version == 1:
-            new_version = "1"  # Keep it as "1"
+        # elif current_version == 1:
+        #     new_version = "1"  # Keep it as "1"
         else:
             new_version = str(current_version + 1)  # Increment for later versions
 
@@ -457,7 +457,12 @@ async def upload_ifc(
         }
 
         # Send message to SQS queue
-        sqs_client = boto3.client("sqs")
+        sqs_client = boto3.client(
+            "sqs",
+            aws_access_key_id=AWS_ACCESS_KEY,
+            aws_secret_access_key=AWS_SECRET_KEY,
+            region_name="ap-southeast-2"  # Make sure this matches your queue's region
+        )        
         queue_url = os.environ.get("SQS_QUEUE_URL")
 
         response = sqs_client.send_message(
@@ -466,7 +471,7 @@ async def upload_ifc(
             MessageGroupId=project_id,  # Group messages by project ID
             MessageDeduplicationId=f"{project_id}-{new_version}",  # Ensure idempotency
         )
-
+        print('uploaded to queue')
         # Update MongoDB
         update_result = await app.mongodb.projects.update_one(
             {"_id": ObjectId(project_id)},

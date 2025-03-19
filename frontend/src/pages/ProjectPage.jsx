@@ -1,5 +1,5 @@
 import Navbar from "../components/NavBar";
-import { Link, useParams, useLocation } from "react-router-dom";
+import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, version } from "react";
 import { getProjectHistory, getProjectBreakdown } from "../api/api";
 import ProjectErrorDialog from "./ProjectErrorDialog";
@@ -11,6 +11,7 @@ import HistoryTable from "../components/HistoryTable";
 import UploadInfoCard from "../components/UploadInfoCard";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import SankeyChart from "../components/SankeyChart";
+import Stepper from "../components/Stepper";
 function ProjectPage() {
   const location = useLocation();
   const [loading, setLoading] = useState(true); // Loading state
@@ -31,11 +32,18 @@ function ProjectPage() {
   });
   const { projectName } = useParams();
   const { projectId } = location.state;
+  const fromHomePage = location.state?.fromHomePage === true;
+  const navigate = useNavigate();
   console.log("Project Name and project Id is ", projectName, projectId);
   const handleVersionClick = (e) => {
     setVersionNumber(e.target.value);
   };
-
+  const handleMoreDetails = (projectId, projectName) => {
+    console.log("HandleMoreDetails called");
+    navigate(`/breakdown/${encodeURIComponent(projectName)}`, {
+      state: { projectId },
+    });
+  };
   /* Initial API calls to fetch project history and breakdown data */
   useEffect(() => {
     const fetchData = async () => {
@@ -181,114 +189,93 @@ function ProjectPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <div className="overflow-x-auto bg-white rounded-lg  mt-16">
-        {/**Check if project name exists */}
-        {projectName ? (
-          <div>
-            <div className="bg-[#A9C0A0]  text-white rounded-lg px-4 py-2 flex items-center shadow-md mb-2 sm:max-w-md">
-              <h1 className="text-2xl font-semibold tracking-wide">
-                {decodeURIComponent(projectName)}
-              </h1>
-            </div>
-            <div className="flex flex-col">
-              {/**Top half of screen */}
+      {/* Banner Section */}
+      <div className="bg-[#5B9130] text-white mx-8 mt-20 w-full mr-4 py-6 px-6 rounded-lg shadow-md text-left ml-0">
+        <h1 className="text-3xl font-bold">Detailed Results</h1>
+      </div>
+      <div className="mt-6">{!fromHomePage && <Stepper currentStep={5} />}</div>
+      {/**Check if project name exists */}
 
-              {/*Dropdown of version number*/}
-              <div className="mb-4">
-                <select
-                  id="versionNumber"
-                  value={versionNumber}
-                  onChange={handleVersionClick}
-                  className="text-2xl font-bold"
-                >
-                  {[...versionArray].reverse().map((version) => (
-                    <option key={version} value={version} className="text-lg ">
-                      Upload {version}
-                    </option>
-                  ))}
-                </select>
-              </div>
+      <div className="bg-[#A9C0A0] text-white rounded-lg px-4 py-2 flex items-center shadow-md mt-4 mb-6 sm:max-w-md">
+        <h1 className="text-2xl font-semibold tracking-wide">
+          {decodeURIComponent(projectName)}
+        </h1>
+      </div>
+      <div className="flex flex-col">
+        {/**Top half of screen */}
 
-              <div className="flex flex-row mt-2 justify-between gap-x-12">
-                {/** Card 1 - Building Info*/}
-                <div className="flex-1 flex-col sm:max-w-md ">
-                  <h1 className="font-bold">Upload Information</h1>
-                  <UploadInfoCard
-                    uploadInfoData={projectHistory.find(
-                      (item) => item.version === versionNumber
-                    )}
-                  />
-                  <h1 className="mt-4 font-bold">Project Information</h1>
-                  <BuildingInfoCard projectId={projectId} />
-                </div>
+        {/*Dropdown of version number*/}
+        <div className="mb-4">
+          <select
+            id="versionNumber"
+            value={versionNumber}
+            onChange={handleVersionClick}
+            className="text-2xl font-bold"
+          >
+            {[...versionArray].reverse().map((version) => (
+              <option key={version} value={version} className="text-lg ">
+                Upload {version}
+              </option>
+            ))}
+          </select>
+        </div>
 
-                <div className=" flex-1 flex flex-col ">
-                  <h1 className="font-bold">A1-A3 Embodied Carbon Data</h1>
-                  <div className="flex flex-row">
-                    <p>Total Embodied Carbon: </p>
-                    <p className="font-bold">
-                      {Number(
-                        projectHistory
-                          .find((item) => item.version === versionNumber)
-                          ?.total_ec.toFixed(0)
-                      ).toLocaleString()}{" "}
-                      kgCO2eq
-                    </p>
-                  </div>
-                  {/** Card 2 - Sankey chart  */}
-                  <SankeyChart data={sankeyData} />
-                </div>
-                <div className="flex flex-1 flex-col">
-                  {/** Card 3- Breakdown graphs */}
-
-                  <div className="flex flex-row items-center gap-2 mt-4">
-                    <label
-                      htmlFor="breakdownType"
-                      className="inline-block text-sm font-medium text-gray-700"
-                    >
-                      Compare by:
-                    </label>
-
-                    <select
-                      id="breakdownType"
-                      value={selectedBreakdownType}
-                      onChange={handleUpdateTypeChange}
-                      className="font-semibold rounded-lg"
-                    >
-                      <option value="by_material">Building Material</option>
-                      <option value="by_element">Building Element</option>
-                      <option value="by_building_system">
-                        Building System
-                      </option>
-                    </select>
-                  </div>
-                  <div className="h-[200px]">
-                    <BarChart data={breakdownBar} />
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/**Bottom half of screen */}
-            <div className="flex flex-row justify-between mt-12 gap-x-16 h-[300px] ">
-              <div className="flex flex-1 flex-col">
-                <h1 className="font-bold mb-4">Project Upload History</h1>
-                <HistoryTable projectHistory={projectHistory} />
-              </div>
-
-              <div className="flex flex-1 flex-col">
-                <h1 className="font-bold mb-4">
-                  A1-A3 Embodied Carbon Comparison
-                </h1>
-
-                <div className="h-full">
-                  <BarChart data={versionBar} />
-                </div>
-              </div>
-            </div>
+        <div className="flex flex-row mt-2 justify-between gap-x-96">
+          {/** Card 1 - Building Info*/}
+          <div className="flex-1 flex-col sm:max-w-md ">
+            <h1 className="font-bold">Upload Information</h1>
+            <UploadInfoCard
+              uploadInfoData={projectHistory.find(
+                (item) => item.version === versionNumber
+              )}
+            />
+            <h1 className="mt-4 font-bold">Project Information</h1>
+            <BuildingInfoCard projectId={projectId} />
           </div>
-        ) : (
-          <ProjectErrorDialog />
-        )}
+
+          <div className=" flex-1 flex flex-col ">
+            <div className="flex items-center gap-2">
+              <h1 className="font-bold">A1-A3 Embodied Carbon Data</h1>
+              <button
+                className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-800 rounded-md hover:bg-green-200"
+                onClick={() => {
+                  handleMoreDetails(projectId, projectName);
+                }}
+              >
+                More details
+                <span>→</span>
+              </button>
+            </div>
+            <div className="flex flex-row">
+              <p>Total Embodied Carbon: </p>
+              <p className="font-bold">
+                {Number(
+                  projectHistory
+                    .find((item) => item.version === versionNumber)
+                    ?.total_ec.toFixed(0)
+                ).toLocaleString()}{" "}
+                kgCO2eq
+              </p>
+            </div>
+            {/** Card 2 - Sankey chart  */}
+            <SankeyChart data={sankeyData} width={600} height={300} />
+          </div>
+        </div>
+      </div>
+      {/**Bottom half of screen */}
+      <div className="flex flex-row justify-between mt-12 gap-x-16 h-[300px] ">
+        <div className="flex flex-1 flex-col">
+          <h1 className="font-bold mb-4">Project Upload History</h1>
+          <HistoryTable projectHistory={projectHistory} />
+        </div>
+
+        <div className="flex flex-1 flex-col">
+          <h1 className="font-bold mb-4">A1-A3 Embodied Carbon Comparison</h1>
+
+          <div className="h-full">
+            <BarChart data={versionBar} />
+          </div>
+        </div>
       </div>
     </div>
   );
