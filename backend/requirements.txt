@@ -9,6 +9,4 @@ pydantic
 requests
 pytest
 pandas
-ifcopenshell
 loguru
-sentence-transformers

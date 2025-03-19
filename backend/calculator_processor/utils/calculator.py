@@ -9,13 +9,13 @@ import os
 import math
 
 try:
-    from . import calculator_utils
+    from calculator_processor.utils import calculator_utils
 except ImportError:
     import calculator_utils
 
+
 MaterialList = calculator_utils.MaterialList
 MaterialsToIgnore = calculator_utils.MaterialsToIgnore
-embedding_model = calculator_utils.embedding_model
 material_embeddings = calculator_utils.material_embeddings
 material_data_df = calculator_utils.material_data_df
 
@@ -3102,7 +3102,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     )
     ec_data["missing_materials"] = all_missing_materials
     ec_data["element_type_skipped"] = element_type_skipped
-    print(ec_data)
+    # print(ec_data)        
     if with_breakdown:
         return total_ec, ec_data
     else:

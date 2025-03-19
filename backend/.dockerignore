@@ -1,0 +1,10 @@
+tests/
+**/__pycache__/
+**/.pytest_cache/
+test_*.py
+conftest.py
+.env
+.github/
+*.csv
+*.npy
+calculator_processor/
