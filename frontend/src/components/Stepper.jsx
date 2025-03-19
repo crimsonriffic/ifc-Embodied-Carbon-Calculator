@@ -21,7 +21,7 @@ function Stepper({ currentStep }) {
         });
         break;
       case 2:
-        navigate(`/editProject/${encodeURIComponent(projectName)}`, {
+        navigate(`/uploadHistory/${encodeURIComponent(projectName)}`, {
           state: { projectId },
         });
         break;
@@ -52,7 +52,7 @@ function Stepper({ currentStep }) {
             className={`z-10 w-8 h-8 flex items-center justify-center rounded-full text-white font-bold 
                         ${
                           currentStep >= step.id
-                            ? "bg-green-500"
+                            ? "bg-[#5B9130]"
                             : "bg-gray-300"
                         }
                       `}
@@ -71,7 +71,7 @@ function Stepper({ currentStep }) {
           {index < steps.length - 1 && (
             <div
               className={`absolute h-0.5 top-4 -translate-y-1/2 z-0
-                ${currentStep > step.id ? "bg-green-500" : "bg-gray-300"}
+                ${currentStep > step.id ? "bg-[#5B9130]" : "bg-gray-300"}
               `}
               style={{
                 left: "50%",

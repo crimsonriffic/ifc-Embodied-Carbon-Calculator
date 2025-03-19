@@ -110,6 +110,7 @@ class Project(BaseModel):
     last_edited_user: str
     user_job_role: str
     current_version: int
+    benchmark: Dict[str, Dict[str, int]]
     access_control: Dict[str, UserPermissions]
     edit_history: List[EditHistory]
     ifc_versions: Dict[str, IFCVersion]
