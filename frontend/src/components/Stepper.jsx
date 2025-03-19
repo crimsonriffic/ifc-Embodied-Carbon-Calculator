@@ -21,7 +21,7 @@ function Stepper({ currentStep }) {
         });
         break;
       case 2:
-        navigate(`/editProject/${encodeURIComponent(projectName)}`, {
+        navigate(`/uploadHistory/${encodeURIComponent(projectName)}`, {
           state: { projectId },
         });
         break;

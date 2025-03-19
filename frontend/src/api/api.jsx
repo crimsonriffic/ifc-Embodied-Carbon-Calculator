@@ -60,15 +60,17 @@ export const createProject = async (
   file,
   userId,
   typology,
-  status
+  status,
+  benchmark
 ) => {
-  console.log("Calling create projects API");
+  console.log("Calling create projects API ");
 
   //Construct the project data object
   const projectData = {
     project_name: projectName,
     client_name: client,
     typology: typology,
+    benchmark: benchmark,
     status: status,
     last_edited_date: new Date().toISOString(), // Current timestamp
     last_edited_user: userId,

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { uploadIfc } from "../api/api.jsx";
 import { useNavigate } from "react-router-dom";
 function IfcDialog({ onClose, projectName, projectId }) {
+  const [status, setStatus] = useState("Conceptual Design");
+
   const [inputComment, setInputComment] = useState("");
   const [updateType, setUpdateType] = useState("Nil");
   const [selectedFile, setSelectedFile] = useState("null");
@@ -20,6 +22,9 @@ function IfcDialog({ onClose, projectName, projectId }) {
     if (file) {
       setSelectedFile(file);
     }
+  };
+  const handleUpdateStatus = (e) => {
+    setStatus(e.target.value);
   };
 
   const handleUpload = async (e) => {
@@ -72,19 +77,42 @@ function IfcDialog({ onClose, projectName, projectId }) {
         {/*Upload form */}
         <div className="w-full max-w-xs">
           <form onSubmit={handleUpload} className="space-y-4">
-            <input
-              type="file"
-              onChange={handleFileChange}
-              className="w-full mb-4 p-2 border border-gray-300 rounded-lg"
-              required
-            />
+            <div className="mb-4">
+              {/*Input Status type */}
+              <label htmlFor="status" className="block text-gray-700 mb-1">
+                Status
+              </label>
+              <select
+                id="status"
+                value={status}
+                onChange={handleUpdateStatus}
+                className="p-2 border w-80 border-gray-200 shadow-md"
+              >
+                <option value="Conceptual Design">Conceptual Design</option>
+                <option value="Schematic Design">Schematic Design</option>
+                <option value="Detailed Design">Detailed Design</option>
+                <option value="Construction Evaluation">
+                  Construction Evaluaton
+                </option>
+                <option value="Final Assessment">Final Assessment</option>
+                <option value="Verification">Verification</option>
+              </select>
+            </div>
+            <div className="mb-4">
+              <label htmlFor="status" className="block text-gray-700 mb-1">
+                Upload IFC
+              </label>
+              <input
+                type="file"
+                onChange={handleFileChange}
+                className="w-full p-2 border border-gray-300 rounded-lg"
+                required
+              />
+            </div>
 
             {/*Input comment */}
             <div className="mb-4">
-              <label
-                htmlFor="comments"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+              <label htmlFor="status" className="block text-gray-700 mb-1">
                 Comments
               </label>
               <input

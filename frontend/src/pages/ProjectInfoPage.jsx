@@ -18,7 +18,7 @@ function ProjectInfoPage() {
 
   const handleProceed = (projectId, projectName) => {
     console.log("HandleProceed called");
-    navigate(`/editProject/${encodeURIComponent(projectName)}`, {
+    navigate(`/uploadHistory/${encodeURIComponent(projectName)}`, {
       state: { projectId },
     });
   };

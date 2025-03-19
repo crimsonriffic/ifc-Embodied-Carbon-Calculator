@@ -5,7 +5,7 @@ import IfcDialog from "./pages/IfcDialog";
 import CreatePage from "./pages/CreatePage";
 import Layout from "./Layout";
 import DraftPage from "./pages/DraftPage";
-import EditPage1 from "./pages/EditPage1";
+import UploadHistory from "./pages/UploadHistory";
 import MaterialInfoPage from "./pages/MaterialInfoPage";
 import ProjectInfoPage from "./pages/ProjectInfoPage";
 import UploadConfirmPage from "./pages/UploadConfirmPage";
@@ -19,7 +19,7 @@ const routes = [
       { path: "/home", element: <HomePage /> },
       { path: "/createProject", element: <CreatePage /> },
       { path: "/projectInfo/:projectName?", element: <ProjectInfoPage /> },
-      { path: "/editProject/:projectName?", element: <EditPage1 /> },
+      { path: "/uploadHistory/:projectName?", element: <UploadHistory /> },
       { path: "/materialInfo/:projectName?", element: <MaterialInfoPage /> },
       { path: "/uploadConfirm/:projectName?", element: <UploadConfirmPage /> },
       { path: "/project/:projectName?", element: <ProjectPage /> },
