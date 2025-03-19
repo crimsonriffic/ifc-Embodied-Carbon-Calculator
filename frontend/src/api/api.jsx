@@ -12,8 +12,8 @@ export const uploadIfc = async (projectId, file, userId, comments, status) => {
     // Create FormData to send the file
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("comments", comments);
-    formData.append("status", status);
+    formData.append("comments", comments || "");
+    formData.append("status", status || "");
     console.log(
       "The uploadIFC inputs are",
       projectId,
@@ -113,31 +113,31 @@ export const createProject = async (
     console.log("Project created successfully: ", response.data);
 
     // Extract the project Id from the response
-    const projectId = response.data._id;
+    // const projectId = response.data._id;
     // Call the upload IFC file api
 
-    const formData = new FormData();
-    formData.append("file", file);
-    console.log("The uploadIFC inputs are", projectId, file, userId);
-    // Upload file using Axios
-    const fileResponse = await api.post(
-      `/projects/${projectId}/upload_ifc`, // Dynamically add project ID
-      formData, // Form data with the file
-      {
-        params: {
-          user_id: userId, // Add user ID as a query parameter
-        },
-        headers: {
-          "Content-Type": "multipart/form-data", // Set the correct content type for file uploads
-        },
-      }
-    );
-    console.log("File uploaded successfully:", fileResponse.data);
+    // const formData = new FormData();
+    // formData.append("file", file);
+    // console.log("The uploadIFC inputs are", projectId, file, userId);
+    // // Upload file using Axios
+    // const fileResponse = await api.post(
+    //   `/projects/${projectId}/upload_ifc`, // Dynamically add project ID
+    //   formData, // Form data with the file
+    //   {
+    //     params: {
+    //       user_id: userId, // Add user ID as a query parameter
+    //     },
+    //     headers: {
+    //       "Content-Type": "multipart/form-data", // Set the correct content type for file uploads
+    //     },
+    //   }
+    // );
+    // console.log("File uploaded successfully:", fileResponse.data);
 
     // Return the project and file upload response
     return {
       project: response.data,
-      fileUpload: fileResponse.data,
+      // fileUpload: fileResponse.data,
     };
   } catch (err) {
     console.error("Failed to create project: ", err);
