@@ -116,7 +116,18 @@ export default function CreatePage() {
               className="w-full max-w-xs p-2 border border-gray-300 rounded-lg"
             >
               <option value="Residential">Residential</option>
-              <option value="Non-residential">Non-residential</option>
+              <option value="Non-residential Generic">
+                Non-residential (Generic)
+              </option>
+              <option value="Non-residential Office">
+                Non-residential (Office)
+              </option>
+              <option value="Non-residential Education">
+                Non-residential (Education)
+              </option>
+              <option value="Non-residential Retail">
+                Non-residential (Retail)
+              </option>
               <option value="Industrial">Industrial</option>
             </select>
           </div>
