@@ -4,7 +4,6 @@ import ProjectPage from "./pages/ProjectPage";
 import IfcDialog from "./pages/IfcDialog";
 import CreatePage from "./pages/CreatePage";
 import Layout from "./Layout";
-import DraftPage from "./pages/DraftPage";
 import UploadHistory from "./pages/UploadHistory";
 import MaterialInfoPage from "./pages/MaterialInfoPage";
 import ProjectInfoPage from "./pages/ProjectInfoPage";
@@ -25,7 +24,6 @@ const routes = [
       { path: "/project/:projectName?", element: <ProjectPage /> },
       { path: "/breakdown/:projectName?", element: <BreakdownPage /> },
       { path: "/ifc", element: <IfcDialog /> },
-      { path: "/draft", element: <DraftPage /> },
     ],
   },
 ];

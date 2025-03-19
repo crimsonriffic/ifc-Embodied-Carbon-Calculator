@@ -78,7 +78,7 @@ function UploadConfirmPage() {
         </div>
 
         <button
-          className="px-4 py-2 mt-6 w-28 bg-[#9FD788] text-black rounded"
+          className="px-4 py-2 mt-6 w-28 bg-[#5B9130] text-black rounded"
           onClick={() => {
             handleProceed(projectId, projectName);
           }}

@@ -2,14 +2,10 @@ import Navbar from "../components/NavBar";
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, version } from "react";
 import { getProjectHistory, getProjectBreakdown } from "../api/api";
-import ProjectErrorDialog from "./ProjectErrorDialog";
 import BuildingInfoCard from "../components/BuildingInfoCard";
-import MaterialInfoCard from "../components/MaterialInfoCard";
-import ElementInfoCard from "../components/ElementInfoCard";
 import BarChart from "../components/BarChart";
 import HistoryTable from "../components/HistoryTable";
 import UploadInfoCard from "../components/UploadInfoCard";
-import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import SankeyChart from "../components/SankeyChart";
 import Stepper from "../components/Stepper";
 function ProjectPage() {

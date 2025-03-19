@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { uploadIfc } from "../api/api.jsx";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../context/UserContext";
 function IfcDialog({ onClose, projectName, projectId }) {
   const [status, setStatus] = useState("Conceptual Design");
 
   const [inputComment, setInputComment] = useState("");
-  const [updateType, setUpdateType] = useState("Nil");
   const [selectedFile, setSelectedFile] = useState("null");
   const [uploadError, setUploadError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
+  const [loading, setLoading] = useState(false); // Loading state
 
+  const { username } = useUser();
   const navigate = useNavigate();
   console.log(
     "Project name and project id from ifc dialog is",
@@ -35,29 +36,31 @@ function IfcDialog({ onClose, projectName, projectId }) {
       alert("Please select a file to upload!");
       return;
     }
+    setLoading(true);
     try {
-      const userId = "user123";
+      // const userId = username;
       const response = await uploadIfc(
         projectId,
         selectedFile,
-        userId,
+        username,
         inputComment,
-        updateType
+        status
       );
-      setSuccessMessage(response.message);
       setUploadError(null);
       setShowSuccess(true);
       // Navigate after 1 seconds
       setTimeout(() => {
         onClose();
-        navigate(`/project/${encodeURIComponent(projectName)}`, {
+        navigate(`/materialInfo/${encodeURIComponent(projectName)}`, {
           state: { projectId },
         });
-      }, 1000);
+      }, 2000);
     } catch (err) {
       setUploadError(
         err.response?.data?.detail || "An error occurred during upload."
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -68,7 +71,7 @@ function IfcDialog({ onClose, projectName, projectId }) {
 
         {showSuccess && (
           <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg">
-            Upload successful! Directing to project page
+            Upload successful!
           </div>
         )}
         {uploadError && (
@@ -133,8 +136,15 @@ function IfcDialog({ onClose, projectName, projectId }) {
               >
                 Cancel
               </button>
-              <button className="px-4 py-2 bg-blue-500 text-white rounded">
-                Upload
+              <button
+                className={`px-4 py-2 rounded ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed text-black"
+                    : "bg-[#5B9130] text-white "
+                } `}
+                disabled={loading}
+              >
+                {loading ? "Uploading..." : "Upload"}
               </button>
             </div>
           </form>

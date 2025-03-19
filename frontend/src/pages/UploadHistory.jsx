@@ -93,7 +93,7 @@ function UploadHistory() {
       </div>
       <div className="flex flex-col">
         <button
-          className="px-2 py-2 mt-6 bg-[#5B9130] text-white rounded"
+          className="px-4 py-2 w-fit mt-6 mb-4 bg-[#5B9130] text-white rounded"
           onClick={() => {
             handleUpload(projectId, projectName);
           }}
@@ -114,6 +114,14 @@ function UploadHistory() {
           </h1>
           <HistoryTable projectHistory={projectHistory} />
         </div>
+        <button
+          className="px-4 py-2 mt-6 w-28 bg-[#5B9130] text-white rounded"
+          onClick={() => {
+            handleProceed(projectId, projectName);
+          }}
+        >
+          Proceed
+        </button>
       </div>
     </div>
   );

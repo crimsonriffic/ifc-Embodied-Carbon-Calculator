@@ -3,7 +3,7 @@ import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, version, useMemo } from "react";
 import Stepper from "../components/Stepper";
 
-import ProjectErrorDialog from "./ProjectErrorDialog";
+
 import { getProjectHistory, getProjectBreakdown } from "../api/api";
 import SankeyChart from "../components/SankeyChart";
 import BarChart from "../components/BarChart";
