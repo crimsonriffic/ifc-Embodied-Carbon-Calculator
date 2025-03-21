@@ -214,6 +214,154 @@ def temp_ifc_file(content: bytes):
         os.unlink(tmp.name)
 
 
+@app.get("/projects/{project_id}/missing_materials", response_model=Dict[str, Any])
+async def get_missing_materials(
+    project_id: str,
+    version: Optional[str] = Query(
+        None,
+        description="IFC version to analyze. If not provided, uses current version",
+    ),
+):
+    """
+    Retrieve missing materials detected in the IFC model.
+    Returns the type of elements, element ID, and error type for materials not found in the system database.
+    """
+    # Find the project
+    project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
+
+    if not project:
+        raise HTTPException(
+            status_code=404, detail=f"Project with ID {project_id} not found"
+        )
+
+    # Determine which version to use
+    version_number = version if version else str(project.get("current_version"))
+    if version_number not in project["ifc_versions"]:
+        raise HTTPException(
+            status_code=404, detail=f"Version {version_number} not found"
+        )
+
+    # Get the EC breakdown ID from the project
+    ifc_version = project["ifc_versions"].get(version_number)
+    ec_breakdown_id = ifc_version.get("ec_breakdown_id")
+    calculation_status = ifc_version.get("calculation_status", "")
+
+    if calculation_status != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"EC calculation for version {version_number} is not completed. Current status: {calculation_status}",
+        )
+
+    if not ec_breakdown_id:
+        raise HTTPException(
+            status_code=404,
+            detail=f"EC breakdown data not found for version {version_number}.",
+        )
+
+    # Get the EC breakdown data from MongoDB
+    ec_breakdown = await app.mongodb.ec_breakdown.find_one({"_id": ec_breakdown_id})
+
+    if not ec_breakdown:
+        raise HTTPException(status_code=404, detail="EC breakdown data not found")
+
+    # Extract missing materials from the EC breakdown data
+    missing_materials = ec_breakdown.get("missing_materials", {})
+
+    # Format the response
+    result = []
+    for ifc_type, materials in missing_materials.items():
+        for id, material_data in materials:
+            result.append(
+                {
+                    "IfcType": ifc_type,
+                    "ElementId": id,
+                    "SpecifiedMaterial": material_data,
+                    "ErrorType": "Material not found in system database",
+                }
+            )
+
+    return {
+        "project_id": project_id,
+        "version": version_number,
+        "total_missing_materials": len(result),
+        "missing_materials": result,
+    }
+
+
+@app.get("/projects/{project_id}/missing_elements", response_model=Dict[str, Any])
+async def get_missing_elements(
+    project_id: str,
+    version: Optional[str] = Query(
+        None,
+        description="IFC version to analyze. If not provided, uses current version",
+    ),
+):
+    """
+    Retrieve missing elements detected in the IFC model.
+    Returns the type of elements, element ID, and error type for elements not properly classified.
+    """
+    # Find the project
+    project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
+
+    if not project:
+        raise HTTPException(
+            status_code=404, detail=f"Project with ID {project_id} not found"
+        )
+
+    # Determine which version to use
+    version_number = version if version else str(project.get("current_version"))
+    if version_number not in project["ifc_versions"]:
+        raise HTTPException(
+            status_code=404, detail=f"Version {version_number} not found"
+        )
+
+    # Get the EC breakdown ID from the project
+    ifc_version = project["ifc_versions"].get(version_number)
+    ec_breakdown_id = ifc_version.get("ec_breakdown_id")
+    calculation_status = ifc_version.get("calculation_status", "")
+
+    if calculation_status != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"EC calculation for version {version_number} is not completed. Current status: {calculation_status}",
+        )
+
+    if not ec_breakdown_id:
+        raise HTTPException(
+            status_code=404,
+            detail=f"EC breakdown data not found for version {version_number}.",
+        )
+
+    # Get the EC breakdown data from MongoDB
+    ec_breakdown = await app.mongodb.ec_breakdown.find_one({"_id": ec_breakdown_id})
+
+    if not ec_breakdown:
+        raise HTTPException(status_code=404, detail="EC breakdown data not found")
+
+    # Extract missing elements (element_type_skipped) from the EC breakdown data
+    element_type_skipped = ec_breakdown.get("element_type_skipped", [])
+
+    # Format the response
+    result = []
+    for element_info in element_type_skipped:
+        if isinstance(element_info, list) and len(element_info) >= 2:
+            element_id, element_type = element_info
+            result.append(
+                {
+                    "IfcType": element_type,
+                    "ElementId": element_id,
+                    "ErrorType": "MaterialElement not classified",
+                }
+            )
+
+    return {
+        "project_id": project_id,
+        "version": version_number,
+        "total_missing_elements": len(result),
+        "missing_elements": result,
+    }
+
+
 @app.get("/ifc/elements", response_model=Dict[str, Any])
 async def get_ifc_elements(
     ifc_path: str = Query(..., description="S3 path to the IFC file")
