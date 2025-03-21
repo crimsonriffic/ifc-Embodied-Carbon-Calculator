@@ -8,9 +8,7 @@ import HistoryTable from "../components/HistoryTable";
 import UploadInfoCard from "../components/UploadInfoCard";
 import SankeyChart from "../components/SankeyChart";
 import Stepper from "../components/Stepper";
-import UploadOverview from "./UploadOverview";
-import UploadComparison from "./UploadComparison";
-import ProjectProgress from "./ProjectProgress";
+import UploadTabs from "../components/UploadTabs";
 function ProjectPage() {
   const location = useLocation();
   const [loading, setLoading] = useState(true); // Loading state
@@ -168,6 +166,9 @@ function ProjectPage() {
     setVersionBar(data);
   }, [projectHistory]);
 
+  const handleUpdateTypeChange = (e) => {
+    setSelectedBreakdownType(e.target.value);
+  };
   if (!projectId) {
     return <p className="text-red-500 mt-16">No project ID provided.</p>;
   }
@@ -232,11 +233,82 @@ function ProjectPage() {
           Project Progress
         </button>
       </div>
-      {activeTab === "Upload Overview" && (
-        <UploadOverview projectId={projectId} projectName={projectName} />
-      )}
-      {activeTab === "Upload Comparison" && <UploadComparison />}
-      {activeTab === "Project Progress" && <ProjectProgress />}
+      <div className="flex flex-col">
+        {/**Top half of screen */}
+
+        {/*Dropdown of version number*/}
+        <div className="mb-4">
+          <select
+            id="versionNumber"
+            value={versionNumber}
+            onChange={handleVersionClick}
+            className="text-2xl font-bold"
+          >
+            {[...versionArray].reverse().map((version) => (
+              <option key={version} value={version} className="text-lg ">
+                Upload {version}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-row mt-2 justify-between gap-x-96">
+          {/** Card 1 - Building Info*/}
+          <div className="flex-1 flex-col sm:max-w-md ">
+            <h1 className="font-bold">Upload Information</h1>
+            <UploadInfoCard
+              uploadInfoData={projectHistory.find(
+                (item) => item.version === versionNumber
+              )}
+            />
+            <h1 className="mt-4 font-bold">Project Information</h1>
+            <BuildingInfoCard projectId={projectId} />
+          </div>
+
+          <div className=" flex-1 flex flex-col ">
+            <div className="flex items-center gap-2">
+              <h1 className="font-bold">A1-A3 Embodied Carbon Data</h1>
+              <button
+                className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-800 rounded-md hover:bg-green-200"
+                onClick={() => {
+                  handleMoreDetails(projectId, projectName);
+                }}
+              >
+                More details
+                <span>→</span>
+              </button>
+            </div>
+            <div className="flex flex-row">
+              <p>Total Embodied Carbon: </p>
+              <p className="font-bold">
+                {Number(
+                  projectHistory
+                    .find((item) => item.version === versionNumber)
+                    ?.total_ec.toFixed(0)
+                ).toLocaleString()}{" "}
+                kgCO2eq
+              </p>
+            </div>
+            {/** Card 2 - Sankey chart  */}
+            <SankeyChart data={sankeyData} width={600} height={300} />
+          </div>
+        </div>
+      </div>
+      {/**Bottom half of screen */}
+      <div className="flex flex-row justify-between mt-12 gap-x-16 h-[300px] ">
+        <div className="flex flex-1 flex-col">
+          <h1 className="font-bold mb-4">Project Upload History</h1>
+          <HistoryTable projectHistory={projectHistory} />
+        </div>
+
+        <div className="flex flex-1 flex-col">
+          <h1 className="font-bold mb-4">A1-A3 Embodied Carbon Comparison</h1>
+
+          <div className="h-full">
+            <BarChart data={versionBar} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -22,6 +22,10 @@ export default {
     "./src/pages/UploadConfirmationPage.jsx",
     "./src/pages/BreakdownPage.jsx",
     "./src/pages/UploadHistory.jsx",
+    "./src/components/UploadTabs.jsx",
+    "./src/pages/UploadOverview.jsx",
+    "./src/pages/UploadComparison.jsx",
+    "./src/pages/ProjectProgress.jsx",
   ],
   theme: {
     extend: {},
