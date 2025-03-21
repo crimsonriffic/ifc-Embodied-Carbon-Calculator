@@ -456,9 +456,10 @@ async def get_materials(
     Retrieve a list of materials detected in IFC, with info from mongodb,
     If material_name is not provided, it will return materials from the entire db.
     """
-    s3_key = ifc_path.replace(f"s3://{S3_BUCKET}/", "")
 
     if ifc_path:
+        s3_key = ifc_path.replace(f"s3://{S3_BUCKET}/", "")
+
         try:
             # Get material names from the IFC file
             response = s3_client.get_object(
