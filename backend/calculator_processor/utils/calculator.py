@@ -2724,7 +2724,8 @@ def calculate_footings(footings):
 
 
 def calculate_embodied_carbon(filepath, with_breakdown=False):
-    calculator_utils.refresh_materials_list()
+    global MaterialList
+    MaterialList = calculator_utils.refresh_materials_list()
     slabs_to_ignore = []
     all_missing_materials = {}
 

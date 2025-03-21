@@ -12,6 +12,8 @@ jobs:
     env:
       AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
       AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      MONGODB_URL: ${{ secrets.MONGODB_URL }}
+      DB_NAME: ${{ secrets.DB_NAME }}
     steps:
       - uses: actions/checkout@v4
 

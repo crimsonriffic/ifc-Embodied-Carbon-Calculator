@@ -7,7 +7,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import os
 import pandas as pd
-
+from pprint import pprint
 from pymongo import MongoClient
 
 
@@ -15,7 +15,7 @@ MONGODB_URI = os.environ.get("MONGODB_URL")
 DB_NAME = os.environ.get("DB_NAME")
 
 # Global variables
-MaterialList = []
+MaterialList = {}
 _db_client = None
 _db = None
 
@@ -41,13 +41,28 @@ def refresh_materials_list():
     db = get_db()
     cursor = db.materials.find({})
 
-    # Convert to list and transform ObjectId to string
-    temp_materials = list(cursor)
-    for material in temp_materials:
-        material["_id"] = str(material["_id"])
+    # Convert MongoDB results to the required dictionary format
+    materials_dict = {}
+
+    for material in cursor:
+        # Extract the material name from specified_material
+        material_name = material.get("specified_material")
+        embodied_carbon = material.get("embodied_carbon")  # ec_per_kg
+        density = material.get("density")
+
+        if not material_name:
+            continue
+
+        # Store as [embodied_carbon, density] as per your example format
+        if embodied_carbon is not None and density is not None:
+            materials_dict[material_name] = [float(embodied_carbon), float(density)]
+        # If it's a per m² value (e.g., for windows/doors)
+        elif embodied_carbon is not None and material.get("unit") == "m2":
+            materials_dict[material_name] = float(embodied_carbon)
 
     # Update the global variable
-    MaterialList = temp_materials
+    MaterialList = materials_dict
+    pprint(MaterialList)
     return MaterialList
 
 
