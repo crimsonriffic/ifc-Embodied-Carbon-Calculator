@@ -214,6 +214,90 @@ def temp_ifc_file(content: bytes):
         os.unlink(tmp.name)
 
 
+@app.get("/ifc/elements", response_model=Dict[str, Any])
+async def get_ifc_elements(
+    ifc_path: str = Query(..., description="S3 path to the IFC file")
+):
+    """
+    Retrieve elements detected in the IFC model.
+    Returns the type of elements and their quantities.
+
+    The frontend should provide the complete S3 path to the IFC file.
+    """
+    if not ifc_path or not ifc_path.startswith("s3://"):
+        raise HTTPException(status_code=400, detail="Invalid IFC file path")
+
+    # Extract the key from the S3 path
+    s3_key = ifc_path.replace(f"s3://{S3_BUCKET}/", "")
+
+    try:
+        # Get the IFC file from S3
+        response = s3_client.get_object(
+            Bucket=S3_BUCKET,
+            Key=s3_key,
+        )
+        file_content = response["Body"].read()
+
+        element_counts = {}
+
+        with temp_ifc_file(file_content) as ifc_file_path:
+            ifc_file = ifcopenshell.open(ifc_file_path)
+
+            # Get only the specified element types
+            columns = ifc_file.by_type("IfcColumn")
+            beams = ifc_file.by_type("IfcBeam")
+            slabs = ifc_file.by_type("IfcSlab")
+            walls = ifc_file.by_type("IfcWall")
+            windows = ifc_file.by_type("IfcWindow")
+            roofs = ifc_file.by_type("IfcRoof")
+            doors = ifc_file.by_type("IfcDoor")
+            stairs = ifc_file.by_type("IfcStairFlight")
+            railings = ifc_file.by_type("IfcRailing")
+            members = ifc_file.by_type("IfcMember")
+            plates = ifc_file.by_type("IfcPlate")
+            piles = ifc_file.by_type("IfcPile")
+            footings = ifc_file.by_type("IfcFooting")
+            spaces = ifc_file.by_type("IfcSpace")
+
+            # Count each element type
+            element_counts = {
+                "IfcColumn": len(columns),
+                "IfcBeam": len(beams),
+                "IfcSlab": len(slabs),
+                "IfcWall": len(walls),
+                "IfcWindow": len(windows),
+                "IfcRoof": len(roofs),
+                "IfcDoor": len(doors),
+                "IfcStairFlight": len(stairs),
+                "IfcRailing": len(railings),
+                "IfcMember": len(members),
+                "IfcPlate": len(plates),
+                "IfcPile": len(piles),
+                "IfcFooting": len(footings),
+                "IfcSpace": len(spaces),
+            }
+
+            # Remove any element types with zero count
+            element_counts = {k: v for k, v in element_counts.items() if v > 0}
+
+        sorted_elements = {
+            k: v
+            for k, v in sorted(
+                element_counts.items(), key=lambda item: item[1], reverse=True
+            )
+        }
+
+        return {
+            "ifc_path": ifc_path,
+            "elements": sorted_elements,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error processing IFC file: {str(e)}"
+        )
+
+
 @app.get("/materials", response_model=List[Material])
 async def get_materials(
     ifc_path: Optional[str] = Query(
@@ -446,8 +530,8 @@ async def upload_ifc(
             "sqs",
             aws_access_key_id=AWS_ACCESS_KEY,
             aws_secret_access_key=AWS_SECRET_KEY,
-            region_name="ap-southeast-2"  # Make sure this matches your queue's region
-        )        
+            region_name="ap-southeast-2",  # Make sure this matches your queue's region
+        )
         queue_url = os.environ.get("SQS_QUEUE_URL")
 
         response = sqs_client.send_message(
@@ -456,7 +540,7 @@ async def upload_ifc(
             MessageGroupId=project_id,  # Group messages by project ID
             MessageDeduplicationId=f"{project_id}-{new_version}",  # Ensure idempotency
         )
-        print('uploaded to queue')
+        print("uploaded to queue")
         # Update MongoDB
         update_result = await app.mongodb.projects.update_one(
             {"_id": ObjectId(project_id)},
