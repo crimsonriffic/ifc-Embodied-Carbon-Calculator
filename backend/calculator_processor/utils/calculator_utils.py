@@ -8,31 +8,49 @@ from sklearn.metrics.pairwise import cosine_similarity
 import os
 import pandas as pd
 
-MaterialList = {
-    "Concrete, Cast In Situ": [0.103, 2350],
-    "Concrete, Cast-in-Place gray": [0.103, 2350],
-    "Concrete, C12/15": [0.097, 2350],
-    "Concrete, Grade 40": [0.170, 2400],
-    "Concrete, Grade 20": [0.120, 2350],
-    "Concrete, Grade 25": [0.13, 2350],
-    "Concrete, Grade 20": [0.140, 2350],
-    "Concrete, Grade 20": [0.140, 2350],
-    "Concrete, C25/30": [0.119, 2350],
-    "Concrete, General": [0.112, 2350],
-    "Concrete, Precast, Ordinary Portland Cement": [0.148, 2400],
-    "Wood_aluminium fixed window 3-glass (SF 2010)": 54.6,  # kgCO2 per 1m^2
-    "Wood_aluminium sidehung window 3-glass (SF 2010)": 72.4,
-    "M_Window-Casement-Double-Sidelight": 86.830,
-    "M_Window-Casement-Double-Sidelight": 86.830,
-    "Wooden doors T10-T25 with wooden frame": 30.4,
-    "Wooden doors T10-T25 with wooden frame 2": 30.4,
-    "Wooden doors T10-T25 with steel frame": 49.4,
-    "Aluminium, General": [13.100, 2700],
-    "Tiles, Granite": [0.700, 2650],
-    "Plywood": [0.910, 600],
-    "Cross Laminated Timber": [-1.310, 500],
-    "Primary Steel": [1.730, 7850],
-}
+from pymongo import MongoClient
+
+
+MONGODB_URI = os.environ.get("MONGODB_URL")
+DB_NAME = os.environ.get("DB_NAME")
+
+# Global variables
+MaterialList = []
+_db_client = None
+_db = None
+
+
+def get_db():
+    """Get or create MongoDB database connection"""
+    global _db_client, _db
+
+    if _db is None:
+        if not MONGODB_URI:
+            raise ValueError("MongoDB environment variables not configured")
+
+        _db_client = MongoClient(MONGODB_URI)
+        _db = _db_client[DB_NAME]
+
+    return _db
+
+
+def refresh_materials_list():
+    """Refresh the materials list from MongoDB"""
+    global MaterialList
+
+    db = get_db()
+    cursor = db.materials.find({})
+
+    # Convert to list and transform ObjectId to string
+    temp_materials = list(cursor)
+    for material in temp_materials:
+        material["_id"] = str(material["_id"])
+
+    # Update the global variable
+    MaterialList = temp_materials
+    return MaterialList
+
+
 MaterialsToIgnore = ["Travertine", "<Unnamed>"]
 
 # File paths for material database
