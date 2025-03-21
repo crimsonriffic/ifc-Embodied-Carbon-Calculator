@@ -8,10 +8,7 @@ import numpy as np
 import os
 import math
 
-try:
-    from calculator_processor.utils import calculator_utils
-except ImportError:
-    from . import calculator_utils
+from . import calculator_utils
 
 MaterialList = calculator_utils.MaterialList
 MaterialsToIgnore = calculator_utils.MaterialsToIgnore
