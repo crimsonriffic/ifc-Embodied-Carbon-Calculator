@@ -110,6 +110,9 @@ def update_mongodb(
 
         ec_breakdown_result = db.ec_breakdown.insert_one(ec_breakdown_entry)
         ec_breakdown_id = ec_breakdown_result.inserted_id
+        logger.info(
+            f"Updating MongoDB with: {total_gfa}, {total_ec}, {ec_breakdown_id}"
+        )
 
         # Update project document
         db.projects.update_one(
