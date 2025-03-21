@@ -1,21 +1,42 @@
 import Navbar from "../components/NavBar";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import Stepper from "../components/Stepper";
+
+import { getBuildingInfo } from "../api/api";
+
+import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
 
-import { ArrowUpTrayIcon } from "@heroicons/react/24/solid";
-import { Navigate } from "react-router-dom";
 import { createProject } from "../api/api";
-export default function CreatePage() {
+
+function CreatePage() {
   const [projectName, setProjectName] = useState("");
   const [client, setClient] = useState("");
   const [typology, setTypology] = useState("");
   const [status, setStatus] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false); // State for IfcDialog
-  const [loading, setLoading] = useState(false);
+  const [benchmark, setBenchmark] = useState({});
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false); // Loading state
 
   const { username } = useUser();
   const navigate = useNavigate();
+
+  const handleProceed = (projectId, projectName) => {
+    console.log("HandleProceed called");
+    navigate(`/uploadHistory/${encodeURIComponent(projectName)}`, {
+      state: { projectId },
+    });
+  };
+
+  const benchmarks = {
+    Residential: { "Green Mark": 1500, "LETI 2030 Design Target": 300 },
+    "Non-Residential (Generic)": { "Green Mark": 1000 },
+    "Non-Residential (Office)": { "LETI 2030 Design Target": 350 },
+    "Non-Residential (Education)": { "LETI 2030 Design Target": 300 },
+    "Non-Residential (Retail)": { "LETI 2030 Design Target": 300 },
+    Industrial: { "Green Mark": 2500 },
+  };
   const handleUpload = async (e) => {
     e.preventDefault();
     console.log("Handle Upload with user:", username);
@@ -27,21 +48,18 @@ export default function CreatePage() {
         selectedFile,
         username,
         typology,
-        status
+        status,
+        benchmark
       );
-      console.log("Successfully created project: ", response.data);
-      navigate("/home");
+      console.log("Successfully created project: ", response.project);
+      navigate(`/uploadHistory/${encodeURIComponent(projectName)}`, {
+        state: { projectId: response.project._id },
+      });
     } catch (err) {
       console.error("Faild to create project", err);
       alert("Failed to create projec!");
     } finally {
       setLoading(false);
-    }
-  };
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSelectedFile(file);
     }
   };
   const handleUpdateTypology = (e) => {
@@ -51,123 +69,133 @@ export default function CreatePage() {
   const handleUpdateStatus = (e) => {
     setStatus(e.target.value);
   };
+
+  useEffect(() => {
+    if (!typology) {
+      return;
+    } else {
+      if (typology.startsWith("Non-Residential")) {
+        setBenchmark({
+          "Non-Residential (Generic)": benchmarks["Non-Residential (Generic)"],
+          [typology]: benchmarks[typology],
+        });
+      } else {
+        setBenchmark({ [typology]: benchmarks[typology] || {} });
+      }
+    }
+  }, [typology]);
   return (
     <div className="px-6">
       <Navbar />
 
       {/* Banner Section */}
-      <div className="bg-[#5B9130] text-white mx-8 mt-20 w-full mr-4 py-10 px-6 rounded-lg shadow-md text-left ml-0">
-        <h1 className="text-3xl font-bold">Create a new project</h1>
+      <div className="bg-[#5B9130] text-white mx-8 mt-20 w-full mr-4 py-6 px-6 rounded-lg shadow-md text-left ml-0">
+        <h1 className="text-3xl font-bold">Project Information</h1>
+        <p>Please enter the relevant information for your project</p>
       </div>
-      {/* Create project form */}
-      {/*Upload form */}
-      <div className=" bg-white shadow-md rounded-lg p-4 w-full mt-10">
-        <form onSubmit={handleUpload} className="space-y-4">
-          {/*Input Project Name */}
-          <div className="mb-4">
-            <label
-              htmlFor="projectName"
-              className="block text-sm font-medium text-gray-700 "
-            >
-              Project Name
-            </label>
-            <input
-              type="text"
-              id="projectName"
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              placeholder="Enter Project Name"
-              className=" p-2 text-sm border-b-2 border-gray-200 focus:outline-none resize-none"
-              required
-            />
-          </div>
+      <div className="mt-6">
+        <Stepper currentStep={1} />
+      </div>
+      <div className="bg-[#A9C0A0] text-white rounded-lg px-4 py-2 flex items-center shadow-md mt-4 mb-6 sm:max-w-md">
+        <h1 className="text-2xl font-semibold tracking-wide">
+          {projectName ? decodeURIComponent(projectName) : "New Project"}
+        </h1>
+      </div>
+      <div className="flex flex-row gap-x-32">
+        {/* Create project form */}
+        {/*Upload form */}
+        <div className="flex flex-col max-w-md">
+          {/** New Upload section*/}
+          <h1 className="text-2xl font-semibold tracking-wide mb-2">
+            Create New Project
+          </h1>
+          <form onSubmit={handleUpload} className="space-y-4">
+            <div className="max-w-md">
+              <label htmlFor="projectName" className="block text-gray-700 mb-1">
+                Project Name
+              </label>
+              <input
+                type="text"
+                id="projectName"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                placeholder="Enter Project Name"
+                className="p-2 border w-80 border-gray-200 shadow-md mb-4"
+                required
+              />
+            </div>
 
-          {/*Input Client Name */}
-          <div className="mb-4">
-            <label
-              htmlFor="client"
-              className="block text-sm font-medium text-gray-700 "
-            >
-              Client Name
-            </label>
-            <input
-              type="text"
-              id="client"
-              value={client}
-              onChange={(e) => setClient(e.target.value)}
-              placeholder="Enter Client"
-              className=" p-2 text-sm border-b-2 border-gray-200 focus:outline-none resize-none"
-              required
-            />
-          </div>
-          {/*Input typology type */}
-          <div className="mb-4">
-            <label
-              htmlFor="typology"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Typology
-            </label>
-            <select
-              id="typology"
-              value={typology}
-              onChange={handleUpdateTypology}
-              className="w-full max-w-xs p-2 border border-gray-300 rounded-lg"
-            >
-              <option value="Residential">Residential</option>
-              <option value="Non-residential">Non-residential</option>
-              <option value="Industrial">Industrial</option>
-            </select>
-          </div>
+            <div className="max-w-md">
+              <label htmlFor="clientName" className="block text-gray-700 mb-1">
+                Client Name
+              </label>
+              <input
+                type="text"
+                id="client"
+                value={client}
+                onChange={(e) => setClient(e.target.value)}
+                placeholder="Enter Client"
+                className="p-2 border w-80 border-gray-200 shadow-md mb-4"
+                required
+              />
+            </div>
 
-          {/*Input Status type */}
-          <div className="mb-4">
-            <label
-              htmlFor="status"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Status
-            </label>
-            <select
-              id="status"
-              value={status}
-              onChange={handleUpdateStatus}
-              className="w-full max-w-xs p-2 border border-gray-300 rounded-lg"
-            >
-              <option value="Conceptual Design">Conceptual Design</option>
-              <option value="Schematic Design">Schematic Design</option>
-              <option value="Detailed Design">Detailed Design</option>
-              <option value="Construction Evaluation">
-                Construction Evaluaton
-              </option>
-              <option value="Final Assessment">Final Assessment</option>
-              <option value="Verification">Verification</option>
-            </select>
-          </div>
+            <div className="max-w-md">
+              <label htmlFor="typology" className="block text-gray-700 mb-1">
+                Typology
+              </label>
+              <select
+                id="typology"
+                value={typology}
+                onChange={handleUpdateTypology}
+                className="w-full max-w-xs p-2 border border-gray-300 rounded-lg"
+              >
+                <option value="Residential">Residential</option>
+                <option value="Non-residential Generic">
+                  Non-residential (Generic)
+                </option>
+                <option value="Non-residential Office">
+                  Non-residential (Office)
+                </option>
+                <option value="Non-residential Education">
+                  Non-residential (Education)
+                </option>
+                <option value="Non-residential Retail">
+                  Non-residential (Retail)
+                </option>
+                <option value="Industrial">Industrial</option>
+              </select>
+            </div>
 
-          {/** Upload IFC Section */}
-          <div className="mb-4">
-            <label
-              htmlFor="client"
-              className="block text-sm font-medium text-gray-700 "
-            >
-              Upload IFC
-            </label>
-            <input
-              type="file"
-              onChange={handleFileChange}
-              className="p-2 text-sm border-b-2 border-gray-200 focus:outline-none resize-none"
-              required
-            />
-          </div>
+            <div className="max-w-md">
+              <label htmlFor="status" className="block text-gray-700 mb-1">
+                Status
+              </label>
+              <select
+                id="status"
+                value={status}
+                onChange={handleUpdateStatus}
+                className="w-full max-w-xs p-2 border border-gray-300 rounded-lg"
+              >
+                <option value="Conceptual Design">Conceptual Design</option>
+                <option value="Schematic Design">Schematic Design</option>
+                <option value="Detailed Design">Detailed Design</option>
+                <option value="Construction Evaluation">
+                  Construction Evaluaton
+                </option>
+                <option value="Final Assessment">Final Assessment</option>
+                <option value="Verification">Verification</option>
+              </select>
+            </div>
 
-          <div className="flex justify-end space-x-2">
             <button className="px-4 py-2 bg-[#5B9130] text-white rounded">
               {loading ? "Creating project..." : "Create Project"}
             </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
 }
+
+export default CreatePage;

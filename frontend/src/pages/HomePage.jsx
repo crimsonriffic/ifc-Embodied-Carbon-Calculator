@@ -27,7 +27,7 @@ function HomePage() {
   const handleUploadClick = (projectId, projectName) => {
     setSelectedProjectId(projectId);
     setSelectedProjectName(projectName);
-    navigate(`/projectInfo/${encodeURIComponent(projectName)}`, {
+    navigate(`/uploadHistory/${encodeURIComponent(projectName)}`, {
       state: { projectId },
     });
     setIsDialogOpen(true);
@@ -42,7 +42,7 @@ function HomePage() {
   const handleGoToProject = (projectId, projectName) => {
     console.log("HandleGoToProject called");
     navigate(`/project/${encodeURIComponent(projectName)}`, {
-      state: { projectId },
+      state: { fromHomePage: true, projectId },
     });
   };
   // Re-fetch files whenever the dialog is closed
@@ -106,7 +106,7 @@ function HomePage() {
                   Latest Update
                 </th>
                 <th className="border border-gray-300 px-4 py-2 text-left">
-                  Edit Project
+                  New Upload
                 </th>
                 <th className="border border-gray-300 px-4 py-2 text-left">
                   View results
@@ -142,7 +142,7 @@ function HomePage() {
                           handleUploadClick(project._id, project.project_name)
                         }
                       >
-                        <PencilSquareIcon className="w-6 h-6 " />
+                        <ArrowUpTrayIcon className="w-6 h-6 " />
                       </button>
                     </td>
                     <td className="border border-gray-300 px-4 py-2 text-center">

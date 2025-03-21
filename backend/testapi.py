@@ -432,6 +432,173 @@ def upload_material(material_name, material_data, user_id):
             return False
 
 
+def test_get_missing_materials(project_id: str, version: str = None):
+    """Test the missing materials endpoint"""
+    print(f"\n===Testing GET missing materials for project {project_id}===")
+
+    # Set up parameters
+    params = {}
+    if version:
+        params["version"] = version
+        print(f"Testing for specific version: {version}")
+
+    # Make the request
+    response = requests.get(
+        f"{BASE_URL}/projects/{project_id}/missing_materials", params=params
+    )
+
+    print(f"Status Code: {response.status_code}")
+    if response.status_code == 200:
+        result = response.json()
+        print("\nMissing Materials Results:")
+        print(f"Project ID: {result['project_id']}")
+        print(f"Version: {result['version']}")
+        print(f"Total Missing Materials: {result['total_missing_materials']}")
+
+        # Print a sample of missing materials (up to 5)
+        print("\nSample of Missing Materials:")
+        for i, material in enumerate(result["missing_materials"][:5]):
+            print(f"\n  Material {i+1}:")
+            print(f"  IfcType: {material['IfcType']}")
+            print(f"  ElementId: {material['ElementId']}")
+            print(f"  SpecifiedMaterial: {material['SpecifiedMaterial']}")
+            print(f"  ErrorType: {material['ErrorType']}")
+
+        if len(result["missing_materials"]) > 5:
+            print(f"\n... and {len(result['missing_materials']) - 5} more")
+    else:
+        print(f"Error: {response.json().get('detail', 'Unknown error')}")
+
+    return response.json() if response.status_code == 200 else None
+
+
+def test_get_missing_elements(project_id: str, version: str = None):
+    """Test the missing elements endpoint"""
+    print(f"\n===Testing GET missing elements for project {project_id}===")
+
+    # Set up parameters
+    params = {}
+    if version:
+        params["version"] = version
+        print(f"Testing for specific version: {version}")
+
+    # Make the request
+    response = requests.get(
+        f"{BASE_URL}/projects/{project_id}/missing_elements", params=params
+    )
+
+    print(f"Status Code: {response.status_code}")
+    if response.status_code == 200:
+        result = response.json()
+        print("\nMissing Elements Results:")
+        print(f"Project ID: {result['project_id']}")
+        print(f"Version: {result['version']}")
+        print(f"Total Missing Elements: {result['total_missing_elements']}")
+
+        # Print a sample of missing elements (up to 5)
+        print("\nSample of Missing Elements:")
+        for i, element in enumerate(result["missing_elements"][:5]):
+            print(f"\n  Element {i+1}:")
+            print(f"  IfcType: {element['IfcType']}")
+            print(f"  ElementId: {element['ElementId']}")
+            print(f"  ErrorType: {element['ErrorType']}")
+
+        if len(result["missing_elements"]) > 5:
+            print(f"\n... and {len(result['missing_elements']) - 5} more")
+    else:
+        print(f"Error: {response.json().get('detail', 'Unknown error')}")
+
+    return response.json() if response.status_code == 200 else None
+
+
+def test_get_ifc_elements(ifc_path: str):
+    """Test the IFC elements endpoint"""
+    print(f"\n===Testing GET IFC elements===")
+    print(f"IFC Path: {ifc_path}")
+
+    # Make the request
+    response = requests.get(f"{BASE_URL}/ifc/elements", params={"ifc_path": ifc_path})
+
+    print(f"Status Code: {response.status_code}")
+    if response.status_code == 200:
+        result = response.json()
+        print("\nIFC Elements Results:")
+        print(f"IFC Path: {result['ifc_path']}")
+
+        # Print detected elements and their counts
+        print("\nDetected Elements:")
+        for element_type, count in result["elements"].items():
+            print(f"  {element_type}: {count}")
+
+        print(f"\nTotal Element Types: {len(result['elements'])}")
+    else:
+        print(f"Error: {response.json().get('detail', 'Unknown error')}")
+
+    return response.json() if response.status_code == 200 else None
+
+
+def test_get_materials_from_ifc(ifc_path: str = None):
+    """Test the materials endpoint with optional IFC path"""
+    print(f"\n===Testing GET materials===")
+
+    # Set up parameters
+    params = {}
+    if ifc_path:
+        params["ifc_path"] = ifc_path
+        print(f"With IFC file: {ifc_path}")
+
+    # Make the request
+    response = requests.get(f"{BASE_URL}/materials", params=params)
+
+    print(f"Status Code: {response.status_code}")
+    if response.status_code == 200:
+        materials = response.json()
+        print(f"\nMaterials found: {len(materials)}")
+        for i, material in enumerate(materials[:5]):  # Show first 5 materials
+            print(f"\nMaterial {i+1}:")
+            print(f"  Material Type: {material['material_type']}")
+            print(f"  Specified Material: {material['specified_material']}")
+            print(
+                f"  Embodied Carbon: {material['embodied_carbon']} {material.get('unit', '')}"
+            )
+            print(f"  Database Source: {material['database_source']}")
+            if "density" in material and material["density"] is not None:
+                print(f"  Density: {material['density']}")
+
+        if len(materials) > 5:
+            print(f"\n... and {len(materials) - 5} more materials")
+    else:
+        print(f"Error: {response.json().get('detail', 'Unknown error')}")
+
+    return response.json() if response.status_code == 200 else None
+
+
+def run_all_tests(project_id: str, version: str = None, ifc_path: str = None):
+    """Run all new endpoint tests with the given project ID and optional version"""
+    print("\n=== Running All New Endpoint Tests ===\n")
+
+    # Test missing materials
+    print("\n\n---- Testing Missing Materials Endpoint ----")
+    test_get_missing_materials(project_id, version)
+
+    # Test missing elements
+    print("\n\n---- Testing Missing Elements Endpoint ----")
+    test_get_missing_elements(project_id, version)
+
+    # Test IFC elements (only if ifc_path is provided)
+    if ifc_path:
+        print("\n\n---- Testing IFC Elements Endpoint ----")
+        test_get_ifc_elements(ifc_path)
+
+        # Test materials from IFC
+        print("\n\n---- Testing Materials from IFC Endpoint ----")
+        test_get_materials_from_ifc(ifc_path)
+
+    # Test all materials
+    print("\n\n---- Testing All Materials Endpoint ----")
+    test_get_materials_from_ifc()
+
+
 USER_ID = "admin_user"
 
 
@@ -484,7 +651,7 @@ def main():
     # print(f"Total materials: {len(materials_dict)}")
 
     # # Test GET all materials
-    materials = test_get_materials()
+    # materials = test_get_materials()
 
     # # If materials exist, test GET specific material
     # if materials and len(materials) > 0:
@@ -506,6 +673,10 @@ def main():
     # test_upload_ifc("507f1f77bcf86cd799439011", "16_Complex 1.ifc", test_user)
     # test_get_project_info("507f1f77bcf86cd799439011")
     # test_create_project(test_user)
+    project_id = "67da8f10154427bd82134e41"
+    version = None
+    ifc_path = "s3://ifcfiles/ifc_files/67da8f10154427bd82134e41/1_Complex 1.ifc"
+    run_all_tests(project_id, version, ifc_path)
 
 
 if __name__ == "__main__":
