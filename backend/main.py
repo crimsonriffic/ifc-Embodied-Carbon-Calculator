@@ -13,6 +13,9 @@ from pydantic import BaseModel, Field
 from pydantic_core import core_schema
 from pymongo.errors import ServerSelectionTimeoutError
 import json
+from contextlib import contextmanager
+import tempfile
+import ifcopenshell
 
 dotenv.load_dotenv()
 
@@ -200,29 +203,296 @@ class MaterialCreate(BaseModel):
     database_source: Literal["Custom", "System"] = "Custom"
 
 
+@contextmanager
+def temp_ifc_file(content: bytes):
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".ifc")
+    try:
+        tmp.write(content)
+        tmp.close()
+        yield tmp.name
+    finally:
+        os.unlink(tmp.name)
+
+
+@app.get("/projects/{project_id}/missing_materials", response_model=Dict[str, Any])
+async def get_missing_materials(
+    project_id: str,
+    version: Optional[str] = Query(
+        None,
+        description="IFC version to analyze. If not provided, uses current version",
+    ),
+):
+    """
+    Retrieve missing materials detected in the IFC model.
+    Returns the type of elements, element ID, and error type for materials not found in the system database.
+    """
+    # Find the project
+    project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
+
+    if not project:
+        raise HTTPException(
+            status_code=404, detail=f"Project with ID {project_id} not found"
+        )
+
+    # Determine which version to use
+    version_number = version if version else str(project.get("current_version"))
+    if version_number not in project["ifc_versions"]:
+        raise HTTPException(
+            status_code=404, detail=f"Version {version_number} not found"
+        )
+
+    # Get the EC breakdown ID from the project
+    ifc_version = project["ifc_versions"].get(version_number)
+    ec_breakdown_id = ifc_version.get("ec_breakdown_id")
+    calculation_status = ifc_version.get("calculation_status", "")
+
+    if calculation_status != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"EC calculation for version {version_number} is not completed. Current status: {calculation_status}",
+        )
+
+    if not ec_breakdown_id:
+        raise HTTPException(
+            status_code=404,
+            detail=f"EC breakdown data not found for version {version_number}.",
+        )
+
+    # Get the EC breakdown data from MongoDB
+    ec_breakdown = await app.mongodb.ec_breakdown.find_one({"_id": ec_breakdown_id})
+
+    if not ec_breakdown:
+        raise HTTPException(status_code=404, detail="EC breakdown data not found")
+
+    # Extract missing materials from the EC breakdown data
+    missing_materials = ec_breakdown.get("missing_materials", {})
+
+    # Format the response
+    result = []
+    for ifc_type, materials in missing_materials.items():
+        for id, material_data in materials:
+            result.append(
+                {
+                    "IfcType": ifc_type,
+                    "ElementId": id,
+                    "SpecifiedMaterial": material_data,
+                    "ErrorType": "Material not found in system database",
+                }
+            )
+
+    return {
+        "project_id": project_id,
+        "version": version_number,
+        "total_missing_materials": len(result),
+        "missing_materials": result,
+    }
+
+
+@app.get("/projects/{project_id}/missing_elements", response_model=Dict[str, Any])
+async def get_missing_elements(
+    project_id: str,
+    version: Optional[str] = Query(
+        None,
+        description="IFC version to analyze. If not provided, uses current version",
+    ),
+):
+    """
+    Retrieve missing elements detected in the IFC model.
+    Returns the type of elements, element ID, and error type for elements not properly classified.
+    """
+    # Find the project
+    project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
+
+    if not project:
+        raise HTTPException(
+            status_code=404, detail=f"Project with ID {project_id} not found"
+        )
+
+    # Determine which version to use
+    version_number = version if version else str(project.get("current_version"))
+    if version_number not in project["ifc_versions"]:
+        raise HTTPException(
+            status_code=404, detail=f"Version {version_number} not found"
+        )
+
+    # Get the EC breakdown ID from the project
+    ifc_version = project["ifc_versions"].get(version_number)
+    ec_breakdown_id = ifc_version.get("ec_breakdown_id")
+    calculation_status = ifc_version.get("calculation_status", "")
+
+    if calculation_status != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"EC calculation for version {version_number} is not completed. Current status: {calculation_status}",
+        )
+
+    if not ec_breakdown_id:
+        raise HTTPException(
+            status_code=404,
+            detail=f"EC breakdown data not found for version {version_number}.",
+        )
+
+    # Get the EC breakdown data from MongoDB
+    ec_breakdown = await app.mongodb.ec_breakdown.find_one({"_id": ec_breakdown_id})
+
+    if not ec_breakdown:
+        raise HTTPException(status_code=404, detail="EC breakdown data not found")
+
+    # Extract missing elements (element_type_skipped) from the EC breakdown data
+    element_type_skipped = ec_breakdown.get("element_type_skipped", [])
+
+    # Format the response
+    result = []
+    for element_info in element_type_skipped:
+        if isinstance(element_info, list) and len(element_info) >= 2:
+            element_id, element_type = element_info
+            result.append(
+                {
+                    "IfcType": element_type,
+                    "ElementId": element_id,
+                    "ErrorType": "MaterialElement not classified",
+                }
+            )
+
+    return {
+        "project_id": project_id,
+        "version": version_number,
+        "total_missing_elements": len(result),
+        "missing_elements": result,
+    }
+
+
+@app.get("/ifc/elements", response_model=Dict[str, Any])
+async def get_ifc_elements(
+    ifc_path: str = Query(..., description="S3 path to the IFC file")
+):
+    """
+    Retrieve elements detected in the IFC model.
+    Returns the type of elements and their quantities.
+
+    The frontend should provide the complete S3 path to the IFC file.
+    """
+    if not ifc_path or not ifc_path.startswith("s3://"):
+        raise HTTPException(status_code=400, detail="Invalid IFC file path")
+
+    # Extract the key from the S3 path
+    s3_key = ifc_path.replace(f"s3://{S3_BUCKET}/", "")
+
+    try:
+        # Get the IFC file from S3
+        response = s3_client.get_object(
+            Bucket=S3_BUCKET,
+            Key=s3_key,
+        )
+        file_content = response["Body"].read()
+
+        element_counts = {}
+
+        with temp_ifc_file(file_content) as ifc_file_path:
+            ifc_file = ifcopenshell.open(ifc_file_path)
+
+            # Get only the specified element types
+            columns = ifc_file.by_type("IfcColumn")
+            beams = ifc_file.by_type("IfcBeam")
+            slabs = ifc_file.by_type("IfcSlab")
+            walls = ifc_file.by_type("IfcWall")
+            windows = ifc_file.by_type("IfcWindow")
+            roofs = ifc_file.by_type("IfcRoof")
+            doors = ifc_file.by_type("IfcDoor")
+            stairs = ifc_file.by_type("IfcStairFlight")
+            railings = ifc_file.by_type("IfcRailing")
+            members = ifc_file.by_type("IfcMember")
+            plates = ifc_file.by_type("IfcPlate")
+            piles = ifc_file.by_type("IfcPile")
+            footings = ifc_file.by_type("IfcFooting")
+            spaces = ifc_file.by_type("IfcSpace")
+
+            # Count each element type
+            element_counts = {
+                "IfcColumn": len(columns),
+                "IfcBeam": len(beams),
+                "IfcSlab": len(slabs),
+                "IfcWall": len(walls),
+                "IfcWindow": len(windows),
+                "IfcRoof": len(roofs),
+                "IfcDoor": len(doors),
+                "IfcStairFlight": len(stairs),
+                "IfcRailing": len(railings),
+                "IfcMember": len(members),
+                "IfcPlate": len(plates),
+                "IfcPile": len(piles),
+                "IfcFooting": len(footings),
+                "IfcSpace": len(spaces),
+            }
+
+            # Remove any element types with zero count
+            element_counts = {k: v for k, v in element_counts.items() if v > 0}
+
+        sorted_elements = {
+            k: v
+            for k, v in sorted(
+                element_counts.items(), key=lambda item: item[1], reverse=True
+            )
+        }
+
+        return {
+            "ifc_path": ifc_path,
+            "elements": sorted_elements,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error processing IFC file: {str(e)}"
+        )
+
+
 @app.get("/materials", response_model=List[Material])
 async def get_materials(
-    material_name: Optional[str] = Query(
-        None, description="Filter by specified material name"
+    ifc_path: Optional[str] = Query(
+        None, description="Filter by specified material name in this IFC file"
     )
 ):
     """
-    Retrieve a list of materials, optionally filtered by specified material name.
-    If material_name is provided, it should return exactly one matching material.
+    Retrieve a list of materials detected in IFC, with info from mongodb,
+    If material_name is not provided, it will return materials from the entire db.
     """
-    query = {}
-    if material_name:
-        query["specified_material"] = material_name
 
+    if ifc_path:
+        s3_key = ifc_path.replace(f"s3://{S3_BUCKET}/", "")
+
+        try:
+            # Get material names from the IFC file
+            response = s3_client.get_object(
+                Bucket=S3_BUCKET,
+                Key=s3_key,
+            )
+            file_content = response["Body"].read()
+
+            with temp_ifc_file(file_content) as ifc_file_path:
+                ifc_file = ifcopenshell.open(ifc_file_path)
+                material_names = set(
+                    [material.Name for material in ifc_file.by_type("IfcMaterial")]
+                )
+
+            if not material_names:
+                return []  # No materials found in the IFC file
+
+            # Query MongoDB for materials that match the names from the IFC file
+            query = {"name": {"$in": list(material_names)}}
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"Error processing IFC file: {str(e)}"
+            )
+    else:
+        # No IFC path specified, return all materials from the database
+        query = {}
+
+    # Execute the query
     materials = await app.mongodb.materials.find(query).to_list(1000)
 
-    if not materials and material_name:
-        # If filtering by name and no match found, return 404
-        raise HTTPException(
-            status_code=404, detail=f"Material '{material_name}' not found"
-        )
-    elif not materials:
-        # Return empty list if no materials exist yet and no filter was applied
+    if not materials:
+        # Return empty list if no matching materials exist in the database
         return []
 
     # Convert ObjectId to string for each material
@@ -314,59 +584,6 @@ async def delete_material(
         "message": f"Material '{material.get('specified_material')}' deleted successfully",
         "material_id": material_id,
     }
-
-
-# Optional: Add an endpoint to update existing materials
-@app.put("/materials/{material_id}", response_model=Material)
-async def update_material(
-    material_id: str,
-    material_update: MaterialCreate,
-    user_id: str = Query(..., description="ID of the user updating the material"),
-):
-    """
-    Update an existing material.
-    """
-    # Check if material exists
-    material = await app.mongodb.materials.find_one({"_id": ObjectId(material_id)})
-
-    if not material:
-        raise HTTPException(
-            status_code=404, detail=f"Material with ID {material_id} not found"
-        )
-
-    # Check if the material is a system default or created by the user
-    # Optional: You might want to restrict updates of system materials
-    if (
-        material.get("database_source") == "System"
-        and material.get("created_by") != user_id
-    ):
-        raise HTTPException(
-            status_code=403, detail="Cannot update system-provided materials"
-        )
-
-    # Update the material
-    result = await app.mongodb.materials.update_one(
-        {"_id": ObjectId(material_id)},
-        {
-            "$set": {
-                "material_type": material_update.material_type,
-                "specified_material": material_update.specified_material,
-                "embodied_carbon": material_update.embodied_carbon,
-                "database_source": material_update.database_source,
-                "updated_at": datetime.now(),
-                "updated_by": user_id,
-            }
-        },
-    )
-
-    if result.modified_count == 0:
-        raise HTTPException(status_code=500, detail="Failed to update material")
-
-    # Retrieve the updated material
-    updated_material = await app.mongodb.materials.find_one(
-        {"_id": ObjectId(material_id)}
-    )
-    return updated_material
 
 
 @app.get("/test_db_connection")
@@ -462,8 +679,8 @@ async def upload_ifc(
             "sqs",
             aws_access_key_id=AWS_ACCESS_KEY,
             aws_secret_access_key=AWS_SECRET_KEY,
-            region_name="ap-southeast-2"  # Make sure this matches your queue's region
-        )        
+            region_name="ap-southeast-2",  # Make sure this matches your queue's region
+        )
         queue_url = os.environ.get("SQS_QUEUE_URL")
 
         response = sqs_client.send_message(
@@ -472,7 +689,7 @@ async def upload_ifc(
             MessageGroupId=project_id,  # Group messages by project ID
             MessageDeduplicationId=f"{project_id}-{new_version}",  # Ensure idempotency
         )
-        print('uploaded to queue')
+        print("uploaded to queue")
         # Update MongoDB
         update_result = await app.mongodb.projects.update_one(
             {"_id": ObjectId(project_id)},
