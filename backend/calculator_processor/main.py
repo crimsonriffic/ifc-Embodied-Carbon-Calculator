@@ -82,18 +82,20 @@ def process_ifc_file(s3_path):
         total_ec, ec_data = calculator.calculate_embodied_carbon(
             temp_path, with_breakdown=True
         )
-
+        total_gfa = calculator.calculate_gfa(temp_path)
         # Clean up
         os.unlink(temp_path)
 
-        return total_ec, summary_data, ec_data
+        return total_ec, total_gfa, summary_data, ec_data
 
     except Exception as e:
         logger.error(f"Error processing IFC file: {str(e)}")
         raise
 
 
-def update_mongodb(db, project_id, ifc_version, total_ec, summary_data, ec_data):
+def update_mongodb(
+    db, project_id, ifc_version, total_ec, total_gfa, summary_data, ec_data
+):
     """Update MongoDB with EC calculation results"""
     try:
         # Insert EC breakdown data
@@ -116,6 +118,7 @@ def update_mongodb(db, project_id, ifc_version, total_ec, summary_data, ec_data)
                 "$set": {
                     f"ifc_versions.{ifc_version}.calculation_status": "completed",
                     f"ifc_versions.{ifc_version}.total_ec": total_ec,
+                    f"ifc_versions.{ifc_version}.gfa": total_gfa,
                     f"ifc_versions.{ifc_version}.ec_breakdown_id": ec_breakdown_id,
                 }
             },
@@ -163,11 +166,11 @@ def process_sqs_message(db, message):
         )
 
         # Calculate EC
-        total_ec, summary_data, ec_data = process_ifc_file(s3_path)
+        total_ec, total_gfa, summary_data, ec_data = process_ifc_file(s3_path)
 
         # Update MongoDB with results
         ec_breakdown_id = update_mongodb(
-            db, project_id, ifc_version, total_ec, summary_data, ec_data
+            db, project_id, ifc_version, total_ec, total_gfa, summary_data, ec_data
         )
 
         logger.info(
