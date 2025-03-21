@@ -544,7 +544,7 @@ def test_get_materials_from_ifc(ifc_path: str = None):
     # Set up parameters
     params = {}
     if ifc_path:
-        params["ifc_path"] = ifc_path
+        params["project_id"] = ifc_path
         print(f"With IFC file: {ifc_path}")
 
     # Make the request
@@ -554,7 +554,7 @@ def test_get_materials_from_ifc(ifc_path: str = None):
     if response.status_code == 200:
         materials = response.json()
         print(f"\nMaterials found: {len(materials)}")
-        for i, material in enumerate(materials[:5]):  # Show first 5 materials
+        for i, material in enumerate(materials):  # Show first 5 materials
             print(f"\nMaterial {i+1}:")
             print(f"  Material Type: {material['material_type']}")
             print(f"  Specified Material: {material['specified_material']}")
@@ -592,11 +592,11 @@ def run_all_tests(project_id: str, version: str = None, ifc_path: str = None):
 
         # Test materials from IFC
         print("\n\n---- Testing Materials from IFC Endpoint ----")
-        test_get_materials_from_ifc(ifc_path)
+        test_get_materials_from_ifc(project_id)
 
     # Test all materials
-    print("\n\n---- Testing All Materials Endpoint ----")
-    test_get_materials_from_ifc()
+    # print("\n\n---- Testing All Materials Endpoint ----")
+    # test_get_materials_from_ifc()
 
 
 USER_ID = "admin_user"
@@ -673,9 +673,9 @@ def main():
     # test_upload_ifc("507f1f77bcf86cd799439011", "16_Complex 1.ifc", test_user)
     # test_get_project_info("507f1f77bcf86cd799439011")
     # test_create_project(test_user)
-    project_id = "67da8f10154427bd82134e41"
+    project_id = "67da99bb154427bd82134e44"
     version = None
-    ifc_path = "s3://ifcfiles/ifc_files/67da8f10154427bd82134e41/1_Complex 1.ifc"
+    ifc_path = "s3://ifcfiles/ifc_files/67da99bb154427bd82134e44/9_Complex 4.ifc"
     run_all_tests(project_id, version, ifc_path)
 
 
