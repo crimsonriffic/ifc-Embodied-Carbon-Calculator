@@ -13,6 +13,9 @@ from pydantic import BaseModel, Field
 from pydantic_core import core_schema
 from pymongo.errors import ServerSelectionTimeoutError
 import json
+from contextlib import contextmanager
+import tempfile
+import ifcopenshell
 
 dotenv.load_dotenv()
 
@@ -200,29 +203,63 @@ class MaterialCreate(BaseModel):
     database_source: Literal["Custom", "System"] = "Custom"
 
 
+@contextmanager
+def temp_ifc_file(content: bytes):
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".ifc")
+    try:
+        tmp.write(content)
+        tmp.close()
+        yield tmp.name
+    finally:
+        os.unlink(tmp.name)
+
+
 @app.get("/materials", response_model=List[Material])
 async def get_materials(
-    material_name: Optional[str] = Query(
-        None, description="Filter by specified material name"
+    ifc_path: Optional[str] = Query(
+        None, description="Filter by specified material name in this IFC file"
     )
 ):
     """
-    Retrieve a list of materials, optionally filtered by specified material name.
-    If material_name is provided, it should return exactly one matching material.
+    Retrieve a list of materials detected in IFC, with info from mongodb,
+    If material_name is not provided, it will return materials from the entire db.
     """
-    query = {}
-    if material_name:
-        query["specified_material"] = material_name
+    s3_key = ifc_path.replace(f"s3://{S3_BUCKET}/", "")
 
+    if ifc_path:
+        try:
+            # Get material names from the IFC file
+            response = s3_client.get_object(
+                Bucket=S3_BUCKET,
+                Key=s3_key,
+            )
+            file_content = response["Body"].read()
+
+            with temp_ifc_file(file_content) as ifc_file_path:
+                ifc_file = ifcopenshell.open(ifc_file_path)
+                material_names = set(
+                    [material.Name for material in ifc_file.by_type("IfcMaterial")]
+                )
+
+            if not material_names:
+                return []  # No materials found in the IFC file
+
+            # Query MongoDB for materials that match the names from the IFC file
+            query = {"name": {"$in": list(material_names)}}
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"Error processing IFC file: {str(e)}"
+            )
+    else:
+        # No IFC path specified, return all materials from the database
+        query = {}
+
+    # Execute the query
     materials = await app.mongodb.materials.find(query).to_list(1000)
 
-    if not materials and material_name:
-        # If filtering by name and no match found, return 404
-        raise HTTPException(
-            status_code=404, detail=f"Material '{material_name}' not found"
-        )
-    elif not materials:
-        # Return empty list if no materials exist yet and no filter was applied
+    if not materials:
+        # Return empty list if no matching materials exist in the database
         return []
 
     # Convert ObjectId to string for each material
@@ -314,59 +351,6 @@ async def delete_material(
         "message": f"Material '{material.get('specified_material')}' deleted successfully",
         "material_id": material_id,
     }
-
-
-# Optional: Add an endpoint to update existing materials
-@app.put("/materials/{material_id}", response_model=Material)
-async def update_material(
-    material_id: str,
-    material_update: MaterialCreate,
-    user_id: str = Query(..., description="ID of the user updating the material"),
-):
-    """
-    Update an existing material.
-    """
-    # Check if material exists
-    material = await app.mongodb.materials.find_one({"_id": ObjectId(material_id)})
-
-    if not material:
-        raise HTTPException(
-            status_code=404, detail=f"Material with ID {material_id} not found"
-        )
-
-    # Check if the material is a system default or created by the user
-    # Optional: You might want to restrict updates of system materials
-    if (
-        material.get("database_source") == "System"
-        and material.get("created_by") != user_id
-    ):
-        raise HTTPException(
-            status_code=403, detail="Cannot update system-provided materials"
-        )
-
-    # Update the material
-    result = await app.mongodb.materials.update_one(
-        {"_id": ObjectId(material_id)},
-        {
-            "$set": {
-                "material_type": material_update.material_type,
-                "specified_material": material_update.specified_material,
-                "embodied_carbon": material_update.embodied_carbon,
-                "database_source": material_update.database_source,
-                "updated_at": datetime.now(),
-                "updated_by": user_id,
-            }
-        },
-    )
-
-    if result.modified_count == 0:
-        raise HTTPException(status_code=500, detail="Failed to update material")
-
-    # Retrieve the updated material
-    updated_material = await app.mongodb.materials.find_one(
-        {"_id": ObjectId(material_id)}
-    )
-    return updated_material
 
 
 @app.get("/test_db_connection")
