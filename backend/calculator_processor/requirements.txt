@@ -8,3 +8,4 @@ ifcopenshell
 scikit-learn
 fastapi
 uvicorn
+python-dotenv
