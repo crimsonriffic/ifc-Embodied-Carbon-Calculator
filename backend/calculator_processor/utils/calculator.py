@@ -8,11 +8,7 @@ import numpy as np
 import os
 import math
 
-try:
-    from calculator_processor.utils import calculator_utils
-except ImportError:
-    import calculator_utils
-
+from . import calculator_utils
 
 MaterialList = calculator_utils.MaterialList
 MaterialsToIgnore = calculator_utils.MaterialsToIgnore
@@ -2725,6 +2721,8 @@ def calculate_footings(footings):
 
 
 def calculate_embodied_carbon(filepath, with_breakdown=False):
+    global MaterialList
+    MaterialList = calculator_utils.refresh_materials_list()
     slabs_to_ignore = []
     all_missing_materials = {}
 
@@ -3102,7 +3100,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     )
     ec_data["missing_materials"] = all_missing_materials
     ec_data["element_type_skipped"] = element_type_skipped
-    # print(ec_data)        
+    # print(ec_data)
     if with_breakdown:
         return total_ec, ec_data
     else:
