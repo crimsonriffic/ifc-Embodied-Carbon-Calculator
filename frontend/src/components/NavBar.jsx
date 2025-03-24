@@ -47,6 +47,14 @@ function Navbar() {
             >
               Create Project
             </NavLink>
+            <NavLink
+              to="/materialInfo"
+              className={({ isActive }) =>
+                isActive ? "underline font-semibold" : "hover:underline"
+              }
+            >
+              Material Info
+            </NavLink>
           </nav>
         </div>
 

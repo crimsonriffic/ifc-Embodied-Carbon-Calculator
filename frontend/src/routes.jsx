@@ -12,6 +12,7 @@ import BreakdownPage from "./pages/BreakdownPage";
 import UploadOverview from "./pages/UploadOverview";
 import UploadComparison from "./pages/UploadComparison";
 import ProjectProgress from "./pages/ProjectProgress";
+import UploadReview from "./pages/UploadReview";
 const routes = [
   { path: "/", element: <LoginPage /> },
   {
@@ -27,6 +28,7 @@ const routes = [
       { path: "/project/:projectName?", element: <ProjectPage /> },
       { path: "/breakdown/:projectName?", element: <BreakdownPage /> },
       { path: "/uploadOverview/:projectName?", element: <UploadOverview /> },
+      { path: "/uploadReview/:projectName?", element: <UploadReview /> },
       {
         path: "/uploadComparison/:projectName?",
         element: <UploadComparison />,

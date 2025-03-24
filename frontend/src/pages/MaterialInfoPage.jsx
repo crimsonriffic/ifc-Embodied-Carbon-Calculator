@@ -27,14 +27,14 @@ function MaterialInfoPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { projectId } = location.state;
-  const { projectName } = useParams();
+  //const { projectName } = useParams();
 
-  const handleProceed = (projectId, projectName) => {
-    console.log("HandleProceed called");
-    navigate(`/uploadConfirm/${encodeURIComponent(projectName)}`, {
-      state: { projectId },
-    });
-  };
+  // const handleProceed = (projectId, projectName) => {
+  //   console.log("HandleProceed called");
+  //   navigate(`/uploadConfirm/${encodeURIComponent(projectName)}`, {
+  //     state: { projectId },
+  //   });
+  // };
   const handleUpdateMaterialType = (e) => {
     setMaterialType(e.target.value);
   };
@@ -102,7 +102,7 @@ function MaterialInfoPage() {
       </div>
       <div className="bg-[#A9C0A0] text-white rounded-lg px-4 py-2 flex items-center shadow-md mt-4 mb-6 sm:max-w-md">
         <h1 className="text-2xl font-semibold tracking-wide">
-          {decodeURIComponent(projectName)}
+          {/*decodeURIComponent(projectName)*/} Material Database
         </h1>
       </div>
       <div className="flex flex-row gap-x-32">
@@ -210,14 +210,6 @@ function MaterialInfoPage() {
               )}
             </div>
           </form>
-          <button
-            className="px-4 py-2 mt-6 w-28 bg-[#5B9130] text-black rounded"
-            onClick={() => {
-              handleProceed(projectId, projectName);
-            }}
-          >
-            Proceed
-          </button>
         </div>
 
         {/**Right section */}
