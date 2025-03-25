@@ -448,58 +448,93 @@ async def get_ifc_elements(
 
 @app.get("/materials", response_model=List[Material])
 async def get_materials(
-    ifc_path: Optional[str] = Query(
-        None, description="Filter by specified material name in this IFC file"
-    )
+    project_id: Optional[str] = Query(
+        None,
+        description="Project ID to filter materials by. If not provided, returns all materials.",
+    ),
+    version: Optional[str] = Query(
+        None,
+        description="IFC version to analyze. If not provided, uses current version",
+    ),
 ):
     """
-    Retrieve a list of materials detected in IFC, with info from mongodb,
-    If material_name is not provided, it will return materials from the entire db.
+    Retrieve a list of materials from MongoDB.
+    If project_id is not provided, returns all materials from the database.
+    If project_id is provided, returns materials for that specific project.
+    If version is provided, it will return materials for that specific version.
+    If version is not provided, it will use the current version of the project.
     """
+    try:
+        print(project_id)
+        # If no project_id is provided, return all materials
+        if not project_id:
+            materials = await app.mongodb.materials.find().to_list(1000)
 
-    if ifc_path:
-        s3_key = ifc_path.replace(f"s3://{S3_BUCKET}/", "")
+            # Convert ObjectId to string for each material
+            for material in materials:
+                material["_id"] = str(material["_id"])
 
-        try:
-            # Get material names from the IFC file
-            response = s3_client.get_object(
-                Bucket=S3_BUCKET,
-                Key=s3_key,
-            )
-            file_content = response["Body"].read()
+            return materials
 
-            with temp_ifc_file(file_content) as ifc_file_path:
-                ifc_file = ifcopenshell.open(ifc_file_path)
-                material_names = set(
-                    [material.Name for material in ifc_file.by_type("IfcMaterial")]
-                )
+        # Find the project
+        project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
 
-            if not material_names:
-                return []  # No materials found in the IFC file
-
-            # Query MongoDB for materials that match the names from the IFC file
-            query = {"name": {"$in": list(material_names)}}
-
-        except Exception as e:
+        if not project:
             raise HTTPException(
-                status_code=500, detail=f"Error processing IFC file: {str(e)}"
+                status_code=404, detail=f"Project with ID {project_id} not found"
             )
-    else:
-        # No IFC path specified, return all materials from the database
-        query = {}
 
-    # Execute the query
-    materials = await app.mongodb.materials.find(query).to_list(1000)
+        # Determine which version to use
+        version_number = version if version else str(project.get("current_version"))
+        if version_number not in project["ifc_versions"]:
+            raise HTTPException(
+                status_code=404, detail=f"Version {version_number} not found"
+            )
 
-    if not materials:
-        # Return empty list if no matching materials exist in the database
-        return []
+        # Get the EC breakdown ID from the project
+        ifc_version = project["ifc_versions"].get(version_number)
+        ec_breakdown_id = ifc_version.get("ec_breakdown_id")
 
-    # Convert ObjectId to string for each material
-    for material in materials:
-        material["_id"] = str(material["_id"])
+        if not ec_breakdown_id:
+            return []
 
-    return materials
+        # Get the breakdown document
+        breakdown = await app.mongodb.ec_breakdown.find_one(
+            {"_id": ObjectId(ec_breakdown_id)}
+        )
+
+        if not breakdown:
+            return []  # Breakdown not found
+
+        material_ids = set()
+
+        if "breakdown" in breakdown and "ec_breakdown" in breakdown["breakdown"]:
+            for category in breakdown["breakdown"]["ec_breakdown"]:
+                if "elements" in category:
+                    for element in category["elements"]:
+                        if "materials" in element:
+                            for material in element["materials"]:
+                                if "material" in material:
+                                    material_ids.add(material["material"])
+
+        if not material_ids:
+            return []  # No material IDs found in breakdown
+        print(material_ids)
+        # Query for materials using the collected IDs
+        materials = await app.mongodb.materials.find(
+            {"specified_material": {"$in": list(material_ids)}}
+        ).to_list(1000)
+
+        # Convert ObjectId to string for each material
+        for material in materials:
+            material["_id"] = str(material["_id"])
+
+        return materials
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving materials: {str(e)}"
+        )
 
 
 @app.post("/materials", response_model=Material)

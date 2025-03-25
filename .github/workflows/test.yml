@@ -12,6 +12,8 @@ jobs:
     env:
       AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
       AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      MONGODB_URL: ${{ secrets.MONGODB_URL }}
+      DB_NAME: ${{ secrets.DB_NAME }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,24 +33,6 @@ jobs:
         working-directory: ./backend
         run: |
           python -m pytest tests/
-
-  # Check for changes in calculator_processor directory
-  check_processor_changes:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/deployment'
-    outputs:
-      processor_changed: ${{ steps.filter.outputs.calculator_processor }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Required for paths-filter
-
-      - uses: dorny/paths-filter@v2
-        id: filter
-        with:
-          filters: |
-            calculator_processor:
-              - 'backend/calculator_processor/**'
 
   deploy-api:
     needs: test
@@ -88,8 +72,8 @@ jobs:
           aws ecs update-service --cluster eccalculator --service eccalculator-backend-lb --force-new-deployment
 
   deploy-processor:
-    needs: [test, check_processor_changes]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/deployment' && needs.check_processor_changes.outputs.processor_changed == 'true'
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/deployment'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

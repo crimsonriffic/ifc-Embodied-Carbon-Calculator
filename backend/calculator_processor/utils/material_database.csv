@@ -3,4 +3,5 @@ material_name,element_type,material_type,volume,area,layer_count,material_descri
 "Concrete, Cast In Situ",IfcBeam,single,3.3960079999999127,,0,"ElementType:IfcBeam Volume:3.396 MaterialType:single MaterialName:Concrete, Cast In Situ",0.103,2350
 Cross Laminated Timber,IfcSlab,layered,370.3682140425983,1851.8410702129916,2,"ElementType:IfcSlab Volume:370.368 Area:1851.841 MaterialType:layered MaterialName:Cross Laminated Timber LayerCount:2 Layers:Cross Laminated Timber,Concrete, Cast In Situ",-1.31,500
 "Aluminium, General",IfcSlab,layered,67.97466451276449,31.575264881079892,2,"ElementType:IfcSlab Volume:67.975 Area:31.575 MaterialType:layered MaterialName:Aluminium, General LayerCount:2 Layers:Aluminium, General,Concrete, Cast In Situ",13.1,2700
-"Glass, General",IfcPlate,single,0.053596378957699656,2.6798189478850647,0,"ElementType:IfcPlate Volume:0.054 Area:2.680 MaterialType:single MaterialName:Glass, General",1.44,2500
+"Glass, General",IfcPlate,single,0.0535963789576996,2.6798189478850647,0,"ElementType:IfcPlate Volume:0.054 Area:2.680 MaterialType:single MaterialName:Glass, General",1.44,2500
+"Concrete, General",IfcStairFlight,layered,0.5252610031988296,,1,"ElementType:IfcStairFlight Volume:0.525 MaterialType:layered MaterialName:Concrete, General LayerCount:1 Layers:Concrete, General",0.112,2350

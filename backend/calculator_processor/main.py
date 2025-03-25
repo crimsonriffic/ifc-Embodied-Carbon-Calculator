@@ -12,6 +12,9 @@ import sys
 import threading
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 import uvicorn
+import dotenv
+
+dotenv.load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -65,6 +68,51 @@ def connect_to_mongodb():
     return client[db_name]
 
 
+def transform_ec_data(data):
+    # Initialize the new structure
+    summary = {"by_building_system": {}, "by_material": {}, "by_element": {}}
+
+    # Process the ec_breakdown array
+    for category in data.get("ec_breakdown", []):
+        category_name = category.get("category")
+        category_ec = category.get("total_ec", 0)
+
+        # Add to by_building_system
+        summary["by_building_system"][category_name] = category_ec
+
+        # Process elements within each category
+        for element in category.get("elements", []):
+            element_name = element.get("element")
+            element_ec = element.get("ec", 0)
+
+            # Skip if element name is missing
+            if not element_name:
+                continue
+
+            # Add to by_element
+            if element_name in summary["by_element"]:
+                summary["by_element"][element_name] += element_ec
+            else:
+                summary["by_element"][element_name] = element_ec
+
+            # Process materials within each element
+            for material in element.get("materials", []):
+                material_name = material.get("material")
+                material_ec = material.get("ec", 0)
+
+                # Skip if material name is missing
+                if not material_name:
+                    continue
+
+                # Add to by_material
+                if material_name in summary["by_material"]:
+                    summary["by_material"][material_name] += material_ec
+                else:
+                    summary["by_material"][material_name] = material_ec
+
+    return {"summary": summary}
+
+
 def process_ifc_file(s3_path):
     """Download and process IFC file, returning EC calculations"""
     try:
@@ -78,11 +126,24 @@ def process_ifc_file(s3_path):
         s3_client.download_file(bucket, key, temp_path)
 
         # Calculate embodied carbon
-        summary_data = ec_breakdown.overall_ec_breakdown(temp_path)
-        total_ec, ec_data = calculator.calculate_embodied_carbon(
-            temp_path, with_breakdown=True
-        )
+        print("calculating ec")
+        result = calculator.calculate_embodied_carbon(temp_path, with_breakdown=True)
+        if result is None:
+            logger.error("calculator.calculate_embodied_carbon returned None")
+            raise ValueError("Failed to calculate embodied carbon")
+        total_ec, ec_data = result
+
+        summary_data = transform_ec_data(ec_data)
+        if summary_data is None:
+            logger.error("ec_breakdown.overall_ec_breakdown returned None")
+            raise ValueError("Failed to generate EC breakdown summary")
+
+        print("calculating gfa")
         total_gfa = calculator.calculate_gfa(temp_path)
+        if total_gfa is None:
+            logger.error("calculator.calculate_gfa returned None")
+            raise ValueError("Failed to calculate GFA")
+
         # Clean up
         os.unlink(temp_path)
 
@@ -110,6 +171,9 @@ def update_mongodb(
 
         ec_breakdown_result = db.ec_breakdown.insert_one(ec_breakdown_entry)
         ec_breakdown_id = ec_breakdown_result.inserted_id
+        logger.info(
+            f"Updating MongoDB with: {total_gfa}, {total_ec}, {ec_breakdown_id}"
+        )
 
         # Update project document
         db.projects.update_one(
