@@ -118,10 +118,19 @@ const transformDataForSankey = (data) => {
   return { nodes, links };
 };
 
-function CustomNode({ x, y, width, height, index, payload, containerWidth }) {
+function CustomNode({
+  x,
+  y,
+  width,
+  height,
+  index,
+  payload,
+  containerWidth,
+  totalEc,
+}) {
   const isOut = x + width + 6 > containerWidth;
-  const showEC = width > 400;
-  console.log("width is ", width, showEC);
+  const percentage = ((payload.value / totalEc) * 100).toFixed(0); // Round percentage
+
   return (
     <Layer key={`CustomNode${index}`}>
       <Rectangle
@@ -143,23 +152,27 @@ function CustomNode({ x, y, width, height, index, payload, containerWidth }) {
       >
         {payload.name}
       </text>
-      {showEC && (
-        <text
-          textAnchor={isOut ? "end" : "start"}
-          x={isOut ? x - 6 : x + width + 6}
-          y={y + height / 2 + 13}
-          fontSize="12"
-          stroke="#333"
-          strokeOpacity="0.5"
-        >
+
+      <text
+        textAnchor={isOut ? "end" : "start"}
+        x={isOut ? x - 6 : x + width + 6}
+        y={y + height / 2 + 13}
+        fontSize="12"
+        stroke="#333"
+        strokeOpacity="0.5"
+      >
+        <tspan x={isOut ? x - 6 : x + width + 6} dy="0">
+          {percentage}%
+        </tspan>
+        <tspan x={isOut ? x - 6 : x + width + 6} dy="16">
           {Math.round(payload.value)} kgCO2eq
-        </text>
-      )}
+        </tspan>
+      </text>
     </Layer>
   );
 }
 
-export default function SankeyChart({ data, width, height }) {
+export default function SankeyChart({ data, width, height, totalEc }) {
   console.log("SankeyChart received data:", data); // Debugging line
   const { nodes, links } = transformDataForSankey(data);
   const [activeNode, setActiveNode] = useState(null);
@@ -172,13 +185,13 @@ export default function SankeyChart({ data, width, height }) {
         height={height}
         data={{ nodes, links }}
         nodePadding={50}
-        margin={{ top: 20, right: 100, bottom: 20, left: 0 }}
+        margin={{ top: 20, right: 100, bottom: 50, left: 0 }}
         link={{
           stroke: "url(#gradient)",
           fill: "none",
           opacity: 1,
         }}
-        node={<CustomNode width={width} />}
+        node={<CustomNode width={width} totalEc={totalEc} />}
         onMouseEnter={(node) => setActiveNode(node)}
         onMouseLeave={() => setActiveNode(null)}
       >

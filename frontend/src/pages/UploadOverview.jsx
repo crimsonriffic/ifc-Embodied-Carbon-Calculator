@@ -3,17 +3,15 @@ import { useUser } from "../context/UserContext";
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, version } from "react";
 import { getProjectHistory, getProjectBreakdown } from "../api/api";
-import BuildingInfoCard from "../components/BuildingInfoCard";
 
-import UploadInfoCard from "../components/UploadInfoCard";
 import SankeyChart from "../components/SankeyChart";
-import { Sankey } from "recharts";
 
 function UploadOverview({ projectId, projectName }) {
   const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null);
   const [sankeyData, setSankeyData] = useState([]);
   const [projectHistory, setProjectHistory] = useState([]);
+  const [totalEc, setTotalEc] = useState("");
   const [summaryData, setSummaryData] = useState([]);
   const [versionNumber, setVersionNumber] = useState("");
   const [versionArray, setVersionArray] = useState([]);
@@ -44,6 +42,11 @@ function UploadOverview({ projectId, projectName }) {
           "Sankey data that i want: ",
           breakdownResponse.data.ec_breakdown
         );
+        console.log(
+          "Total ec is",
+          breakdownResponse.data.ec_breakdown.total_ec
+        );
+        setTotalEc(breakdownResponse.data.ec_breakdown.total_ec.toFixed(0));
         setProjectHistory(historyResponse.data.history);
         setSummaryData(breakdownResponse.data.summary);
         setSankeyData(breakdownResponse.data.ec_breakdown);
@@ -119,13 +122,9 @@ function UploadOverview({ projectId, projectName }) {
       <div className="flex flex-row space-x-28">
         <div className=" flex flex-col ">
           <h1>Total A1-A3 Embodied Carbon</h1>
+
           <p className="font-bold mb-4">
-            {Number(
-              projectHistory
-                .find((item) => item.version === versionNumber)
-                ?.total_ec.toFixed(0)
-            ).toLocaleString()}{" "}
-            kgCO2eq
+            {Number(totalEc).toLocaleString()} kgCO2eq
           </p>
 
           <h1>A1-A3 Embodied Carbon per floor area</h1>
@@ -136,9 +135,23 @@ function UploadOverview({ projectId, projectName }) {
 
           <h1>Status</h1>
           <p className="font-bold mb-4">Status</p>
+
+          <h1>File Name</h1>
+          <p className="font-bold mb-4">-</p>
+
+          <h1>Uploaded by</h1>
+          <p className="font-bold mb-4">-</p>
+
+          <h1>Comments</h1>
+          <p className="font-bold mb-4">-</p>
         </div>
         {/** Card 2 - Sankey chart  */}
-        <SankeyChart data={sankeyData} width={700} height={350} />
+        <SankeyChart
+          data={sankeyData}
+          width={700}
+          height={350}
+          totalEc={Number(totalEc)}
+        />
       </div>
     </div>
   );
