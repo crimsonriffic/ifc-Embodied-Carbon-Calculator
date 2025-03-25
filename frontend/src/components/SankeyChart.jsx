@@ -173,7 +173,6 @@ function CustomNode({
 }
 
 export default function SankeyChart({ data, width, height, totalEc }) {
-  console.log("SankeyChart received data:", data); // Debugging line
   const { nodes, links } = transformDataForSankey(data);
   const [activeNode, setActiveNode] = useState(null);
   // Determine dimensions based on size prop

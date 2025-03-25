@@ -13,176 +13,18 @@ import UploadComparison from "./UploadComparison";
 import ProjectProgress from "./ProjectProgress";
 function ProjectPage() {
   const location = useLocation();
-  const [loading, setLoading] = useState(true); // Loading state
-  const [error, setError] = useState(null);
-  const [sankeyData, setSankeyData] = useState([]);
-  const [projectHistory, setProjectHistory] = useState([]);
-  const [summaryData, setSummaryData] = useState([]);
-  const [selectedBreakdownType, setSelectedBreakdownType] = useState("");
-  const [versionNumber, setVersionNumber] = useState("");
-  const [versionArray, setVersionArray] = useState([]);
-  const [versionBar, setVersionBar] = useState({
-    labels: [],
-    datasets: [],
-  });
-  const [breakdownBar, setBreakdownBar] = useState({
-    labels: [],
-    datasets: [],
-  });
+
   const [activeTab, setActiveTab] = useState("Upload Overview");
   const { projectName } = useParams();
   const { projectId } = location.state;
   const fromHomePage = location.state?.fromHomePage === true;
-  const navigate = useNavigate();
+
   console.log("Project Name and project Id is ", projectName, projectId);
-  const handleVersionClick = (e) => {
-    setVersionNumber(e.target.value);
-  };
-  const handleMoreDetails = (projectId, projectName) => {
-    console.log("HandleMoreDetails called");
-    navigate(`/breakdown/${encodeURIComponent(projectName)}`, {
-      state: { projectId },
-    });
-  };
-  /* Initial API calls to fetch project history and breakdown data */
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const historyResponse = await getProjectHistory(projectId);
-
-        console.log("History response data: ", historyResponse.data.history);
-        // Get the latest version from history
-        const latestVersion = historyResponse.data.history[0]?.version || "";
-
-        // If versionNumber is empty, use the latest version
-        const versionToFetch = versionNumber || latestVersion;
-        console.log("Fetching breakdown for version: ", versionToFetch);
-
-        const breakdownResponse = await getProjectBreakdown(
-          projectId,
-          versionToFetch
-        );
-        console.log("Breakdown response data: ", breakdownResponse.data);
-        console.log(
-          "Sankey data that i want: ",
-          breakdownResponse.data.ec_breakdown
-        );
-        setProjectHistory(historyResponse.data.history);
-        setSummaryData(breakdownResponse.data.summary);
-        setSankeyData(breakdownResponse.data.ec_breakdown);
-        setSelectedBreakdownType("by_material");
-        // Set latest version only if history exists
-        // Set the versionNumber state if it's empty
-        if (!versionNumber && latestVersion) {
-          setVersionNumber(latestVersion);
-        }
-
-        setError(null);
-        setLoading(false);
-      } catch (err) {
-        console.error("Failed to data: ", err);
-        setError("Failed to fetch data."); // Set error message
-      }
-    };
-    if (projectId) {
-      fetchData();
-    }
-  }, [projectId, versionNumber]);
-
-  useEffect(() => {
-    if (!selectedBreakdownType) {
-      console.log("Selected Breakdown Type is empty");
-      return;
-    }
-
-    console.log("Selected Breakdown Type is : ", selectedBreakdownType);
-    console.log(
-      "Data of the selected breakdown type is : ",
-      summaryData[selectedBreakdownType]
-    );
-    console.log("Sankey data is", sankeyData);
-
-    const breakdownValues = summaryData[selectedBreakdownType];
-
-    // Extract labels (keys) and data (values)
-    const labels = Object.keys(breakdownValues).map(
-      (key) => key.charAt(0).toUpperCase() + key.slice(1)
-    );
-    const data = Object.values(breakdownValues);
-
-    console.log("Labels: ", labels);
-    console.log("Data: ", data);
-    const barData = {
-      labels: labels,
-      datasets: [
-        {
-          label: "A1-A3 carbon Comparison",
-          data: data,
-          backgroundColor: "#E4937B",
-          borderColor: "#000000",
-          borderWidth: 0,
-          barThickness: 40,
-        },
-      ],
-    };
-    setBreakdownBar(barData);
-  }, [selectedBreakdownType]);
-  /* Set the data for history bar chart */
-  useEffect(() => {
-    if (!projectHistory) {
-      console.log("Project history is empty");
-      return;
-    }
-
-    console.log("Project history is: ", projectHistory);
-    const sortedHistory = projectHistory
-      ? [...projectHistory].sort((a, b) => a.version - b.version)
-      : [];
-
-    // Version array for the drop down to refer to
-    const versionArr = sortedHistory
-      ? sortedHistory.map((item) => item.version)
-      : [];
-    setVersionArray(versionArr);
-
-    // Chart labels and values
-    const chartLabels = sortedHistory
-      ? sortedHistory.map((item) => "Upload " + item.version)
-      : [];
-    const chartValues = [16000, 14000, 12000, 10731];
-    console.log("Project history labels is: ", chartLabels);
-    console.log("Project history values is: ", chartValues);
-    const data = {
-      labels: chartLabels,
-      datasets: [
-        {
-          label: "A1-A3 carbon Comparison",
-          data: chartValues,
-          backgroundColor: ["#E4937B", "#CAA05C", "#E2D35E", "#E5E548"],
-          borderColor: "#000000",
-          borderWidth: 0,
-          barThickness: 40,
-        },
-      ],
-    };
-    setVersionBar(data);
-  }, [projectHistory]);
 
   if (!projectId) {
     return <p className="text-red-500 mt-16">No project ID provided.</p>;
   }
 
-  if (loading) {
-    return <p className="mt-16">Loading project data...</p>; // Show loading state
-  }
-
-  if (error) {
-    return <p className="text-red-500 mt-16">{error}</p>; // Display error message
-  }
-
-  if (!projectHistory) {
-    return <p className="mt-16">No project history available.</p>;
-  }
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />

@@ -11,6 +11,7 @@ function UploadOverview({ projectId, projectName }) {
   const [error, setError] = useState(null);
   const [sankeyData, setSankeyData] = useState([]);
   const [projectHistory, setProjectHistory] = useState([]);
+  const [currentVersionData, setCurrentVersionData] = useState({});
   const [totalEc, setTotalEc] = useState("");
   const [summaryData, setSummaryData] = useState([]);
   const [versionNumber, setVersionNumber] = useState("");
@@ -27,9 +28,8 @@ function UploadOverview({ projectId, projectName }) {
 
         console.log("History response data: ", historyResponse.data.history);
         // Get the latest version from history
-        const latestVersion = historyResponse.data.history[0]?.version || "";
-
         // If versionNumber is empty, use the latest version
+        const latestVersion = historyResponse.data.history[0]?.version || "";
         const versionToFetch = versionNumber || latestVersion;
         console.log("Fetching breakdown for version: ", versionToFetch);
 
@@ -46,6 +46,7 @@ function UploadOverview({ projectId, projectName }) {
           "Total ec is",
           breakdownResponse.data.ec_breakdown.total_ec
         );
+
         setTotalEc(breakdownResponse.data.ec_breakdown.total_ec.toFixed(0));
         setProjectHistory(historyResponse.data.history);
         setSummaryData(breakdownResponse.data.summary);
@@ -83,7 +84,14 @@ function UploadOverview({ projectId, projectName }) {
       ? sortedHistory.map((item) => item.version)
       : [];
     setVersionArray(versionArr);
-  }, [projectHistory]);
+
+    const currentData = projectHistory.find(
+      (item) => item.version === versionNumber
+    );
+    console.log("Setting currentVersionData:", currentData);
+
+    setCurrentVersionData(currentData || {});
+  }, [projectHistory, versionNumber]);
   if (!projectId) {
     return <p className="text-red-500 mt-16">No project ID provided.</p>;
   }
@@ -119,31 +127,46 @@ function UploadOverview({ projectId, projectName }) {
         </select>
       </div>
       {/**Left side */}
-      <div className="flex flex-row space-x-28">
-        <div className=" flex flex-col ">
-          <h1>Total A1-A3 Embodied Carbon</h1>
+      <div className="flex flex-row space-x-24">
+        <div className=" flex flex-col w-1/3 min-w-[300px] gap-y-4">
+          <div>
+            <h1 className="text-sm">Total A1-A3 Embodied Carbon</h1>
+            <p className=" text-xl font-bold ">
+              {Number(totalEc).toLocaleString()} kgCO2eq
+            </p>
+          </div>
 
-          <p className="font-bold mb-4">
-            {Number(totalEc).toLocaleString()} kgCO2eq
-          </p>
+          <div>
+            <h1 className="text-sm">A1-A3 Embodied Carbon per floor area</h1>
+            <p className=" text-xl font-bold">-</p>
+          </div>
 
-          <h1>A1-A3 Embodied Carbon per floor area</h1>
-          <p className="font-bold mb-4">-</p>
+          <div>
+            <h1 className="text-sm">Computed Floor Area</h1>
+            <p className="text-xl font-bold ">-</p>
+          </div>
 
-          <h1>Computed Floor Area</h1>
-          <p className="font-bold mb-4">-</p>
+          <div>
+            <h1 className="text-sm">Status</h1>
+            <p className="text-xl font-bold">{currentVersionData.status}</p>
+          </div>
 
-          <h1>Status</h1>
-          <p className="font-bold mb-4">Status</p>
+          <div>
+            <h1 className="text-sm">File Name</h1>
+            <p className="text-xl font-bold">-</p>
+          </div>
 
-          <h1>File Name</h1>
-          <p className="font-bold mb-4">-</p>
+          <div>
+            <h1 className="text-sm">Uploaded by</h1>
+            <p className="text-xl font-bold">
+              {currentVersionData.uploaded_by}
+            </p>
+          </div>
 
-          <h1>Uploaded by</h1>
-          <p className="font-bold mb-4">-</p>
-
-          <h1>Comments</h1>
-          <p className="font-bold mb-4">-</p>
+          <div>
+            <h1 className="text-sm">Comments</h1>
+            <p className="text-xl *:font-bold">{currentVersionData.comments}</p>
+          </div>
         </div>
         {/** Card 2 - Sankey chart  */}
         <SankeyChart
