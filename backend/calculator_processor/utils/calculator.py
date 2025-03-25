@@ -8,7 +8,7 @@ import numpy as np
 import os
 import math
 
-from . import calculator_utils
+import calculator_utils
 
 MaterialList = calculator_utils.MaterialList
 MaterialsToIgnore = calculator_utils.MaterialsToIgnore
@@ -3144,7 +3144,7 @@ def calculate_gfa(filepath):
 if __name__ == "__main__":
     # Run the calculator on the specified IFC file
     # ifcpath = input("Enter path to IFC file: ")
-    ifcpath = "/mnt/c/Users/dczqd/Documents/SUTD/Capstone-calc/Complex 4.ifc"
+    ifcpath = "/Users/jk/Downloads/z. Complex Models/Complex 4_2.ifc"
     # ifcpath = "/Users/Carina/Downloads/Complex 1.ifc"
     logger.info(f"Processing file: {ifcpath}")
 
