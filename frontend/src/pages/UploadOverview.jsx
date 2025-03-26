@@ -153,19 +153,17 @@ function UploadOverview({ projectId, projectName }) {
 
           <div>
             <h1 className="text-sm">File Name</h1>
-            <p className="text-xl font-bold">-</p>
+            <p className="text-sm font-bold">-</p>
           </div>
 
           <div>
             <h1 className="text-sm">Uploaded by</h1>
-            <p className="text-xl font-bold">
-              {currentVersionData.uploaded_by}
-            </p>
+            <p className="textsm font-bold">{currentVersionData.uploaded_by}</p>
           </div>
 
           <div>
             <h1 className="text-sm">Comments</h1>
-            <p className="text-xl *:font-bold">{currentVersionData.comments}</p>
+            <p className="text-sm font-bold">{currentVersionData.comments}</p>
           </div>
         </div>
         {/** Card 2 - Sankey chart  */}

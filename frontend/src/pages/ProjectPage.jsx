@@ -2,7 +2,6 @@ import Navbar from "../components/NavBar";
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, version } from "react";
 import { getProjectHistory, getProjectBreakdown } from "../api/api";
-import BuildingInfoCard from "../components/BuildingInfoCard";
 import BarChart from "../components/BarChart";
 import HistoryTable from "../components/HistoryTable";
 import UploadInfoCard from "../components/UploadInfoCard";
@@ -77,8 +76,12 @@ function ProjectPage() {
       {activeTab === "Upload Overview" && (
         <UploadOverview projectId={projectId} projectName={projectName} />
       )}
-      {activeTab === "Upload Comparison" && <UploadComparison />}
-      {activeTab === "Project Progress" && <ProjectProgress />}
+      {activeTab === "Upload Comparison" && (
+        <UploadComparison projectId={projectId} projectName={projectName} />
+      )}
+      {activeTab === "Project Progress" && (
+        <ProjectProgress projectId={projectId} projectName={projectName} />
+      )}
     </div>
   );
 }

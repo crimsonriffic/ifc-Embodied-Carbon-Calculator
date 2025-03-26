@@ -146,6 +146,7 @@ class ECBreakdown(BaseModel):
     ec_breakdown: List[Category]
 
 
+
 class ProjectBreakdown(BaseModel):
     project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     gfa: float
@@ -162,6 +163,7 @@ class ProjectBasicInfo(BaseModel):
     gfa: float
     typology: str
     status: str
+    benchmark: Dict[str, float]  # This will handle the key-value pairs
 
 
 class VersionHistory(BaseModel):
@@ -812,6 +814,11 @@ async def get_project_info(project_id: str):
     latest_version = str(project.get("current_version"))
     ifc_data = project["ifc_versions"].get(latest_version, {})
     gfa = ifc_data.get("gfa", 0)
+     # Extract benchmark values
+    benchmark_values = {
+        "Green Mark": project.get("benchmark", {}).get("Residential", {}).get("Green Mark", 0),
+        "LETI 2030 Design Target": project.get("benchmark", {}).get("Residential", {}).get("LETI 2030 Design Target", 0)
+    }
 
     return ProjectBasicInfo(
         _id=project["_id"],
@@ -820,6 +827,7 @@ async def get_project_info(project_id: str):
         gfa=gfa,
         typology=project.get("typology", "Not Specified"),
         status=project.get("status", "Not Specified"),
+        benchmark = benchmark_values,
     )
 
 

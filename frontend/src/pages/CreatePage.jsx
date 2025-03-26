@@ -1,8 +1,6 @@
 import Navbar from "../components/NavBar";
 import Stepper from "../components/Stepper";
 
-import { getBuildingInfo } from "../api/api";
-
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";

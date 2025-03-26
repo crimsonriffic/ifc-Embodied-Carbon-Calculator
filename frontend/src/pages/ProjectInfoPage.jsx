@@ -1,7 +1,7 @@
 import Navbar from "../components/NavBar";
 import Stepper from "../components/Stepper";
 
-import { getBuildingInfo } from "../api/api";
+import { getProjectInfo } from "../api/api";
 
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -26,7 +26,7 @@ function ProjectInfoPage() {
   useEffect(() => {
     const fetchBuildingInfo = async () => {
       try {
-        const response = await getBuildingInfo(projectId);
+        const response = await getProjectInfo(projectId);
         console.log("Building Info (EC breakdown)", response.data);
         setBuildingInfo(response.data);
         setError(null);

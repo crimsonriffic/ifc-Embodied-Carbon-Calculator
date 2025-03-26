@@ -7,7 +7,6 @@ export default {
     "./src/pages/HomePage.jsx",
     "./src/pages/IfcDialog.jsx",
     "./src/pages/ProjectPage.jsx",
-    "./src/components/BuildingInfoCard.jsx",
     "./src/pages/CreatePage.jsx",
     "./src/components/BarChart.jsx",
     "./src/components/AwardCard.jsx",
