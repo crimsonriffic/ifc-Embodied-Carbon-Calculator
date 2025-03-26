@@ -131,12 +131,12 @@ def process_ifc_file(s3_path):
         if result is None:
             logger.error("calculator.calculate_embodied_carbon returned None")
             raise ValueError("Failed to calculate embodied carbon")
-        total_ec, ec_data = result
+        total_ec, ec_data, summary_data = result
 
-        summary_data = transform_ec_data(ec_data)
-        if summary_data is None:
-            logger.error("ec_breakdown.overall_ec_breakdown returned None")
-            raise ValueError("Failed to generate EC breakdown summary")
+        # summary_data = transform_ec_data(ec_data)
+        # if summary_data is None:
+        #     logger.error("ec_breakdown.overall_ec_breakdown returned None")
+        #     raise ValueError("Failed to generate EC breakdown summary")
 
         print("calculating gfa")
         total_gfa = calculator.calculate_gfa(temp_path)
