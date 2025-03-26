@@ -2,7 +2,8 @@ import { useState } from "react";
 import { uploadIfc } from "../api/api.jsx";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
-function IfcDialog({ onClose, projectName, projectId }) {
+import { ArrowRightIcon, XMarkIcon } from "@heroicons/react/24/solid";
+function IfcDialog({ onClose, projectName, projectId, uploadNumber }) {
   const [status, setStatus] = useState("Conceptual Design");
 
   const [inputComment, setInputComment] = useState("");
@@ -12,6 +13,7 @@ function IfcDialog({ onClose, projectName, projectId }) {
   const [loading, setLoading] = useState(false); // Loading state
 
   const { username } = useUser();
+
   const navigate = useNavigate();
   console.log(
     "Project name and project id from ifc dialog is",
@@ -65,9 +67,20 @@ function IfcDialog({ onClose, projectName, projectId }) {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white p-6 rounded shadow-lg">
-        <h2 className="text-xl font-semibold mb-4">Upload IFC file</h2>
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div className="bg-white p-4 rounded shadow-lg  w-[600px]  max-w-full">
+        <div className="flex flex-row justify-between">
+          <h2 className="text-xl font-semibold mb-4">
+            New Upload: Upload {uploadNumber}
+          </h2>
+          <button onClick={onClose}>
+            <XMarkIcon
+              className="rounded-full w-5 h-5 text-gray-500 border-2 border-gray-500 font-bold"
+              stroke="currentColor"
+              strokeWidth={2}
+            />
+          </button>
+        </div>
 
         {showSuccess && (
           <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg">
@@ -78,7 +91,7 @@ function IfcDialog({ onClose, projectName, projectId }) {
           <div className="mb-4 text-red-600 font-semibold">{uploadError}</div>
         )}
         {/*Upload form */}
-        <div className="w-full max-w-xs">
+        <div className="w-full ">
           <form onSubmit={handleUpload} className="space-y-4">
             <div className="mb-4">
               {/*Input Status type */}
@@ -108,7 +121,7 @@ function IfcDialog({ onClose, projectName, projectId }) {
               <input
                 type="file"
                 onChange={handleFileChange}
-                className="w-full p-2 border border-gray-300 rounded-lg"
+                className="w-80 p-2 border border-gray-300 rounded-lg"
                 required
               />
             </div>
@@ -123,19 +136,15 @@ function IfcDialog({ onClose, projectName, projectId }) {
                 id="inputComment"
                 value={inputComment}
                 onChange={(e) => setInputComment(e.target.value)}
-                placeholder="Input Comments"
-                className="w-full p-2 border border-gray-300 rounded-lg resize-none"
+                placeholder="Edited roof..."
+                className="w-80 p-2 border border-gray-300 rounded-lg resize-none"
                 required
               />
+              <p className="px-1 text-gray-500 text-sm mb-16">
+                Comments will be used to help identify the uploads
+              </p>
             </div>
-
             <div className="flex justify-end space-x-2">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-300 rounded"
-              >
-                Cancel
-              </button>
               <button
                 className={`px-4 py-2 rounded ${
                   loading
@@ -144,7 +153,14 @@ function IfcDialog({ onClose, projectName, projectId }) {
                 } `}
                 disabled={loading}
               >
-                {loading ? "Uploading..." : "Upload"}
+                {loading ? (
+                  "Uploading..."
+                ) : (
+                  <span className="flex items-center space-x-1">
+                    <ArrowRightIcon className="w-6 h-6 text-white mr-2" />
+                    Confirm New Upload{" "}
+                  </span>
+                )}
               </button>
             </div>
           </form>

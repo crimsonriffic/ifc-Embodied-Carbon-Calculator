@@ -7,7 +7,7 @@ import { getProjectHistory, uploadIfc } from "../api/api";
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
-function UploadHistory() {
+function UploadReview() {
   const [status, setStatus] = useState("Conceptual Design");
   const [selectedFile, setSelectedFile] = useState(null);
   const [inputComment, setInputComment] = useState("");
@@ -81,43 +81,22 @@ function UploadHistory() {
 
       {/* Banner Section */}
       <div className="bg-[#5B9130] text-white mx-8 mt-20 w-full mr-4 py-6 px-6 rounded-lg shadow-md text-left ml-0">
-        <h1 className="text-3xl font-bold">Upload Information</h1>
+        <h1 className="text-3xl font-bold">Upload Review</h1>
+        <p className="mt-2 text-lg">
+          Please review the information and error handling of your uploaded
+          model.
+        </p>
       </div>
       <div className="mt-6">
-        <Stepper currentStep={2} />
+        <Stepper currentStep={3} />
       </div>
       <div className="bg-[#A9C0A0] text-white rounded-lg px-4 py-2 flex items-center shadow-md mt-4 mb-6 sm:max-w-md">
         <h1 className="text-2xl font-semibold tracking-wide">
           {decodeURIComponent(projectName)}
         </h1>
       </div>
-      <div className="flex flex-col">
-        <button
-          className="px-4 py-2 w-fit mt-6 mb-4 bg-[#5B9130] text-white rounded font-semibold"
-          onClick={() => {
-            handleUpload(projectId, projectName);
-          }}
-        >
-          + New Upload
-        </button>
-        {/*Conditional Rendering for IfcDialog*/}
-        {isDialogOpen && (
-          <IfcDialog
-            onClose={handleCloseDialog}
-            projectName={projectName}
-            projectId={projectId}
-            uploadNumber={Number(versionNumber) + 1}
-          />
-        )}
-        <div className="flex flex-1 flex-col">
-          <h1 className="text-2xl font-semibold tracking-wide mb-2">
-            Active Uploads
-          </h1>
-          <HistoryTable projectHistory={projectHistory} />
-        </div>
-      </div>
     </div>
   );
 }
 
-export default UploadHistory;
+export default UploadReview;
