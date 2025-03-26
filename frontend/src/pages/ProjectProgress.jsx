@@ -13,10 +13,16 @@ function ProjectProgress({ projectId, projectName }) {
   const [totalEc, setTotalEc] = useState("");
   const [versionNumber, setVersionNumber] = useState("");
   const [versionArray, setVersionArray] = useState([]);
-  const [benchmarks, setBenchmarks] = useState({});
-  const [benchmarkStandard, setBenchmarkStandard] = useState("");
+  const [projectInfo, setProjectInfo] = useState({});
+  const [benchmarkStandard, setBenchmarkstandard] = useState("");
   const [benchmarkTarget, setBenchmarkTarget] = useState(0);
   console.log(projectId);
+
+  const handleStandardsClick = (e) => {
+    const selectedStandard = e.target.value;
+    setBenchmarkstandard(selectedStandard);
+    setBenchmarkTarget(projectInfo.benchmark[selectedStandard]); // Update target value};
+  };
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -31,7 +37,7 @@ function ProjectProgress({ projectId, projectName }) {
         const projectResponse = await getProjectInfo(projectId);
         console.log("Project Info response data is: ", projectResponse.data);
         console.log("Benchmarks are", projectResponse.data.benchmark);
-        setBenchmarks(projectResponse.data.benchmark);
+        setProjectInfo(projectResponse.data);
         setProjectHistory(historyResponse.data.history);
 
         // Set latest version only if history exists
@@ -69,20 +75,15 @@ function ProjectProgress({ projectId, projectName }) {
     setVersionArray(versionArr);
   }, [projectHistory, versionNumber]);
   useEffect(() => {
-    if (!benchmarkStandard) {
-      console.log("Benchmark standard is empty");
-      return;
+    if (
+      projectInfo.benchmark &&
+      Object.keys(projectInfo.benchmark).length > 0
+    ) {
+      const firstBenchmark = Object.keys(projectInfo.benchmark)[0]; // Get first key
+      setBenchmarkstandard(firstBenchmark);
+      setBenchmarkTarget(projectInfo.benchmark[firstBenchmark]); // Set initial target value
     }
-    console.log(benchmarks);
-    console.log(
-      "Benchmark standard: ",
-      benchmarkStandard,
-      "Benchmark target: ",
-      benchmarks[benchmarkStandard]
-    );
-
-    setBenchmarkTarget(benchmarks[benchmarkStandard]);
-  }, [benchmarkStandard]);
+  }, [projectInfo.benchmark]);
   if (!projectId) {
     return <p className="text-red-500 mt-16">No project ID provided.</p>;
   }
@@ -109,7 +110,7 @@ function ProjectProgress({ projectId, projectName }) {
         <div className=" flex flex-col w-1/3 min-w-[300px] gap-y-4">
           <div>
             <h1 className="text-sm">Typology</h1>
-            <p className=" text-xl font-bold ">-</p>
+            <p className=" text-xl font-bold ">{projectInfo.typology}</p>
           </div>
 
           <div>
@@ -117,12 +118,10 @@ function ProjectProgress({ projectId, projectName }) {
             <select
               id="benchmarkStandard"
               value={benchmarkStandard}
-              onChange={(e) => {
-                setBenchmarkStandard(e.target.value);
-              }}
-              className="text-2xl font-bold w-full focus:outline-none focus:border-none focus:ring-0 "
+              onChange={(e) => handleStandardsClick(e)}
+              className="text-xl font-bold w-full focus:outline-none focus:border-none focus:ring-0 "
             >
-              {Object.entries(benchmarks).map(([key, value]) => (
+              {Object.entries(projectInfo.benchmark).map(([key, value]) => (
                 <option key={key} value={key} className="text-sm">
                   {key}
                 </option>
