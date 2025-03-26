@@ -1,3 +1,9 @@
+import time
+start_time = time.time()
+
+import time
+start_time = time.time()
+
 import ifcopenshell
 from ifcopenshell.util.element import get_psets
 from loguru import logger
@@ -2729,7 +2735,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     total_ec = columns_ec = beams_ec = slabs_ec = walls_ec = windows_ec = roofs_ec = (
         doors_ec
     ) = stairs_ec = railings_ec = members_ec = plates_ec = piles_ec = footings_ec = 0
-
+    ec_by_elements = {}
     # Create data structure for EC breakdown
     ec_data = {
         "total_ec": 0,
@@ -2838,7 +2844,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["elements"].extend(super_columns_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_columns_ec
             columns_ec += super_columns_ec
-
+        ec_by_elements["Column"] = columns_ec
     # Beams
     if beams:
         substructure_beams = [b for b in beams if b.id() in substructure_ids]
@@ -2862,6 +2868,8 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["elements"].extend(super_beams_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_beams_ec
             beams_ec += super_beams_ec
+        ec_by_elements["Beam"] = beams_ec
+
 
     # Slabs
     if slabs:
@@ -2888,6 +2896,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["elements"].extend(super_slabs_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_slabs_ec
             slabs_ec += super_slabs_ec
+        ec_by_elements["Slabs"] = slabs_ec
 
     # Walls
     if walls:
@@ -2911,6 +2920,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["elements"].extend(super_walls_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_walls_ec
             walls_ec += super_walls_ec
+        ec_by_elements["Walls"] = walls_ec
 
     # Windows - can be in both, so check against substructure IDs
     if windows:
@@ -2936,6 +2946,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             windows_ec += super_windows_ec
 
         total_ec += windows_ec
+        ec_by_elements["Windows"] = windows_ec
 
     # Doors - can be in both, so check against substructure IDs
     if doors:
@@ -2959,6 +2970,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["elements"].extend(super_doors_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_doors_ec
             doors_ec += super_doors_ec
+        ec_by_elements["Doors"] = doors_ec
 
     # Roofs are always in superstructure
     if roofs:
@@ -2967,6 +2979,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
         ec_data["ec_breakdown"][1]["elements"].extend(roofs_elements)
         ec_data["ec_breakdown"][1]["total_ec"] += roofs_ec
         total_ec += roofs_ec
+        ec_by_elements["Roofs"] = roofs_ec
 
     # Stairs
     if stairs:
@@ -2990,6 +3003,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["elements"].extend(super_stairs_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_stairs_ec
             stairs_ec += super_stairs_ec
+        ec_by_elements["Stairs"] = stairs_ec
 
     # Railings
     if railings:
@@ -3015,6 +3029,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["elements"].extend(super_railings_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_railings_ec
             railings_ec += super_railings_ec
+        ec_by_elements["Railings"] = railings_ec
 
     # Members
     if members:
@@ -3036,6 +3051,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["elements"].extend(super_members_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_members_ec
             members_ec += super_members_ec
+        ec_by_elements["Members"] = members_ec
 
     # Plates
     if plates:
@@ -3101,11 +3117,46 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     ec_data["missing_materials"] = all_missing_materials
     ec_data["element_type_skipped"] = element_type_skipped
     # print(ec_data)
+    logger.info(f"Breakdown by elements: {ec_by_elements}")
     if with_breakdown:
         return total_ec, ec_data
     else:
         return total_ec
 
+def categorize_material(material_name):
+    material_name = material_name.lower()
+    if "concrete" in material_name:
+        return "Concrete"
+    elif "window" in material_name:
+        return "Window"
+    elif "wood" in material_name:
+        return "Wood"
+    elif "aluminium" in material_name:
+        return "Aluminium"
+    elif "granite" in material_name:
+        return "Granite"
+    elif "plywood" in material_name:
+        return "Plywood"
+    elif "steel" in material_name:
+        return "Steel"
+    else:
+        return "others"
+
+def get_ec_by_material_category(breakdowns):
+    ec_by_material = {}
+
+    for category in breakdowns.get("ec_breakdown", []):
+        for element in category.get("elements", []):
+            for material in element.get("materials", []):
+                material_name = material.get("material", "")
+                ec = material.get("ec", 0)
+                material_category = categorize_material(material_name)
+
+                if material_category not in ec_by_material:
+                    ec_by_material[material_category] = 0
+                ec_by_material[material_category] += ec
+
+    return ec_by_material
 
 def calculate_gfa(filepath):
 
@@ -3144,8 +3195,7 @@ def calculate_gfa(filepath):
 if __name__ == "__main__":
     # Run the calculator on the specified IFC file
     # ifcpath = input("Enter path to IFC file: ")
-    ifcpath = "/Users/jk/Downloads/z. Complex Models/Complex 4_2.ifc"
-    # ifcpath = "/Users/Carina/Downloads/Complex 1.ifc"
+    ifcpath = "/Users/jk/Downloads/z. Complex Models/Complex 4.ifc"
     logger.info(f"Processing file: {ifcpath}")
 
     if not os.path.exists(ifcpath):
@@ -3160,8 +3210,17 @@ if __name__ == "__main__":
         logger.info(f"Embodied carbon per m²: {ec_per_m2} kgCO2e/m²")
 
     print(f"\nResults for {os.path.basename(ifcpath)}:")
-    print(f"Total Embodied Carbon: {total_ec} kgCO2e")
-    # print(f"Breakdown: {ec_data}")
+    print(f"Totalifc Embodied Carbon: {total_ec:.2f} kgCO2e\n")
+    # print(f"Breakdowns: {ec_data}")
+    ec_result = get_ec_by_material_category(ec_data)
+    print(f"Breakdown by materials: {ec_result}\n")
     if total_gfa > 0:
         print(f"Total Gross Floor Area: {total_gfa} m²")
         print(f"Embodied Carbon per m²: {ec_per_m2} kgCO2e/m²")
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"Execution time: {elapsed_time:.2f} seconds")
+
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"Execution time: {elapsed_time:.2f} seconds")
