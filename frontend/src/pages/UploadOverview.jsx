@@ -143,7 +143,9 @@ function UploadOverview({ projectId, projectName }) {
 
           <div>
             <h1 className="text-sm">Computed Floor Area</h1>
-            <p className="text-xl font-bold ">-</p>
+            <p className="text-xl font-bold ">
+              {Number(currentVersionData.gfa).toFixed(0)} m2
+            </p>
           </div>
 
           <div>

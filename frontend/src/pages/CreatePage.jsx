@@ -10,7 +10,7 @@ import { createProject } from "../api/api";
 function CreatePage() {
   const [projectName, setProjectName] = useState("");
   const [client, setClient] = useState("");
-  const [typology, setTypology] = useState("");
+  const [typology, setTypology] = useState("Residential");
   const [status, setStatus] = useState("");
   const [benchmark, setBenchmark] = useState({});
   const [selectedFile, setSelectedFile] = useState(null);

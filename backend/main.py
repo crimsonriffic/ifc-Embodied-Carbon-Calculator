@@ -173,6 +173,7 @@ class VersionHistory(BaseModel):
     comments: str
     status: str
     total_ec: float
+    gfa:float
 
 
 class ProjectHistoryResponse(BaseModel):
@@ -856,6 +857,7 @@ async def get_project_history(project_id: str):
                 comments=version_data.get("comments", ""),
                 status=version_data.get("status", ""),
                 total_ec=version_data.get("total_ec", 0.0),
+                gfa=version_data.get("gfa", 0.0),
             )
         )
 
