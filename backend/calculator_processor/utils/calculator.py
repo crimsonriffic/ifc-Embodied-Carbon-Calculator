@@ -14,7 +14,7 @@ import numpy as np
 import os
 import math
 
-import calculator_utils
+from . import calculator_utils
 
 MaterialList = calculator_utils.MaterialList
 MaterialsToIgnore = calculator_utils.MaterialsToIgnore
