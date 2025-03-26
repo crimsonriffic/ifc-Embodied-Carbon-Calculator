@@ -3111,15 +3111,28 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
 {railings_ec=}\n {roofs_ec=}\n {members_ec=}\n {plates_ec=}\n \
 {piles_ec=}\n {footings_ec=}"
     )
+    ec_by_building_system = {}
+    ec_by_building_system["substructure_ec"] = ec_data['ec_breakdown'][0]['total_ec']
+    ec_by_building_system["superstructure_ec"] = ec_data['ec_breakdown'][1]['total_ec']
     logger.info(
         f"Breakdown by category: Substructure EC: {ec_data['ec_breakdown'][0]['total_ec']}, Superstructure EC: {ec_data['ec_breakdown'][1]['total_ec']}"
     )
     ec_data["missing_materials"] = all_missing_materials
     ec_data["element_type_skipped"] = element_type_skipped
+    logger.info(f"Elements skippsed: {element_type_skipped}")
     # print(ec_data)
     logger.info(f"Breakdown by elements: {ec_by_elements}")
+    
+    ec_by_materials = get_ec_by_material_category(ec_data)
+    logger.info(f"Breakdown by materials: {ec_by_materials}\n")
+    
+    summary = {}
+    summary["by_building_system"] = ec_by_building_system
+    summary["by_material"] = ec_by_materials
+    summary["by_element"] = ec_by_elements
+    
     if with_breakdown:
-        return total_ec, ec_data
+        return total_ec, ec_data, summary
     else:
         return total_ec
 
@@ -3140,7 +3153,7 @@ def categorize_material(material_name):
     elif "steel" in material_name:
         return "Steel"
     else:
-        return "others"
+        return "Others"
 
 def get_ec_by_material_category(breakdowns):
     ec_by_material = {}
@@ -3202,8 +3215,9 @@ if __name__ == "__main__":
         logger.error(f"File not found: {ifcpath}")
         sys.exit(1)
 
-    total_ec, ec_data = calculate_embodied_carbon(ifcpath, with_breakdown=True)
+    total_ec, ec_data, summary = calculate_embodied_carbon(ifcpath, with_breakdown=True)
     total_gfa = calculate_gfa(ifcpath)
+    print(summary)
 
     if total_gfa > 0:
         ec_per_m2 = total_ec / total_gfa
@@ -3212,15 +3226,10 @@ if __name__ == "__main__":
     print(f"\nResults for {os.path.basename(ifcpath)}:")
     print(f"Totalifc Embodied Carbon: {total_ec:.2f} kgCO2e\n")
     # print(f"Breakdowns: {ec_data}")
-    ec_result = get_ec_by_material_category(ec_data)
-    print(f"Breakdown by materials: {ec_result}\n")
+    
     if total_gfa > 0:
         print(f"Total Gross Floor Area: {total_gfa} m²")
         print(f"Embodied Carbon per m²: {ec_per_m2} kgCO2e/m²")
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    print(f"Execution time: {elapsed_time:.2f} seconds")
-
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"Execution time: {elapsed_time:.2f} seconds")
