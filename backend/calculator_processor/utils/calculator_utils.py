@@ -10,6 +10,9 @@ import pandas as pd
 from pprint import pprint
 from pymongo import MongoClient
 
+import dotenv
+dotenv.load_dotenv()
+
 
 MONGODB_URI = os.environ.get("MONGODB_URL")
 DB_NAME = os.environ.get("DB_NAME")

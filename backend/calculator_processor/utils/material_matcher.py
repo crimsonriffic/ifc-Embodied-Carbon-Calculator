@@ -39,6 +39,7 @@ MaterialList = {
     "Tiles, Granite": [0.700, 2650],
     "Plywood": [0.910, 600],
     "Cross Laminated Timber": [-1.310, 500],
+    'Glass, General':[1.440,2500]
 }
 MaterialsToIgnore = ["Travertine", "<Unnamed>", "Undefined"]
 
