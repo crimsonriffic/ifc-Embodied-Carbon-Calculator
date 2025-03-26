@@ -15,7 +15,7 @@ function ProjectProgress({ projectId, projectName }) {
   const [versionArray, setVersionArray] = useState([]);
   const [benchmarks, setBenchmarks] = useState({});
   const [benchmarkStandard, setBenchmarkStandard] = useState("");
-
+  const [benchmarkTarget, setBenchmarkTarget] = useState(0);
   console.log(projectId);
   useEffect(() => {
     const fetchData = async () => {
@@ -68,6 +68,21 @@ function ProjectProgress({ projectId, projectName }) {
       : [];
     setVersionArray(versionArr);
   }, [projectHistory, versionNumber]);
+  useEffect(() => {
+    if (!benchmarkStandard) {
+      console.log("Benchmark standard is empty");
+      return;
+    }
+    console.log(benchmarks);
+    console.log(
+      "Benchmark standard: ",
+      benchmarkStandard,
+      "Benchmark target: ",
+      benchmarks[benchmarkStandard]
+    );
+
+    setBenchmarkTarget(benchmarks[benchmarkStandard]);
+  }, [benchmarkStandard]);
   if (!projectId) {
     return <p className="text-red-500 mt-16">No project ID provided.</p>;
   }
@@ -105,11 +120,11 @@ function ProjectProgress({ projectId, projectName }) {
               onChange={(e) => {
                 setBenchmarkStandard(e.target.value);
               }}
-              className="text-2xl font-bold"
+              className="text-2xl font-bold w-full focus:outline-none focus:border-none focus:ring-0 "
             >
-              {[...benchmarks].map((benchmark) => (
-                <option key={benchmark} value={benchmark} className="text-lg ">
-                  {benchmark}
+              {Object.entries(benchmarks).map(([key, value]) => (
+                <option key={key} value={key} className="text-sm">
+                  {key}
                 </option>
               ))}
             </select>
@@ -117,7 +132,7 @@ function ProjectProgress({ projectId, projectName }) {
 
           <div>
             <h1 className="text-sm">Benchmark Target</h1>
-            <p className="text-xl font-bold ">-</p>
+            <p className="text-xl font-bold ">{benchmarkTarget}</p>
           </div>
 
           <div>
