@@ -3,36 +3,53 @@ import { useUser } from "../context/UserContext";
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, version } from "react";
 import { getProjectHistory, getProjectInfo } from "../api/api";
-
+import BarChart from "../components/BarChart";
 import SankeyChart from "../components/SankeyChart";
 
-function ProjectProgress({ projectId, projectName }) {
+function ProjectProgress({ projectId, projectName, projectHistory }) {
   const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null);
-  const [projectHistory, setProjectHistory] = useState([]);
   const [totalEc, setTotalEc] = useState("");
-  const [versionNumber, setVersionNumber] = useState("");
   const [versionArray, setVersionArray] = useState([]);
-  const [benchmarks, setBenchmarks] = useState({});
-  const [benchmarkStandard, setBenchmarkStandard] = useState("");
+  const [versionNumber, setVersionNumber] = useState("");
+  const [projectInfo, setProjectInfo] = useState({});
+  const [benchmarkStandard, setBenchmarkstandard] = useState("");
   const [benchmarkTarget, setBenchmarkTarget] = useState(0);
+  const [selectedVersions, setSelectedVersions] = useState([]);
+
+  const [barData, setBarData] = useState({
+    labels: [],
+    datasets: [],
+  });
   console.log(projectId);
+
+  const handleStandardsClick = (e) => {
+    const selectedStandard = e.target.value;
+    setBenchmarkstandard(selectedStandard);
+    setBenchmarkTarget(projectInfo.benchmark[selectedStandard]); // Update target value};
+  };
+
+  const handleCheckboxChange = (version) => {
+    if (selectedVersions.includes(version)) {
+      setSelectedVersions(selectedVersions.filter((v) => v !== version));
+    } else {
+      setSelectedVersions([...selectedVersions, version]);
+    }
+    console.log("Selected versions are: ", selectedVersions);
+  };
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const historyResponse = await getProjectHistory(projectId);
-        console.log("History response data: ", historyResponse.data.history);
         // Get the latest version from history
         // If versionNumber is empty, use the latest version
-        const latestVersion = historyResponse.data.history[0]?.version || "";
+        const latestVersion = projectHistory[0]?.version || "";
         const versionToFetch = versionNumber || latestVersion;
         console.log("Fetching breakdown for version: ", versionToFetch);
 
         const projectResponse = await getProjectInfo(projectId);
         console.log("Project Info response data is: ", projectResponse.data);
         console.log("Benchmarks are", projectResponse.data.benchmark);
-        setBenchmarks(projectResponse.data.benchmark);
-        setProjectHistory(historyResponse.data.history);
+        setProjectInfo(projectResponse.data);
 
         // Set latest version only if history exists
         // Set the versionNumber state if it's empty
@@ -50,7 +67,7 @@ function ProjectProgress({ projectId, projectName }) {
     if (projectId) {
       fetchData();
     }
-  }, [projectId, versionNumber]);
+  }, [projectId]);
   useEffect(() => {
     if (!projectHistory) {
       console.log("Project history is empty");
@@ -67,22 +84,49 @@ function ProjectProgress({ projectId, projectName }) {
       ? sortedHistory.map((item) => item.version)
       : [];
     setVersionArray(versionArr);
-  }, [projectHistory, versionNumber]);
+  }, [projectHistory]);
   useEffect(() => {
-    if (!benchmarkStandard) {
-      console.log("Benchmark standard is empty");
+    if (
+      projectInfo.benchmark &&
+      Object.keys(projectInfo.benchmark).length > 0
+    ) {
+      const firstBenchmark = Object.keys(projectInfo.benchmark)[0]; // Get first key
+      setBenchmarkstandard(firstBenchmark);
+      setBenchmarkTarget(projectInfo.benchmark[firstBenchmark]); // Set initial target value
+    }
+  }, [projectInfo.benchmark]);
+
+  useEffect(() => {
+    if (!selectedVersions || selectedVersions.length === 0) {
+      console.log("No versions selected");
       return;
     }
-    console.log(benchmarks);
-    console.log(
-      "Benchmark standard: ",
-      benchmarkStandard,
-      "Benchmark target: ",
-      benchmarks[benchmarkStandard]
+    const filteredHistory = projectHistory.filter((entry) =>
+      selectedVersions.includes(entry.version)
     );
+    const generateBarData = (filteredHistory, label) => {
+      if (!filteredHistory) return null;
+      const labels = filteredHistory.map((entry) => `Upload ${entry.version}`);
+      const data = filteredHistory.map(
+        (entry) => Number(entry.total_ec) / Number(entry.gfa)
+      );
 
-    setBenchmarkTarget(benchmarks[benchmarkStandard]);
-  }, [benchmarkStandard]);
+      return {
+        labels: labels,
+        datasets: [
+          {
+            label: `A1-A3 Carbon (${label})`,
+            data: data,
+            backgroundColor: ["#673091", "#305791", "#308791", "#5B9130"],
+            borderColor: "#000000",
+            borderWidth: 0,
+            barThickness: 40,
+          },
+        ],
+      };
+    };
+    setBarData(generateBarData(filteredHistory, "Comparison"));
+  }, [selectedVersions]);
   if (!projectId) {
     return <p className="text-red-500 mt-16">No project ID provided.</p>;
   }
@@ -109,7 +153,7 @@ function ProjectProgress({ projectId, projectName }) {
         <div className=" flex flex-col w-1/3 min-w-[300px] gap-y-4">
           <div>
             <h1 className="text-sm">Typology</h1>
-            <p className=" text-xl font-bold ">-</p>
+            <p className=" text-xl font-bold ">{projectInfo.typology}</p>
           </div>
 
           <div>
@@ -117,12 +161,10 @@ function ProjectProgress({ projectId, projectName }) {
             <select
               id="benchmarkStandard"
               value={benchmarkStandard}
-              onChange={(e) => {
-                setBenchmarkStandard(e.target.value);
-              }}
-              className="text-2xl font-bold w-full focus:outline-none focus:border-none focus:ring-0 "
+              onChange={(e) => handleStandardsClick(e)}
+              className="text-xl font-bold w-full focus:outline-none focus:border-none focus:ring-0 "
             >
-              {Object.entries(benchmarks).map(([key, value]) => (
+              {Object.entries(projectInfo.benchmark).map(([key, value]) => (
                 <option key={key} value={key} className="text-sm">
                   {key}
                 </option>
@@ -137,10 +179,36 @@ function ProjectProgress({ projectId, projectName }) {
 
           <div>
             <h1 className="text-sm">Select Upload for Progress Check</h1>
-            <p className="text-xl font-bold ">-</p>
+            <div className="border border-gray-300 rounded-md shadow-sm p-2 mt-1 max-h-64 overflow-y-auto">
+              {projectHistory.map((entry) => (
+                <div
+                  key={entry.version}
+                  className="flex items-center space-x-2 mb-2"
+                >
+                  <input
+                    type="checkbox"
+                    id={`version-${entry.version}`}
+                    value={entry.version}
+                    checked={selectedVersions.includes(entry.version)}
+                    onChange={() => handleCheckboxChange(entry.version)}
+                    className="form-checkbox"
+                  />
+                  <option
+                    key={entry.vesion}
+                    value={entry.version}
+                    className="text-sm"
+                  >
+                    Upload {entry.version}: {entry.comments}
+                  </option>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
         {/** Card 2 - Sankey chart  */}
+        <div className="h-[300px] w-[600px]">
+          <BarChart data={barData} benchmark={benchmarkTarget} />
+        </div>
       </div>
     </div>
   );

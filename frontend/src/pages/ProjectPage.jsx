@@ -17,11 +17,46 @@ function ProjectPage() {
   const { projectName } = useParams();
   const { projectId } = location.state;
   const fromHomePage = location.state?.fromHomePage === true;
-
+  const [projectHistory, setProjectHistory] = useState([]);
+  const [loading, setLoading] = useState(true); // Loading state
+  const [error, setError] = useState(null);
   console.log("Project Name and project Id is ", projectName, projectId);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const historyResponse = await getProjectHistory(projectId);
+        console.log(
+          "PROJECTPAGE: History response data: ",
+          historyResponse.data.history
+        );
 
+        setProjectHistory(historyResponse.data.history);
+
+        setError(null);
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to data: ", err);
+        setError("Failed to fetch data."); // Set error message
+      }
+    };
+    if (projectId) {
+      fetchData();
+    }
+  }, [projectId]);
   if (!projectId) {
     return <p className="text-red-500 mt-16">No project ID provided.</p>;
+  }
+
+  if (loading) {
+    return <p className="mt-16">Loading project data...</p>; // Show loading state
+  }
+
+  if (error) {
+    return <p className="text-red-500 mt-16">{error}</p>; // Display error message
+  }
+
+  if (!projectHistory) {
+    return <p className="mt-16">No project history available.</p>;
   }
 
   return (
@@ -74,13 +109,21 @@ function ProjectPage() {
         </button>
       </div>
       {activeTab === "Upload Overview" && (
-        <UploadOverview projectId={projectId} projectName={projectName} />
+        <UploadOverview
+          projectId={projectId}
+          projectName={projectName}
+          projectHistory={projectHistory}
+        />
       )}
       {activeTab === "Upload Comparison" && (
         <UploadComparison projectId={projectId} projectName={projectName} />
       )}
       {activeTab === "Project Progress" && (
-        <ProjectProgress projectId={projectId} projectName={projectName} />
+        <ProjectProgress
+          projectId={projectId}
+          projectName={projectName}
+          projectHistory={projectHistory}
+        />
       )}
     </div>
   );

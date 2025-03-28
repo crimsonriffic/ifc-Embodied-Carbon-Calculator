@@ -6,11 +6,10 @@ import { getProjectHistory, getProjectBreakdown } from "../api/api";
 
 import SankeyChart from "../components/SankeyChart";
 
-function UploadOverview({ projectId, projectName }) {
+function UploadOverview({ projectId, projectName, projectHistory }) {
   const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null);
   const [sankeyData, setSankeyData] = useState([]);
-  const [projectHistory, setProjectHistory] = useState([]);
   const [currentVersionData, setCurrentVersionData] = useState({});
   const [totalEc, setTotalEc] = useState("");
   const [summaryData, setSummaryData] = useState([]);
@@ -24,12 +23,7 @@ function UploadOverview({ projectId, projectName }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const historyResponse = await getProjectHistory(projectId);
-
-        console.log("History response data: ", historyResponse.data.history);
-        // Get the latest version from history
-        // If versionNumber is empty, use the latest version
-        const latestVersion = historyResponse.data.history[0]?.version || "";
+        const latestVersion = projectHistory[0]?.version || "";
         const versionToFetch = versionNumber || latestVersion;
         console.log("Fetching breakdown for version: ", versionToFetch);
 
@@ -48,11 +42,9 @@ function UploadOverview({ projectId, projectName }) {
         );
 
         setTotalEc(breakdownResponse.data.ec_breakdown.total_ec.toFixed(0));
-        setProjectHistory(historyResponse.data.history);
         setSummaryData(breakdownResponse.data.summary);
         setSankeyData(breakdownResponse.data.ec_breakdown);
-        // Set latest version only if history exists
-        // Set the versionNumber state if it's empty
+
         if (!versionNumber && latestVersion) {
           setVersionNumber(latestVersion);
         }

@@ -181,3 +181,31 @@ export const uploadMaterial = async (
     throw err; // Re-throw the error for handling in the calling function
   }
 };
+
+export const getMaterialsDetected = async (
+  projectId = null,
+  version = null
+) => {
+  console.log("getMaterialsDetected API is called");
+  // Build query paramters
+  const params = new URLSearchParams();
+  if (projectId) params.append("project_id", projectId);
+  if (version) params.append("version", version);
+
+  // Convert params string and add to URL
+  const queryString = params.toString();
+  const url = `/materials${queryString ? `?${queryString}` : ""}`;
+  return api.get(url);
+};
+
+export const getElementsDetected = async (ifc_path = null) => {
+  console.log("getElementsDetected API is called with, ", ifc_path);
+  if (!ifc_path) return null;
+  // Create URL with properly encoded parameter
+  const params = new URLSearchParams();
+  params.append("ifc_path", ifc_path);
+
+  const url = `/ifc/elements?${params.toString()}`;
+  console.log("Requesting URL:", url);
+  return api.get(url);
+};

@@ -7,10 +7,17 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import annotationPlugin from "chartjs-plugin-annotation";
+ChartJS.register(
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend,
+  annotationPlugin
+);
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
-
-const options = {
+const options = (benchmark) => ({
   responsive: true,
   maintainAspectRatio: false,
 
@@ -45,8 +52,30 @@ const options = {
         label: (tooltipItem) => tooltipItem.raw, // Show only the value
       },
     },
+    annotation: benchmark
+      ? {
+          annotations: {
+            benchmarkLine: {
+              type: "line",
+              yMin: benchmark, // Draw the line at the benchmark value
+              yMax: benchmark, // Keep the line horizontal
+              borderColor: "#A9C0A0", // Line color
+              borderWidth: 2, // Line thickness
+              label: {
+                enabled: true,
+                content: "Benchmark", // Display the benchmark value
+                position: "center",
+                backgroundColor: "rgba(255, 255, 255, 0.8)", // Light background with transparency
+                color: "black", // Label text color
+              },
+            },
+          },
+        }
+      : undefined, // Don't include the annotation plugin if no benchmark is provided
   },
-};
-export default function BarChart({ data }) {
-  return <Bar data={data} options={options} />;
+});
+export default function BarChart({ data, benchmark = null }) {
+  console.log("Benchmark value:", benchmark);
+  console.log("Chart options:", options(benchmark));
+  return <Bar data={data} options={options(benchmark)} />;
 }
