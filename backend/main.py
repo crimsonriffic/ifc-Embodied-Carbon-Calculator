@@ -160,11 +160,12 @@ class ProjectBasicInfo(BaseModel):
     project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     project_name: str
     client_name: str
-    gfa: float
     typology: str
     status: str
     benchmark: Dict[str, float]  # This will handle the key-value pairs
-
+    latest_version:str
+    gfa:float
+    file_path:str
 
 class VersionHistory(BaseModel):
     version: str
@@ -815,6 +816,7 @@ async def get_project_info(project_id: str):
     latest_version = str(project.get("current_version"))
     ifc_data = project["ifc_versions"].get(latest_version, {})
     gfa = ifc_data.get("gfa", 0)
+    file_path=ifc_data.get("file_path", "")
      # Extract benchmark values
     benchmark_values = {
         "Green Mark": project.get("benchmark", {}).get("Residential", {}).get("Green Mark", 0),
@@ -825,10 +827,12 @@ async def get_project_info(project_id: str):
         _id=project["_id"],
         project_name=project.get("project_name"),
         client_name=project.get("client_name"),
-        gfa=gfa,
         typology=project.get("typology", "Not Specified"),
         status=project.get("status", "Not Specified"),
         benchmark = benchmark_values,
+        latest_version = latest_version,
+        gfa=gfa,
+        file_path=file_path
     )
 
 

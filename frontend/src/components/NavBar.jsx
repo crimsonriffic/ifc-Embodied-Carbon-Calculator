@@ -25,7 +25,7 @@ function Navbar() {
           {/* Logo */}
           <div className="flex items-center">
             <div className="bg-white rounded-full p-4">
-              <h1 className="text-[#5B9130] font-bold text-lg">ECcalculator</h1>
+              <h1 className="text-[#5B9130] font-bold text-lg">CarbonSmart</h1>
             </div>
           </div>
 

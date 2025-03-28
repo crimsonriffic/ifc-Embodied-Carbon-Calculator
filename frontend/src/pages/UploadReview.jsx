@@ -2,79 +2,85 @@ import Navbar from "../components/NavBar";
 import Stepper from "../components/Stepper";
 import HistoryTable from "../components/HistoryTable";
 import IfcDialog from "./IfcDialog";
-import { getProjectHistory, uploadIfc } from "../api/api";
+import {
+  getProjectHistory,
+  uploadIfc,
+  getProjectInfo,
+  getMaterialsDetected,
+  getElementsDetected,
+} from "../api/api";
 
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
 function UploadReview() {
-  const [status, setStatus] = useState("Conceptual Design");
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [inputComment, setInputComment] = useState("");
-  const [projectHistory, setProjectHistory] = useState([]);
   const [versionNumber, setVersionNumber] = useState("");
+  const [materialsDetected, setMaterialsDetected] = useState([]);
+  const [elementsDetected, setElementsDetected] = useState({});
   const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null);
-  const [uploadError, setUploadError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [projectInfo, setProjectInfo] = useState({});
   const location = useLocation();
   const navigate = useNavigate();
   const { projectId } = location.state;
   const { projectName } = useParams();
 
-  const handleUpdateStatus = (e) => {
-    setStatus(e.target.value);
-  };
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  };
-
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-  };
-
-  const handleProceed = (projectId, projectName) => {
-    console.log("HandleProceed called");
-    navigate(`/materialInfo/${encodeURIComponent(projectName)}`, {
-      state: { projectId },
-    });
-  };
-
-  const handleUpload = async (e) => {
-    setIsDialogOpen(true);
-  };
   /* Initial API calls to fetch project history and breakdown data */
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const historyResponse = await getProjectHistory(projectId);
+        const projectResponse = await getProjectInfo(projectId);
 
-        // Get the latest version from history
-        const latestVersion = historyResponse.data.history[0]?.version || "";
+        console.log("Project Info response data is: ", projectResponse.data);
+        console.log("IFC Path:", projectResponse.data.file_path); // Debug log
 
-        setProjectHistory(historyResponse.data.history);
-        console.log("Project History set as: ", historyResponse.data.history);
-
-        if (!versionNumber && latestVersion) {
-          setVersionNumber(latestVersion);
-        }
-
+        setProjectInfo(projectResponse.data);
         setError(null);
         setLoading(false);
       } catch (err) {
         console.error("Failed to data: ", err);
-        setError("Failed to fetch history data."); // Set error message
+        setError("Failed to fetch data."); // Set error message
       }
     };
     if (projectId) {
       fetchData();
     }
   }, [projectId]);
+  useEffect(() => {
+    if (!projectInfo) return;
+
+    console.log("Project Info state is ", projectInfo.file_path);
+    setLoading(true);
+    const fetchDetected = async () => {
+      try {
+        const versionedMaterialResponse = await getMaterialsDetected(
+          projectId,
+          projectInfo.latest_version
+        );
+
+        const elementsDetectedResponse = await getElementsDetected(
+          projectInfo.file_path
+        );
+        console.log(
+          "Versioned Material response data is: ",
+          versionedMaterialResponse.data
+        );
+        console.log(
+          "Elements Detected response data is: ",
+          elementsDetectedResponse.data
+        );
+        setMaterialsDetected(versionedMaterialResponse.data);
+        setElementsDetected(elementsDetectedResponse.data.elements);
+        setError(null);
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to data: ", err);
+        setError("Failed to fetch data."); // Set error message
+      }
+    };
+    if (projectInfo) fetchDetected();
+  }, [projectInfo]);
+
   return (
     <div className="px-6">
       <Navbar />
@@ -94,6 +100,103 @@ function UploadReview() {
         <h1 className="text-2xl font-semibold tracking-wide">
           {decodeURIComponent(projectName)}
         </h1>
+      </div>
+      <div className="flex flex-row space-x-8">
+        <div className=" flex flex-col w-1/3 min-w-[200px] gap-y-4">
+          <h1 className="text-2xl font-bold">
+            Upload {projectInfo.latest_version}
+          </h1>
+          <div>
+            <h1 className="text-sm">Detected Elements </h1>
+            <p className=" text-xl font-bold ">xx elements</p>
+          </div>
+
+          <div>
+            <h1 className="text-sm">Detected Materials</h1>
+            <p className=" text-xl font-bold">xx material types</p>
+          </div>
+        </div>
+        {/**Elements Detected Table */}
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-bold mt-10 mb-4"> Detected Elements</h1>
+
+          <div className="overflow-x-auto h-96">
+            <table className="min-w-full border relative border-gray-300 bg-white shadow-md rounded-lg">
+              <thead className="bg-gray-100 sticky top-0">
+                <tr>
+                  <th className="border border-gray-300 px-4 py-2">
+                    IfcElement
+                  </th>
+                  <th className="border border-gray-300 px-4 py-2">Quantity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td
+                      className="border border-gray-300 px-4 py-2 text-center"
+                      colSpan="3"
+                    >
+                      Loading...
+                    </td>
+                  </tr>
+                ) : (
+                  Object.entries(elementsDetected).map(
+                    ([element, count], index) => (
+                      <tr className="border-b" key={index}>
+                        <td className="border border-gray-300 px-4 py-2 text-center">
+                          {element}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          {count}
+                        </td>
+                      </tr>
+                    )
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {/**Materials Detected Table */}
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-bold mt-10 mb-4"> Detected Elements</h1>
+          <div className="overflow-x-auto h-96">
+            <table className="min-w-full border relative border-gray-300 bg-white shadow-md rounded-lg">
+              <thead className="bg-gray-100 sticky top-0">
+                <tr>
+                  <th className="border border-gray-300 px-4 py-2">Family</th>
+                  <th className="border border-gray-300 px-4 py-2">Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td
+                      className="border border-gray-300 px-4 py-2 text-center"
+                      colSpan="3"
+                    >
+                      Loading...
+                    </td>
+                  </tr>
+                ) : (
+                  Object.entries(materialsDetected).map(
+                    ([key, value], index) => (
+                      <tr className="border-b" key={index}>
+                        <td className="border border-gray-300 px-4 py-2 text-center">
+                          {value.material_type}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          {value.specified_material}
+                        </td>
+                      </tr>
+                    )
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );
