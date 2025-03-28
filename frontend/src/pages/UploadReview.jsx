@@ -108,12 +108,20 @@ function UploadReview() {
           </h1>
           <div>
             <h1 className="text-sm">Detected Elements </h1>
-            <p className=" text-xl font-bold ">xx elements</p>
+            <p className=" text-xl font-bold ">
+              {loading
+                ? "Loading..."
+                : `${Object.keys(elementsDetected).length} elements`}
+            </p>
           </div>
 
           <div>
             <h1 className="text-sm">Detected Materials</h1>
-            <p className=" text-xl font-bold">xx material types</p>
+            <p className=" text-xl font-bold">
+              {loading
+                ? "Loading..."
+                : `${materialsDetected.length} material types`}
+            </p>
           </div>
         </div>
         {/**Elements Detected Table */}
@@ -160,7 +168,10 @@ function UploadReview() {
         </div>
         {/**Materials Detected Table */}
         <div className="flex flex-col">
-          <h1 className="text-2xl font-bold mt-10 mb-4"> Detected Elements</h1>
+          <h1 className="text-2xl font-bold mt-10 mb-4">
+            {" "}
+            Detected Product Materials
+          </h1>
           <div className="overflow-x-auto h-96">
             <table className="min-w-full border relative border-gray-300 bg-white shadow-md rounded-lg">
               <thead className="bg-gray-100 sticky top-0">
