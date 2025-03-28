@@ -25,6 +25,7 @@ export default {
     "./src/pages/UploadOverview.jsx",
     "./src/pages/UploadComparison.jsx",
     "./src/pages/ProjectProgress.jsx",
+    "./src/components/MirrorBarChart.jsx",
   ],
   theme: {
     extend: {},
