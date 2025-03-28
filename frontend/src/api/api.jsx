@@ -181,3 +181,8 @@ export const uploadMaterial = async (
     throw err; // Re-throw the error for handling in the calling function
   }
 };
+
+export const getMaterialsDetected = async () => {
+  console.log("getMaterialsDetected API is called");
+  return api.get("/materials");
+};

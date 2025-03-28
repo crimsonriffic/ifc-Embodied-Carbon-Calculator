@@ -842,9 +842,7 @@ async def get_project_history(project_id: str):
 
     # Get the last 4 versions uploaded
     ifc_versions = project.get("ifc_versions", {})
-    sorted_versions = sorted(ifc_versions.keys(), key=lambda v: int(v), reverse=True)[
-        :4
-    ]
+    sorted_versions = sorted(ifc_versions.keys(), key=lambda v: int(v), reverse=True)
 
     version_history = []
     for version in sorted_versions:
