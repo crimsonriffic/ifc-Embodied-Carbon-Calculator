@@ -53,7 +53,7 @@ function IfcDialog({ onClose, projectName, projectId, uploadNumber }) {
       // Navigate after 1 seconds
       setTimeout(() => {
         onClose();
-        navigate(`/materialInfo/${encodeURIComponent(projectName)}`, {
+        navigate(`/uploadReview/${encodeURIComponent(projectName)}`, {
           state: { projectId },
         });
       }, 2000);
