@@ -13,6 +13,7 @@ function UploadConfirmPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { projectId } = location.state;
+
   const { projectName } = useParams();
 
   const handleProceed = (projectId, projectName) => {

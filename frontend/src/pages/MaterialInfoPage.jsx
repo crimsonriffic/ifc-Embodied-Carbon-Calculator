@@ -26,15 +26,15 @@ function MaterialInfoPage() {
 
   const location = useLocation();
   const navigate = useNavigate();
-  const { projectId } = location.state;
-  const { projectName } = useParams();
+  //const { projectId } = location.state;
+  //const { projectName } = useParams();
 
-  const handleProceed = (projectId, projectName) => {
-    console.log("HandleProceed called");
-    navigate(`/uploadConfirm/${encodeURIComponent(projectName)}`, {
-      state: { projectId },
-    });
-  };
+  // const handleProceed = (projectId, projectName) => {
+  //   console.log("HandleProceed called");
+  //   navigate(`/uploadConfirm/${encodeURIComponent(projectName)}`, {
+  //     state: { projectId },
+  //   });
+  // };
   const handleUpdateMaterialType = (e) => {
     setMaterialType(e.target.value);
   };
@@ -85,9 +85,7 @@ function MaterialInfoPage() {
         console.error("Failed to data: ", err);
       }
     };
-    if (projectId) {
-      fetchData();
-    }
+    fetchData();
   }, []);
   return (
     <div className="px-6">
@@ -95,17 +93,10 @@ function MaterialInfoPage() {
 
       {/* Banner Section */}
       <div className="bg-[#5B9130] text-white mx-8 mt-20 w-full mr-4 py-6 px-6 rounded-lg shadow-md text-left ml-0">
-        <h1 className="text-3xl font-bold">Upload Information</h1>
+        <h1 className="text-3xl font-bold">Material Database</h1>
       </div>
-      <div className="mt-6">
-        <Stepper currentStep={3} />
-      </div>
-      <div className="bg-[#A9C0A0] text-white rounded-lg px-4 py-2 flex items-center shadow-md mt-4 mb-6 sm:max-w-md">
-        <h1 className="text-2xl font-semibold tracking-wide">
-          {decodeURIComponent(projectName)}
-        </h1>
-      </div>
-      <div className="flex flex-row gap-x-32">
+
+      <div className="flex flex-row gap-x-32 mt-4">
         {/**Left section */}
         <div className="flex flex-col max-w-md">
           {/** New Upload section*/}
@@ -210,14 +201,6 @@ function MaterialInfoPage() {
               )}
             </div>
           </form>
-          <button
-            className="px-4 py-2 mt-6 w-28 bg-[#5B9130] text-black rounded"
-            onClick={() => {
-              handleProceed(projectId, projectName);
-            }}
-          >
-            Proceed
-          </button>
         </div>
 
         {/**Right section */}

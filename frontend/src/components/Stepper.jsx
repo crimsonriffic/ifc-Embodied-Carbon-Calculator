@@ -8,7 +8,7 @@ function Stepper({ currentStep }) {
   const steps = [
     { id: 1, name: "Project Information" },
     { id: 2, name: "Upload Information" },
-    { id: 3, name: "Material Information" },
+    { id: 3, name: "Upload Review" },
     { id: 4, name: "Upload Confirmation" },
     { id: 5, name: "View Results" },
   ];
@@ -26,7 +26,7 @@ function Stepper({ currentStep }) {
         });
         break;
       case 3:
-        navigate(`/materialInfo/${encodeURIComponent(projectName)}`, {
+        navigate(`/uploadReview/${encodeURIComponent(projectName)}`, {
           state: { projectId },
         });
         break;
@@ -75,7 +75,7 @@ function Stepper({ currentStep }) {
               `}
               style={{
                 left: "50%",
-                width: "calc(100% + 32px)",
+                width: "calc(100% + 50px)",
               }}
             />
           )}
