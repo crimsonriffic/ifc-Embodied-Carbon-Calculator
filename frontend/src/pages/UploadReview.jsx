@@ -1,7 +1,5 @@
 import Navbar from "../components/NavBar";
 import Stepper from "../components/Stepper";
-import HistoryTable from "../components/HistoryTable";
-import IfcDialog from "./IfcDialog";
 import {
   getProjectHistory,
   uploadIfc,
