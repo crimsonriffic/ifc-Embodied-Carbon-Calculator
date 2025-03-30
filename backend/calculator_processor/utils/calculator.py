@@ -1,7 +1,9 @@
 import time
+
 start_time = time.time()
 
 import time
+
 start_time = time.time()
 
 import ifcopenshell
@@ -2122,8 +2124,8 @@ def calculate_members(members):
             MaterialList.get(current_material, None) if current_material else None
         )
         if current_material_ec is None:
-                missing_elements.append((member.id(), current_material))
-                
+            missing_elements.append((member.id(), current_material))
+
         if current_material_ec is None and MATERIAL_REAPLCE:
             # Try material matching
             if not current_material and material_layers:
@@ -2203,7 +2205,7 @@ def calculate_plates(plates):
         current_quantity = None
         current_material = None
         current_area = None
-        material_layers = []        
+        material_layers = []
         materials_breakdown = []
 
         # Get volume/area information
@@ -2469,7 +2471,7 @@ def calculate_piles(piles):
         if materials:
             logger.error("Material Layers code not implemented")
             continue
-        
+
         current_material_ec = (
             MaterialList.get(current_material, None) if current_material else None
         )
@@ -2495,7 +2497,7 @@ def calculate_piles(piles):
         material_breakdown.append({"material": current_material, "ec": current_ec})
         pile_elements.append(
             {"element": "Pile", "ec": current_ec, "materials": material_breakdown}
-        )   
+        )
         logger.debug(f"EC for {pile.Name} is {current_ec}")
         total_ec += current_ec
 
@@ -2736,7 +2738,7 @@ def calculate_footings(footings):
             rebar_ec = rebar_vol * 2.510 * 7850
             logger.debug(f"EC for {footing.Name}'s rebars is {rebar_ec}")
             total_ec += rebar_ec
-    
+
         material_breakdown.append({"material": current_material, "ec": current_ec})
         footing_elements.append(
             {"element": "Footing", "ec": current_ec, "materials": material_breakdown}
@@ -2892,7 +2894,6 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["total_ec"] += super_beams_ec
             beams_ec += super_beams_ec
         ec_by_elements["Beam"] = beams_ec
-
 
     # Slabs
     if slabs:
@@ -3086,7 +3087,9 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
         all_missing_materials["IfcPlate"] = []
 
         if substructure_plates:
-            sub_plates_ec, sub_plates_elements, missing_mats = calculate_plates(substructure_plates)
+            sub_plates_ec, sub_plates_elements, missing_mats = calculate_plates(
+                substructure_plates
+            )
             all_missing_materials["IfcPlate"].extend(missing_mats)
             ec_data["ec_breakdown"][0]["elements"].extend(sub_plates_elements)
             ec_data["ec_breakdown"][0]["total_ec"] += sub_plates_ec
@@ -3108,7 +3111,9 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
         all_missing_materials["IfcPile"] = []
 
         if substructure_piles:
-            sub_piles_ec, sub_piles_elements, missing_mats = calculate_piles(substructure_piles)
+            sub_piles_ec, sub_piles_elements, missing_mats = calculate_piles(
+                substructure_piles
+            )
             all_missing_materials["IfcPile"].extend(missing_mats)
             ec_data["ec_breakdown"][0]["elements"].extend(sub_piles_elements)
             ec_data["ec_breakdown"][0]["total_ec"] += sub_piles_ec
@@ -3122,22 +3127,24 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["elements"].extend(super_piles_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_piles_ec
             piles_ec += super_piles_ec
-    
+
     if footings:
         substructure_footings = [f for f in footings if f.id() in substructure_ids]
         superstructure_footings = [f for f in piles if f.id() not in substructure_ids]
         all_missing_materials["IfcFooting"] = []
 
         if substructure_footings:
-            sub_footings_ec, sub_footings_elements, missing_mats = calculate_footings(substructure_footings)
+            sub_footings_ec, sub_footings_elements, missing_mats = calculate_footings(
+                substructure_footings
+            )
             all_missing_materials["IfcFooting"].extend(missing_mats)
             ec_data["ec_breakdown"][0]["elements"].extend(sub_footings_elements)
             ec_data["ec_breakdown"][0]["total_ec"] += sub_footings_ec
             footings_ec += sub_footings_ec
 
         if superstructure_footings:
-            super_footings_ec, super_footings_elements, missing_mats = calculate_footings(
-                superstructure_footings
+            super_footings_ec, super_footings_elements, missing_mats = (
+                calculate_footings(superstructure_footings)
             )
             all_missing_materials["IfcFooting"].extend(missing_mats)
             ec_data["ec_breakdown"][1]["elements"].extend(super_footings_elements)
@@ -3169,8 +3176,8 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
 {piles_ec=}\n {footings_ec=}"
     )
     ec_by_building_system = {}
-    ec_by_building_system["substructure_ec"] = ec_data['ec_breakdown'][0]['total_ec']
-    ec_by_building_system["superstructure_ec"] = ec_data['ec_breakdown'][1]['total_ec']
+    ec_by_building_system["substructure_ec"] = ec_data["ec_breakdown"][0]["total_ec"]
+    ec_by_building_system["superstructure_ec"] = ec_data["ec_breakdown"][1]["total_ec"]
     logger.info(
         f"Breakdown by category: Substructure EC: {ec_data['ec_breakdown'][0]['total_ec']}, Superstructure EC: {ec_data['ec_breakdown'][1]['total_ec']}"
     )
@@ -3179,19 +3186,20 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     logger.info(f"Elements skippsed: {element_type_skipped}")
     # print(ec_data)
     logger.info(f"Breakdown by elements: {ec_by_elements}")
-    
+
     ec_by_materials = get_ec_by_material_category(ec_data)
     logger.info(f"Breakdown by materials: {ec_by_materials}\n")
-    
+
     summary = {}
     summary["by_building_system"] = ec_by_building_system
     summary["by_material"] = ec_by_materials
     summary["by_element"] = ec_by_elements
-    
+
     if with_breakdown:
         return total_ec, ec_data, summary
     else:
         return total_ec
+
 
 def categorize_material(material_name):
     material_name = material_name.lower()
@@ -3212,6 +3220,7 @@ def categorize_material(material_name):
     else:
         return "Others"
 
+
 def get_ec_by_material_category(breakdowns):
     ec_by_material = {}
 
@@ -3227,6 +3236,7 @@ def get_ec_by_material_category(breakdowns):
                 ec_by_material[material_category] += ec
 
     return ec_by_material
+
 
 def calculate_gfa(filepath):
 
@@ -3283,7 +3293,7 @@ if __name__ == "__main__":
     print(f"\nResults for {os.path.basename(ifcpath)}:")
     print(f"Totalifc Embodied Carbon: {total_ec:.2f} kgCO2e\n")
     # print(f"Breakdowns: {ec_data}")
-    
+
     if total_gfa > 0:
         print(f"Total Gross Floor Area: {total_gfa} m²")
         print(f"Embodied Carbon per m²: {ec_per_m2} kgCO2e/m²")
