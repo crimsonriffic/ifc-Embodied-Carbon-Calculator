@@ -264,16 +264,18 @@ async def get_missing_materials(
 
     # Get the EC breakdown data from MongoDB
     ec_breakdown = await app.mongodb.ec_breakdown.find_one({"_id": ec_breakdown_id})
-
+    print("Get Ec breakdown")
     if not ec_breakdown:
         raise HTTPException(status_code=404, detail="EC breakdown data not found")
 
     # Extract missing materials from the EC breakdown data
-    missing_materials = ec_breakdown.get("missing_materials", {})
-
+    breakdown=ec_breakdown.get("breakdown")
+    missing_materials = breakdown.get("missing_materials", {})
+         
     # Format the response
     result = []
     for ifc_type, materials in missing_materials.items():
+        print("Get missing materials: ", ifc_type, materials)
         for id, material_data in materials:
             result.append(
                 {
@@ -343,7 +345,8 @@ async def get_missing_elements(
         raise HTTPException(status_code=404, detail="EC breakdown data not found")
 
     # Extract missing elements (element_type_skipped) from the EC breakdown data
-    element_type_skipped = ec_breakdown.get("element_type_skipped", [])
+    breakdown= ec_breakdown.get("breakdown")
+    element_type_skipped = breakdown.get("element_type_skipped", [])
 
     # Format the response
     result = []
