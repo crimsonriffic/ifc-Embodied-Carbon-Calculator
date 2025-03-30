@@ -2045,6 +2045,7 @@ def calculate_members(members):
     """Calculate embodied carbon for structural members, using material matching if needed"""
     total_ec = 0
     member_elements = []
+    missing_elements = []
 
     for member in members:
         current_quantity = None
@@ -2120,7 +2121,9 @@ def calculate_members(members):
         current_material_ec = (
             MaterialList.get(current_material, None) if current_material else None
         )
-
+        if current_material_ec is None:
+                missing_elements.append((member.id(), current_material))
+                
         if current_material_ec is None and MATERIAL_REAPLCE:
             # Try material matching
             if not current_material and material_layers:
@@ -2187,18 +2190,21 @@ def calculate_members(members):
         total_ec += current_ec
 
     logger.debug(f"Total EC for members is {total_ec}")
-    return total_ec, member_elements
+    return total_ec, member_elements, missing_elements
 
 
 def calculate_plates(plates):
     """Calculate embodied carbon for plates, using material matching if needed"""
     total_ec = 0
+    plate_elements = []
+    missing_elements = []
 
     for plate in plates:
         current_quantity = None
         current_material = None
         current_area = None
-        material_layers = []
+        material_layers = []        
+        materials_breakdown = []
 
         # Get volume/area information
         if hasattr(plate, "IsDefinedBy"):
@@ -2288,6 +2294,8 @@ def calculate_plates(plates):
         current_material_ec = (
             MaterialList.get(current_material, None) if current_material else None
         )
+        if current_material_ec is None:
+            missing_elements.append((plate.id(), current_material))
 
         if current_material_ec is None and MATERIAL_REAPLCE:
             # Try material matching
@@ -2358,12 +2366,17 @@ def calculate_plates(plates):
 
         material_ec_perkg, material_density = current_material_ec
         current_ec = material_ec_perkg * material_density * current_quantity
+        materials_breakdown.append({"material": current_material, "ec": current_ec})
+
+        plate_elements.append(
+            {"element": "Plate", "ec": current_ec, "materials": materials_breakdown}
+        )
         logger.debug(f"EC for {plate.Name} is {current_ec}")
         total_ec += current_ec
 
     logger.debug(f"Total EC for plates is {total_ec}")
 
-    return total_ec
+    return total_ec, plate_elements, missing_elements
 
 
 def calculate_piles(piles):
@@ -2371,11 +2384,14 @@ def calculate_piles(piles):
     total_ec = 0
     quantities = {}
     materials = []
+    pile_elements = []
+    missing_elements = []
     current_quantity = None
     current_material = None
     rebar = None
 
     for pile in piles:
+        material_breakdown = []
         psets = get_psets(pile)
         rebar_set = psets.get("Rebar Set")
         if rebar_set is None:
@@ -2450,16 +2466,16 @@ def calculate_piles(piles):
                             current_material = material.Name
                             break
 
+        if materials:
+            logger.error("Material Layers code not implemented")
+            continue
+        
         current_material_ec = (
             MaterialList.get(current_material, None) if current_material else None
         )
 
         if current_material_ec is None:
-            # handle with default value?
-            # ai?
-            # raise NotImplementedError(f"Material '{current_material}' not found is not implemented yet")
-            print("Error, not implemented yet")
-            continue
+            missing_elements.append((pile.id(), current_material))
 
         material_ec_perkg, material_density = current_material_ec
         # print(current_quantity)
@@ -2476,23 +2492,30 @@ def calculate_piles(piles):
             )
             total_ec += rebar_ec
 
+        material_breakdown.append({"material": current_material, "ec": current_ec})
+        pile_elements.append(
+            {"element": "Pile", "ec": current_ec, "materials": material_breakdown}
+        )   
         logger.debug(f"EC for {pile.Name} is {current_ec}")
         total_ec += current_ec
 
     logger.debug(f"Total EC for piles is {total_ec}")
 
-    return total_ec
+    return total_ec, pile_elements, missing_elements
 
 
 def calculate_footings(footings):
     total_ec = 0
     quantities = {}
     materials = []
+    footing_elements = []
+    missing_elements = []
     current_quantity = None
     current_material = None
     rebar = None
 
     for footing in footings:
+        material_breakdown = []
         psets = get_psets(footing)
         rebar_set = psets.get("Rebar Set")
         if rebar_set is None:
@@ -2697,11 +2720,7 @@ def calculate_footings(footings):
         )
 
         if current_material_ec is None:
-            # handle with default value?
-            # ai?
-            raise NotImplementedError(
-                f"Material '{current_material}' not found is not implemented yet"
-            )
+            missing_elements.append((footing.id(), current_material))
 
         material_ec_perkg, material_density = current_material_ec
 
@@ -2717,13 +2736,17 @@ def calculate_footings(footings):
             rebar_ec = rebar_vol * 2.510 * 7850
             logger.debug(f"EC for {footing.Name}'s rebars is {rebar_ec}")
             total_ec += rebar_ec
-
+    
+        material_breakdown.append({"material": current_material, "ec": current_ec})
+        footing_elements.append(
+            {"element": "Footing", "ec": current_ec, "materials": material_breakdown}
+        )
         logger.debug(f"EC for {footing.Name} is {current_ec}")
         total_ec += current_ec
 
     logger.debug(f"Total EC for footings is {total_ec}")
 
-    return total_ec
+    return total_ec, footing_elements, missing_elements
 
 
 def calculate_embodied_carbon(filepath, with_breakdown=False):
@@ -3035,19 +3058,22 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     if members:
         substructure_members = [m for m in members if m.id() in substructure_ids]
         superstructure_members = [m for m in members if m.id() not in substructure_ids]
+        all_missing_materials["IfcMember"] = []
 
         if substructure_members:
-            sub_members_ec, sub_members_elements = calculate_members(
+            sub_members_ec, sub_members_elements, missing_mats = calculate_members(
                 substructure_members
             )
+            all_missing_materials["IfcMember"].extend(missing_mats)
             ec_data["ec_breakdown"][0]["elements"].extend(sub_members_elements)
             ec_data["ec_breakdown"][0]["total_ec"] += sub_members_ec
             members_ec += sub_members_ec
 
         if superstructure_members:
-            super_members_ec, super_members_elements = calculate_members(
+            super_members_ec, super_members_elements, missing_mats = calculate_members(
                 superstructure_members
             )
+            all_missing_materials["IfcMember"].extend(missing_mats)
             ec_data["ec_breakdown"][1]["elements"].extend(super_members_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_members_ec
             members_ec += super_members_ec
@@ -3057,35 +3083,66 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     if plates:
         substructure_plates = [p for p in plates if p.id() in substructure_ids]
         superstructure_plates = [p for p in plates if p.id() not in substructure_ids]
+        all_missing_materials["IfcPlate"] = []
 
         if substructure_plates:
-            sub_plates_ec, sub_plates_elements = calculate_plates(substructure_plates)
+            sub_plates_ec, sub_plates_elements, missing_mats = calculate_plates(substructure_plates)
+            all_missing_materials["IfcPlate"].extend(missing_mats)
             ec_data["ec_breakdown"][0]["elements"].extend(sub_plates_elements)
             ec_data["ec_breakdown"][0]["total_ec"] += sub_plates_ec
             plates_ec += sub_plates_ec
 
         if superstructure_plates:
-            super_plates_ec, super_plates_elements = calculate_plates(
+            super_plates_ec, super_plates_elements, missing_mats = calculate_plates(
                 superstructure_plates
             )
+            all_missing_materials["IfcPlate"].extend(missing_mats)
             ec_data["ec_breakdown"][1]["elements"].extend(super_plates_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_plates_ec
             plates_ec += super_plates_ec
 
-    piles_ec = calculate_piles(piles)
     # Piles and footings are always in substructure by definition
-    # if piles:
-    #     piles_ec, piles_elements = calculate_piles(piles)
-    #     ec_data["ec_breakdown"][0]["elements"].extend(piles_elements)
-    #     ec_data["ec_breakdown"][0]["total_ec"] += piles_ec
-    #     total_ec += piles_ec
+    if piles:
+        substructure_piles = [p for p in piles if p.id() in substructure_ids]
+        superstructure_piles = [p for p in piles if p.id() not in substructure_ids]
+        all_missing_materials["IfcPile"] = []
 
-    footings_ec = calculate_footings(footings)
-    # if footings:
-    #     footings_ec, footings_elements = calculate_footings(footings)
-    #     ec_data["ec_breakdown"][0]["elements"].extend(footings_elements)
-    #     ec_data["ec_breakdown"][0]["total_ec"] += footings_ec
-    #     total_ec += footings_ec
+        if substructure_piles:
+            sub_piles_ec, sub_piles_elements, missing_mats = calculate_piles(substructure_piles)
+            all_missing_materials["IfcPile"].extend(missing_mats)
+            ec_data["ec_breakdown"][0]["elements"].extend(sub_piles_elements)
+            ec_data["ec_breakdown"][0]["total_ec"] += sub_piles_ec
+            piles_ec += sub_piles_ec
+
+        if superstructure_piles:
+            super_piles_ec, super_piles_elements, missing_mats = calculate_piles(
+                superstructure_piles
+            )
+            all_missing_materials["IfcPile"].extend(missing_mats)
+            ec_data["ec_breakdown"][1]["elements"].extend(super_piles_elements)
+            ec_data["ec_breakdown"][1]["total_ec"] += super_piles_ec
+            piles_ec += super_piles_ec
+    
+    if footings:
+        substructure_footings = [f for f in footings if f.id() in substructure_ids]
+        superstructure_footings = [f for f in piles if f.id() not in substructure_ids]
+        all_missing_materials["IfcFooting"] = []
+
+        if substructure_footings:
+            sub_footings_ec, sub_footings_elements, missing_mats = calculate_footings(substructure_footings)
+            all_missing_materials["IfcFooting"].extend(missing_mats)
+            ec_data["ec_breakdown"][0]["elements"].extend(sub_footings_elements)
+            ec_data["ec_breakdown"][0]["total_ec"] += sub_footings_ec
+            footings_ec += sub_footings_ec
+
+        if superstructure_footings:
+            super_footings_ec, super_footings_elements, missing_mats = calculate_footings(
+                superstructure_footings
+            )
+            all_missing_materials["IfcFooting"].extend(missing_mats)
+            ec_data["ec_breakdown"][1]["elements"].extend(super_footings_elements)
+            ec_data["ec_breakdown"][1]["total_ec"] += super_footings_ec
+            footings_ec += super_footings_ec
 
     # Calculate total EC by summing individual categories
     total_ec = (

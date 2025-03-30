@@ -16,6 +16,7 @@ import json
 from contextlib import contextmanager
 import tempfile
 import ifcopenshell
+from collections import Counter
 
 dotenv.load_dotenv()
 
@@ -159,9 +160,12 @@ class ProjectBasicInfo(BaseModel):
     project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     project_name: str
     client_name: str
-    gfa: float
     typology: str
     status: str
+    benchmark: Dict[str, float]  # This will handle the key-value pairs
+    latest_version: str
+    gfa: float
+    file_path: str
 
 
 class VersionHistory(BaseModel):
@@ -171,6 +175,7 @@ class VersionHistory(BaseModel):
     comments: str
     status: str
     total_ec: float
+    gfa: float
 
 
 class ProjectHistoryResponse(BaseModel):
@@ -187,6 +192,7 @@ class Material(BaseModel):
     database_source: Literal["Custom", "System"]
     created_by: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.now)
+    count: int = 0
 
     class Config:
         populate_by_name = True
@@ -212,6 +218,33 @@ def temp_ifc_file(content: bytes):
         yield tmp.name
     finally:
         os.unlink(tmp.name)
+
+
+@app.get("/projects/{project_id}/{version_id}/calculation_status", response_model=str)
+async def get_calculation_status(
+    project_id: str,
+    version_id: str,
+):
+    project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
+
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Find the specific version using version_id
+    version = None
+    if "ifc_versions" in project and str(version_id) in project["ifc_versions"]:
+        version = project["ifc_versions"][str(version_id)]
+
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    # Return calculation_status or raise error if not found
+    if "calculation_status" in version:
+        return version["calculation_status"]
+    else:
+        raise HTTPException(
+            status_code=404, detail="Calculation status not found for this version"
+        )
 
 
 @app.get("/projects/{project_id}/missing_materials", response_model=Dict[str, Any])
@@ -463,50 +496,44 @@ async def get_materials(
     If project_id is provided, returns materials for that specific project.
     If version is provided, it will return materials for that specific version.
     If version is not provided, it will use the current version of the project.
+    The response includes the count of each material's occurrences in the project.
     """
     try:
         print(project_id)
         # If no project_id is provided, return all materials
         if not project_id:
             materials = await app.mongodb.materials.find().to_list(1000)
-
             # Convert ObjectId to string for each material
             for material in materials:
                 material["_id"] = str(material["_id"])
-
+                material["count"] = 0  # No project context, so count is 0
             return materials
-
         # Find the project
         project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
-
         if not project:
             raise HTTPException(
                 status_code=404, detail=f"Project with ID {project_id} not found"
             )
-
         # Determine which version to use
         version_number = version if version else str(project.get("current_version"))
         if version_number not in project["ifc_versions"]:
             raise HTTPException(
                 status_code=404, detail=f"Version {version_number} not found"
             )
-
         # Get the EC breakdown ID from the project
         ifc_version = project["ifc_versions"].get(version_number)
         ec_breakdown_id = ifc_version.get("ec_breakdown_id")
-
         if not ec_breakdown_id:
             return []
-
         # Get the breakdown document
         breakdown = await app.mongodb.ec_breakdown.find_one(
             {"_id": ObjectId(ec_breakdown_id)}
         )
-
         if not breakdown:
             return []  # Breakdown not found
 
-        material_ids = set()
+        # Use Counter to track material frequencies
+        material_counter = Counter()
 
         if "breakdown" in breakdown and "ec_breakdown" in breakdown["breakdown"]:
             for category in breakdown["breakdown"]["ec_breakdown"]:
@@ -515,19 +542,22 @@ async def get_materials(
                         if "materials" in element:
                             for material in element["materials"]:
                                 if "material" in material:
-                                    material_ids.add(material["material"])
+                                    material_counter[material["material"]] += 1
 
-        if not material_ids:
+        if not material_counter:
             return []  # No material IDs found in breakdown
-        print(material_ids)
+
+        print(dict(material_counter))
+
         # Query for materials using the collected IDs
         materials = await app.mongodb.materials.find(
-            {"specified_material": {"$in": list(material_ids)}}
+            {"specified_material": {"$in": list(material_counter.keys())}}
         ).to_list(1000)
 
-        # Convert ObjectId to string for each material
+        # Convert ObjectId to string for each material and add count
         for material in materials:
             material["_id"] = str(material["_id"])
+            material["count"] = material_counter[material["specified_material"]]
 
         return materials
 
@@ -812,14 +842,27 @@ async def get_project_info(project_id: str):
     latest_version = str(project.get("current_version"))
     ifc_data = project["ifc_versions"].get(latest_version, {})
     gfa = ifc_data.get("gfa", 0)
+    file_path = ifc_data.get("file_path", "")
+    # Extract benchmark values
+    benchmark_values = {
+        "Green Mark": project.get("benchmark", {})
+        .get("Residential", {})
+        .get("Green Mark", 0),
+        "LETI 2030 Design Target": project.get("benchmark", {})
+        .get("Residential", {})
+        .get("LETI 2030 Design Target", 0),
+    }
 
     return ProjectBasicInfo(
         _id=project["_id"],
         project_name=project.get("project_name"),
         client_name=project.get("client_name"),
-        gfa=gfa,
         typology=project.get("typology", "Not Specified"),
         status=project.get("status", "Not Specified"),
+        benchmark=benchmark_values,
+        latest_version=latest_version,
+        gfa=gfa,
+        file_path=file_path,
     )
 
 
@@ -833,9 +876,7 @@ async def get_project_history(project_id: str):
 
     # Get the last 4 versions uploaded
     ifc_versions = project.get("ifc_versions", {})
-    sorted_versions = sorted(ifc_versions.keys(), key=lambda v: int(v), reverse=True)[
-        :4
-    ]
+    sorted_versions = sorted(ifc_versions.keys(), key=lambda v: int(v), reverse=True)
 
     version_history = []
     for version in sorted_versions:
@@ -848,6 +889,7 @@ async def get_project_history(project_id: str):
                 comments=version_data.get("comments", ""),
                 status=version_data.get("status", ""),
                 total_ec=version_data.get("total_ec", 0.0),
+                gfa=version_data.get("gfa", 0.0),
             )
         )
 

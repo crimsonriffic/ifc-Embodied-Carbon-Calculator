@@ -9,6 +9,10 @@ import MaterialInfoPage from "./pages/MaterialInfoPage";
 import ProjectInfoPage from "./pages/ProjectInfoPage";
 import UploadConfirmPage from "./pages/UploadConfirmPage";
 import BreakdownPage from "./pages/BreakdownPage";
+import UploadOverview from "./pages/UploadOverview";
+import UploadComparison from "./pages/UploadComparison";
+import ProjectProgress from "./pages/ProjectProgress";
+import UploadReview from "./pages/UploadReview";
 const routes = [
   { path: "/", element: <LoginPage /> },
   {
@@ -23,6 +27,13 @@ const routes = [
       { path: "/uploadConfirm/:projectName?", element: <UploadConfirmPage /> },
       { path: "/project/:projectName?", element: <ProjectPage /> },
       { path: "/breakdown/:projectName?", element: <BreakdownPage /> },
+      { path: "/uploadOverview/:projectName?", element: <UploadOverview /> },
+      { path: "/uploadReview/:projectName?", element: <UploadReview /> },
+      {
+        path: "/uploadComparison/:projectName?",
+        element: <UploadComparison />,
+      },
+      { path: "/projectProgress/:projectName?", element: <ProjectProgress /> },
       { path: "/ifc", element: <IfcDialog /> },
     ],
   },

@@ -34,7 +34,7 @@ function LoginPage() {
           {/* Logo */}
           <div className="mb-16">
             <div className="bg-green-600 rounded-full px-8 py-3">
-              <h1 className="text-white text-xl">eCO2llaborate</h1>
+              <h1 className="text-white text-xl">CarbonSmart</h1>
             </div>
           </div>
 

@@ -1,8 +1,6 @@
 import Navbar from "../components/NavBar";
 import Stepper from "../components/Stepper";
 
-import { getBuildingInfo } from "../api/api";
-
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
@@ -12,7 +10,7 @@ import { createProject } from "../api/api";
 function CreatePage() {
   const [projectName, setProjectName] = useState("");
   const [client, setClient] = useState("");
-  const [typology, setTypology] = useState("");
+  const [typology, setTypology] = useState("Residential");
   const [status, setStatus] = useState("");
   const [benchmark, setBenchmark] = useState({});
   const [selectedFile, setSelectedFile] = useState(null);
@@ -109,7 +107,7 @@ function CreatePage() {
           <h1 className="text-2xl font-semibold tracking-wide mb-2">
             Create New Project
           </h1>
-          <form onSubmit={handleUpload} className="space-y-4">
+          <form onSubmit={handleUpload} className="space-y-8">
             <div className="max-w-md">
               <label htmlFor="projectName" className="block text-gray-700 mb-1">
                 Project Name
@@ -120,7 +118,7 @@ function CreatePage() {
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="Enter Project Name"
-                className="p-2 border w-80 border-gray-200 shadow-md mb-4"
+                className="p-2 border w-80 border-gray-200 shadow-md"
                 required
               />
             </div>
@@ -135,7 +133,7 @@ function CreatePage() {
                 value={client}
                 onChange={(e) => setClient(e.target.value)}
                 placeholder="Enter Client"
-                className="p-2 border w-80 border-gray-200 shadow-md mb-4"
+                className="p-2 border w-80 border-gray-200 shadow-md"
                 required
               />
             </div>
@@ -148,7 +146,7 @@ function CreatePage() {
                 id="typology"
                 value={typology}
                 onChange={handleUpdateTypology}
-                className="w-full max-w-xs p-2 border border-gray-300 rounded-lg"
+                className="w-full max-w-xs p-2 border border-gray-200 shadow-md"
               >
                 <option value="Residential">Residential</option>
                 <option value="Non-residential Generic">
@@ -175,7 +173,7 @@ function CreatePage() {
                 id="status"
                 value={status}
                 onChange={handleUpdateStatus}
-                className="w-full max-w-xs p-2 border border-gray-300 rounded-lg"
+                className="w-full max-w-xs p-2 border border-gray-200 shadow-md"
               >
                 <option value="Conceptual Design">Conceptual Design</option>
                 <option value="Schematic Design">Schematic Design</option>

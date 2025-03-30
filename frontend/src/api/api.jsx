@@ -44,7 +44,7 @@ export const uploadIfc = async (projectId, file, userId, comments, status) => {
   }
 };
 
-export const getBuildingInfo = async (projectId) => {
+export const getProjectInfo = async (projectId) => {
   console.log("Projectid at api.jsx is ", projectId);
   return api.get(`/projects/${projectId}/get_project_info`);
 };
@@ -114,28 +114,6 @@ export const createProject = async (
     });
     console.log("Project created successfully: ", response.data);
 
-    // Extract the project Id from the response
-    // const projectId = response.data._id;
-    // Call the upload IFC file api
-
-    // const formData = new FormData();
-    // formData.append("file", file);
-    // console.log("The uploadIFC inputs are", projectId, file, userId);
-    // // Upload file using Axios
-    // const fileResponse = await api.post(
-    //   `/projects/${projectId}/upload_ifc`, // Dynamically add project ID
-    //   formData, // Form data with the file
-    //   {
-    //     params: {
-    //       user_id: userId, // Add user ID as a query parameter
-    //     },
-    //     headers: {
-    //       "Content-Type": "multipart/form-data", // Set the correct content type for file uploads
-    //     },
-    //   }
-    // );
-    // console.log("File uploaded successfully:", fileResponse.data);
-
     // Return the project and file upload response
     return {
       project: response.data,
@@ -202,4 +180,32 @@ export const uploadMaterial = async (
     console.error("Failed to upload material: ", err);
     throw err; // Re-throw the error for handling in the calling function
   }
+};
+
+export const getMaterialsDetected = async (
+  projectId = null,
+  version = null
+) => {
+  console.log("getMaterialsDetected API is called");
+  // Build query paramters
+  const params = new URLSearchParams();
+  if (projectId) params.append("project_id", projectId);
+  if (version) params.append("version", version);
+
+  // Convert params string and add to URL
+  const queryString = params.toString();
+  const url = `/materials${queryString ? `?${queryString}` : ""}`;
+  return api.get(url);
+};
+
+export const getElementsDetected = async (ifc_path = null) => {
+  console.log("getElementsDetected API is called with, ", ifc_path);
+  if (!ifc_path) return null;
+  // Create URL with properly encoded parameter
+  const params = new URLSearchParams();
+  params.append("ifc_path", ifc_path);
+
+  const url = `/ifc/elements?${params.toString()}`;
+  console.log("Requesting URL:", url);
+  return api.get(url);
 };
