@@ -273,18 +273,23 @@ async def get_missing_materials(
     missing_materials = breakdown.get("missing_materials", {})
          
     # Format the response
+    # Use a set to store unique specified materials
+    unique_materials = set()
     result = []
     for ifc_type, materials in missing_materials.items():
         print("Get missing materials: ", ifc_type, materials)
         for id, material_data in materials:
-            result.append(
-                {
-                    "IfcType": ifc_type,
-                    "ElementId": id,
-                    "SpecifiedMaterial": material_data,
-                    "ErrorType": "Material not found in system database",
-                }
-            )
+            # Check if the material is already in the set
+            if material_data not in unique_materials:
+                unique_materials.add(material_data)
+                result.append(
+                    {
+                        "IfcType": ifc_type,
+                        "ElementId": id,
+                        "SpecifiedMaterial": material_data,
+                        "ErrorType": "Material not found in system database",
+                    }
+                )
 
     return {
         "project_id": project_id,
