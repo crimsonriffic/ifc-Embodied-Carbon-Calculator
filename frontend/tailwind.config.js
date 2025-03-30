@@ -27,6 +27,7 @@ export default {
     "./src/pages/ProjectProgress.jsx",
     "./src/components/MirrorBarChart.jsx",
     "./src/pages/MaterialDialog.jsx",
+    "./src/pages/ErrorHandlingPage.jsx",
   ],
   theme: {
     extend: {},

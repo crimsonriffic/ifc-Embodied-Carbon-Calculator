@@ -24,11 +24,17 @@ function MaterialDialog({ onClose }) {
 
   const handleUpdateCategory = (e) => {
     setCategory(e.target.value);
+    if (e.target.value === "Product") {
+      setUnit("m2");
+    } else {
+      setUnit("kg");
+    }
   };
 
   const handleUpload = async (e) => {
     e.preventDefault();
     console.log("Handle Upload Called");
+    setLoading(true);
 
     try {
       const userId = "user123";
@@ -45,6 +51,7 @@ function MaterialDialog({ onClose }) {
       // Store the new material's ID to highlight it
       setUploadError(null);
       setShowSuccess(true);
+      setLoading(false);
     } catch (err) {
       setUploadError(
         err.response?.data?.detail || "An error occurred during upload."
@@ -54,7 +61,7 @@ function MaterialDialog({ onClose }) {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div className="bg-white p-4 rounded shadow-lg  w-[700px] h-[400px]  max-w-full">
+      <div className="bg-white p-4 rounded shadow-lg  w-[700px] h-[450px]  max-w-full">
         <div className="flex flex-row justify-between">
           <h2 className="text-xl font-semibold mb-4">New Product Material</h2>
           <button onClick={onClose}>
@@ -130,8 +137,19 @@ function MaterialDialog({ onClose }) {
                   />
                 </div>
               </div>
-              {/** Density */}
+
               <div className="max-w-md flex flex-col">
+                {/** Unit*/}
+                <div className="max-w-md">
+                  <label htmlFor="status" className="block text-gray-700 mb-1">
+                    Unit
+                  </label>
+                  <p className="p-2 border w-80 border-gray-200 shadow-md mb-4">
+                    {unit}
+                  </p>
+                </div>
+                {/** Density */}
+
                 <div className="mb-4">
                   <label htmlFor="client" className="block text-gray-700 mb-1">
                     Density
@@ -141,7 +159,12 @@ function MaterialDialog({ onClose }) {
                     id="density"
                     value={density}
                     onChange={(e) => setDensity(e.target.value)}
-                    className="p-2 w-80 border border-gray-200 shadow-md focus:outline-none resize-none"
+                    className={`p-2 w-80 border shadow-md focus:outline-none resize-none ${
+                      category === "Product"
+                        ? "bg-gray-100 cursor-not-allowed"
+                        : "border-gray-200"
+                    }`}
+                    disabled={category === "Product"}
                     required
                   />
                 </div>
@@ -161,24 +184,8 @@ function MaterialDialog({ onClose }) {
                   />
                 </div>
 
-                {/** Unit*/}
-                <div className="max-w-md">
-                  <label htmlFor="status" className="block text-gray-700 mb-1">
-                    Unit
-                  </label>
-                  <select
-                    id="unit"
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    className="p-2 border w-80 border-gray-200 shadow-md mb-4"
-                  >
-                    <option value="kg">kg</option>
-                    <option value="m2">m2</option>
-                  </select>
-                </div>
-
                 {/**Upload Button */}
-                <div className="flex justify-end space-x-2">
+                <div className="mt-16 flex justify-end space-x-2">
                   <button
                     className={`px-4 py-2 rounded ${
                       loading
@@ -196,17 +203,6 @@ function MaterialDialog({ onClose }) {
                       </span>
                     )}
                   </button>
-
-                  {showSuccess && (
-                    <div className=" p-2 text-green-700 rounded-lg">
-                      Upload successful!
-                    </div>
-                  )}
-                  {uploadError && (
-                    <div className=" text-red-600 font-semibold">
-                      {uploadError}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
