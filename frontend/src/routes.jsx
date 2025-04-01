@@ -13,6 +13,7 @@ import UploadOverview from "./pages/UploadOverview";
 import UploadComparison from "./pages/UploadComparison";
 import ProjectProgress from "./pages/ProjectProgress";
 import UploadReview from "./pages/UploadReview";
+import ErrorHandlingPage from "./pages/ErrorHandlingPage";
 const routes = [
   { path: "/", element: <LoginPage /> },
   {
@@ -33,6 +34,8 @@ const routes = [
         path: "/uploadComparison/:projectName?",
         element: <UploadComparison />,
       },
+      { path: "/errorHandling/:projectName?", element: <ErrorHandlingPage /> },
+
       { path: "/projectProgress/:projectName?", element: <ProjectProgress /> },
       { path: "/ifc", element: <IfcDialog /> },
     ],

@@ -288,25 +288,32 @@ async def get_missing_materials(
 
     # Get the EC breakdown data from MongoDB
     ec_breakdown = await app.mongodb.ec_breakdown.find_one({"_id": ec_breakdown_id})
-
+    print("Get Ec breakdown")
     if not ec_breakdown:
         raise HTTPException(status_code=404, detail="EC breakdown data not found")
 
     # Extract missing materials from the EC breakdown data
-    missing_materials = ec_breakdown.get("missing_materials", {})
-
+    breakdown=ec_breakdown.get("breakdown")
+    missing_materials = breakdown.get("missing_materials", {})
+         
     # Format the response
+    # Use a set to store unique specified materials
+    unique_materials = set()
     result = []
     for ifc_type, materials in missing_materials.items():
+        print("Get missing materials: ", ifc_type, materials)
         for id, material_data in materials:
-            result.append(
-                {
-                    "IfcType": ifc_type,
-                    "ElementId": id,
-                    "SpecifiedMaterial": material_data,
-                    "ErrorType": "Material not found in system database",
-                }
-            )
+            # Check if the material is already in the set
+            if material_data not in unique_materials:
+                unique_materials.add(material_data)
+                result.append(
+                    {
+                        "IfcType": ifc_type,
+                        "ElementId": id,
+                        "SpecifiedMaterial": material_data,
+                        "ErrorType": "Material not found in system database",
+                    }
+                )
 
     return {
         "project_id": project_id,
@@ -367,7 +374,8 @@ async def get_missing_elements(
         raise HTTPException(status_code=404, detail="EC breakdown data not found")
 
     # Extract missing elements (element_type_skipped) from the EC breakdown data
-    element_type_skipped = ec_breakdown.get("element_type_skipped", [])
+    breakdown= ec_breakdown.get("breakdown")
+    element_type_skipped = breakdown.get("element_type_skipped", [])
 
     # Format the response
     result = []
