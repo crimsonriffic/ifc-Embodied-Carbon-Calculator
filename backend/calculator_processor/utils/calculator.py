@@ -875,7 +875,7 @@ def calculate_slabs(slabs, to_ignore=[]):
             total_ec += current_ec
 
     logger.debug(f"Total EC for slabs is {total_ec}")
-    return total_ec, slab_elements, missing_materials
+    return total_ec, slab_elements, missing_materials, excel_data
 
 
 def calculate_walls(walls):
