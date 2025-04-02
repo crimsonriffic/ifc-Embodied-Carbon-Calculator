@@ -60,7 +60,7 @@ function UploadReview() {
           projectInfo.file_path
         );
         console.log(
-          "Versioned Material response data is: ",
+          "Materials Detected response data is: ",
           versionedMaterialResponse.data
         );
         console.log(

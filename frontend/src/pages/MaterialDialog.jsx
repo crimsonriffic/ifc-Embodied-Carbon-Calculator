@@ -40,7 +40,7 @@ function MaterialDialog({ onClose }) {
       const userId = "user123";
       const response = await uploadMaterial(
         userId,
-        materialType,
+        family,
         materialType,
         density,
         ec,
@@ -119,6 +119,8 @@ function MaterialDialog({ onClose }) {
                     <option value="Concrete">Concrete</option>
                     <option value="Steel">Steel</option>
                     <option value="Wood">Wood</option>
+                    <option value="Door">Door</option>
+                    <option value="Window">Window</option>
                   </select>
                 </div>
 
