@@ -17,6 +17,10 @@ from contextlib import contextmanager
 import tempfile
 import ifcopenshell
 from collections import Counter
+import io
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from fastapi.responses import Response
 
 dotenv.load_dotenv()
 
@@ -220,6 +224,245 @@ def temp_ifc_file(content: bytes):
         os.unlink(tmp.name)
 
 
+@app.get("/projects/{project_id}/get_building_elements")
+async def get_building_elements(
+    project_id: str,
+    version: Optional[str] = Query(
+        None,
+        description="IFC version to analyze. If not provided, uses current version",
+    ),
+):
+    """
+    Retrieve building elements with their material information and return as Excel file.
+    """
+    try:
+
+        # Find the project
+        project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
+
+        if not project:
+            raise HTTPException(
+                status_code=404, detail=f"Project with ID {project_id} not found"
+            )
+
+        # Determine which version to use
+        version_number = version if version else str(project.get("current_version"))
+        if version_number not in project["ifc_versions"]:
+            raise HTTPException(
+                status_code=404, detail=f"Version {version_number} not found"
+            )
+
+        # Get the EC breakdown ID from the project
+        ifc_version = project["ifc_versions"].get(version_number)
+        ec_breakdown_id = ifc_version.get("ec_breakdown_id")
+        calculation_status = ifc_version.get("calculation_status", "")
+
+        if calculation_status != "completed":
+            raise HTTPException(
+                status_code=400,
+                detail=f"EC calculation for version {version_number} is not completed. Current status: {calculation_status}",
+            )
+
+        if not ec_breakdown_id:
+            raise HTTPException(
+                status_code=404,
+                detail=f"EC breakdown data not found for version {version_number}.",
+            )
+
+        # Get the EC breakdown data from MongoDB
+        ec_breakdown = await app.mongodb.ec_breakdown.find_one({"_id": ec_breakdown_id})
+
+        if not ec_breakdown:
+            raise HTTPException(status_code=404, detail="EC breakdown data not found")
+
+        # Extract the excel_data
+        excel_data_rows = ec_breakdown.get("excel_data", [])
+
+        if (
+            not excel_data_rows or len(excel_data_rows) <= 1
+        ):  # Check if there's data beyond headers
+            raise HTTPException(
+                status_code=404, detail="No building elements data found"
+            )
+
+        # Get headers and content
+        headers = excel_data_rows[0]
+        rows = excel_data_rows[1:]
+
+        # Get materials data
+        materials_data = await app.mongodb.materials.find().to_list(1000)
+
+        # Create a workbook and sheets
+        wb = openpyxl.Workbook()
+        ws1 = wb.active
+        ws1.title = "Building Elements"
+
+        # Define styles
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(
+            start_color="4472C4", end_color="4472C4", fill_type="solid"
+        )
+        center_align = Alignment(horizontal="center", vertical="center")
+        thin_border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
+
+        # Map excel_data columns to our desired output format
+        building_elements = []
+
+        # Process each row and map to desired format
+        for row in rows:
+            if len(row) < 6:  # Make sure row has enough elements
+                continue
+
+            element_id = row[0]
+            ifc_type = row[1]
+            element_type = row[2]
+            material = row[3]
+            material_ec = row[4] if row[4] != "" else 0
+            element_ec = row[5] if row[5] != "" else 0
+            building_system = row[6] if len(row) > 6 else "Unknown"
+
+            # Find material information from materials_data
+            material_info = None
+            for m in materials_data:
+                if m.get("specified_material") == material:
+                    material_info = m
+                    break
+
+            building_material_family = (
+                material_info.get("material_type") if material_info else ""
+            )
+            building_material_type = material
+
+            building_elements.append(
+                {
+                    "element_id": element_id,
+                    "ifc_type": ifc_type,
+                    "element_type": element_type,
+                    "building_material_family": building_material_family,
+                    "building_material_type": building_material_type,
+                    "material_ec": material_ec,
+                    "element_ec": element_ec,
+                    "building_system": building_system,
+                }
+            )
+
+        # Add headers to building elements sheet
+        element_headers = [
+            "Element ID",
+            "IFC Type",
+            "Element Type",
+            "Material_type",
+            "Building Material Type",
+            "Material EC (kgCO2e)",
+            "Element EC (kgCO2e)",
+            "Building System",
+        ]
+
+        # Apply headers and formatting
+        for col_num, header in enumerate(element_headers, 1):
+            cell = ws1.cell(row=1, column=col_num, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center_align
+            cell.border = thin_border
+            ws1.column_dimensions[chr(64 + col_num)].width = 20  # Set column width
+
+        # Add data rows for building elements
+        for i, element in enumerate(building_elements, 2):
+            ws1.cell(row=i, column=1, value=element["element_id"])
+            ws1.cell(row=i, column=2, value=element["ifc_type"])
+            ws1.cell(row=i, column=3, value=element["element_type"])
+            ws1.cell(row=i, column=4, value=element["building_material_family"])
+            ws1.cell(row=i, column=5, value=element["building_material_type"])
+            ws1.cell(row=i, column=6, value=element["material_ec"])
+            ws1.cell(row=i, column=7, value=element["element_ec"])
+            ws1.cell(row=i, column=8, value=element["building_system"])
+
+        # Create a second sheet for detected materials
+        ws2 = wb.create_sheet(title="Detected Materials")
+        # Add headers with formatting for the materials sheet
+        material_headers = [
+            "Building Material Family",
+            "Building Material Type",
+            "Density (kg/m3)",
+            "Unit",
+            "A1-A3 Embodied Carbon Emission / Unit",
+            "Data Source",
+        ]
+        # Apply headers and formatting
+        for col_num, header in enumerate(material_headers, 1):
+            cell = ws2.cell(row=1, column=col_num, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center_align
+            ws2.column_dimensions[chr(64 + col_num)].width = (
+                25  # Set wider column width
+            )
+
+        # Get unique materials from the building elements
+        unique_materials = {}
+        for element in building_elements:
+            if (
+                element["building_material_family"]
+                and element["building_material_type"]
+            ):
+                material_key = f"{element['building_material_family']}_{element['building_material_type']}"
+                if material_key not in unique_materials:
+                    # Find this material in the materials database
+                    material_data = None
+                    for m in materials_data:
+                        if (
+                            m.get("material_type")
+                            == element["building_material_family"]
+                            and m.get("specified_material")
+                            == element["building_material_type"]
+                        ):
+                            material_data = m
+                            break
+                    if material_data:
+                        unique_materials[material_key] = {
+                            "family": element["building_material_family"],
+                            "type": element["building_material_type"],
+                            "density": material_data.get("density"),
+                            "unit": material_data.get("unit", "kg"),
+                            "embodied_carbon": material_data.get("embodied_carbon"),
+                            "source": material_data.get("database_source", "System"),
+                        }
+
+        # Add material data rows
+        for i, (_, material) in enumerate(unique_materials.items(), 2):
+            ws2.cell(row=i, column=1, value=material["family"])
+            ws2.cell(row=i, column=2, value=material["type"])
+            ws2.cell(row=i, column=3, value=material["density"])
+            ws2.cell(row=i, column=4, value=material["unit"])
+            ws2.cell(row=i, column=5, value=material["embodied_carbon"])
+            ws2.cell(row=i, column=6, value=material["source"])
+
+        # Save to a BytesIO object
+        excel_output = io.BytesIO()
+        wb.save(excel_output)
+        excel_output.seek(0)
+
+        # Return the Excel file as a response
+        return Response(
+            content=excel_output.getvalue(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename=building_elements_{project_id}_v{version_number}.xlsx"
+            },
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error processing building elements: {str(e)}"
+        )
+
+
 @app.get("/projects/{project_id}/{version_id}/calculation_status", response_model=str)
 async def get_calculation_status(
     project_id: str,
@@ -298,9 +541,9 @@ async def get_missing_materials(
         raise HTTPException(status_code=404, detail="EC breakdown data not found")
 
     # Extract missing materials from the EC breakdown data
-    breakdown=ec_breakdown.get("breakdown")
+    breakdown = ec_breakdown.get("breakdown")
     missing_materials = breakdown.get("missing_materials", {})
-         
+
     # Format the response
     # Use a set to store unique specified materials
     unique_materials = set()
@@ -379,7 +622,7 @@ async def get_missing_elements(
         raise HTTPException(status_code=404, detail="EC breakdown data not found")
 
     # Extract missing elements (element_type_skipped) from the EC breakdown data
-    breakdown= ec_breakdown.get("breakdown")
+    breakdown = ec_breakdown.get("breakdown")
     element_type_skipped = breakdown.get("element_type_skipped", [])
 
     # Format the response

@@ -28,6 +28,7 @@ def calculate_beams(beams):
     total_ec = 0
     beam_elements = []
     missing_materials = []
+    excel_data = []
 
     for beam in beams:
         current_quantity = None  # in volume
@@ -202,7 +203,11 @@ def calculate_beams(beams):
         if rebar_set == None:
             concrete_ec = material_ec_perkg * material_density * current_quantity
             materials_breakdown.append(
-                {"material": current_material, "ec": concrete_ec}
+                {
+                    "material": current_material,
+                    "material_mass": current_quantity * material_density,
+                    "ec": concrete_ec,
+                }
             )
             current_ec = concrete_ec
         else:
@@ -212,22 +217,40 @@ def calculate_beams(beams):
             rebar_ec = rebar_vol * 2.510 * 7850
 
             materials_breakdown.append(
-                {"material": current_material, "ec": concrete_ec}
+                {
+                    "material": current_material,
+                    "material_mass": current_quantity,
+                    "ec": concrete_ec,
+                }
             )
-            materials_breakdown.append({"material": "Rebar", "ec": rebar_ec})
+            materials_breakdown.append(
+                {"material": "Rebar", "material_mass": rebar_vol * 7850, "ec": rebar_ec}
+            )
 
             logger.debug(f"EC for {beam.Name}'s rebars is {rebar_ec}")
             current_ec = concrete_ec + rebar_ec
 
         logger.debug(f"EC for {beam.Name} is {current_ec}")
+
         beam_elements.append(
             {"element": "Beam", "ec": current_ec, "materials": materials_breakdown}
         )
-
+        for material_item in materials_breakdown:
+            excel_data.append(
+                [
+                    beam.id(),  # Element ID
+                    beam.is_a(),  # IFC Type
+                    "Beam",  # Element Type
+                    material_item["material"],  # Material
+                    material_item["ec"],  # Material EC
+                    material_item["material_mass"],  # Total material mass
+                    "kg",
+                ]
+            )
         total_ec += current_ec
 
     logger.debug(f"Total EC for beams is {total_ec}")
-    return total_ec, beam_elements, missing_materials
+    return total_ec, beam_elements, missing_materials, excel_data
 
 
 def calculate_columns(columns):
@@ -237,6 +260,7 @@ def calculate_columns(columns):
     materials = []
     column_elements = []
     missing_materials = []
+    excel_data = []
 
     for column in columns:
         current_quantity = None
@@ -392,7 +416,11 @@ def calculate_columns(columns):
         if rebar_vol == None:
             concrete_ec = material_ec_perkg * material_density * current_quantity
             materials_breakdown.append(
-                {"material": current_material, "ec": concrete_ec}
+                {
+                    "material": current_material,
+                    "material_mass": material_density * current_quantity,
+                    "ec": concrete_ec,
+                }
             )
             current_ec = concrete_ec
 
@@ -403,10 +431,16 @@ def calculate_columns(columns):
             rebar_ec = rebar_vol * 2.510 * 7850
 
             materials_breakdown.append(
-                {"material": current_material, "ec": concrete_ec}
+                {
+                    "material": current_material,
+                    "material_mass": material_density * (current_quantity - rebar_vol),
+                    "ec": concrete_ec,
+                }
             )
 
-            materials_breakdown.append({"material": "Rebar", "ec": rebar_ec})
+            materials_breakdown.append(
+                {"material": "Rebar", "material_mass": rebar_vol * 7850, "ec": rebar_ec}
+            )
 
             logger.debug(f"EC for {column.Name}'s rebars is {rebar_ec}")
             current_ec = concrete_ec + rebar_ec
@@ -414,12 +448,24 @@ def calculate_columns(columns):
         column_elements.append(
             {"element": "Column", "ec": current_ec, "materials": materials_breakdown}
         )
+        for material_item in materials_breakdown:
+            excel_data.append(
+                [
+                    column.id(),  # Element ID
+                    column.is_a(),  # IFC Type
+                    "Column",  # Element Type
+                    material_item["material"],  # Material
+                    material_item["ec"],  # Material EC
+                    material_item["material_mass"],  # Total material mass
+                    "kg",
+                ]
+            )
 
         logger.debug(f"EC for {column.Name} is {current_ec}")
         total_ec += current_ec
 
     logger.debug(f"Total EC for columns is {total_ec}")
-    return total_ec, column_elements, missing_materials
+    return total_ec, column_elements, missing_materials, excel_data
 
 
 def calculate_slabs(slabs, to_ignore=[]):
@@ -428,6 +474,7 @@ def calculate_slabs(slabs, to_ignore=[]):
     quantities = {}
     slab_elements = []
     missing_materials = []
+    excel_data = []
 
     for slab in slabs:
         layer_thicknesses = {}
@@ -612,7 +659,15 @@ def calculate_slabs(slabs, to_ignore=[]):
                 layer_ec = ec_per_kg * density * (thickness / 1000) * current_area
 
                 if layer_ec > 0:
-                    slab_materials.append({"material": mat, "ec": layer_ec})
+                    slab_materials.append(
+                        {
+                            "material": mat,
+                            "material_mass": density
+                            * (thickness / 1000)
+                            * current_area,
+                            "ec": layer_ec,
+                        }
+                    )
                     slab_total_ec += layer_ec
 
                 logger.debug(f"EC for material '{mat}' in {slab.Name} is {current_ec}")
@@ -626,6 +681,19 @@ def calculate_slabs(slabs, to_ignore=[]):
                         "materials": slab_materials,
                     }
                 )
+                for material_item in slab_materials:
+                    excel_data.append(
+                        [
+                            slab.id(),  # Element ID
+                            slab.is_a(),  # IFC Type
+                            "Slab",  # Element Type
+                            material_item["material"],  # Material
+                            material_item["ec"],  # Material EC
+                            material_item["material_mass"],  # Material mass
+                            "kg",
+                        ]
+                    )
+
                 continue
 
         if current_material is None:
@@ -687,12 +755,34 @@ def calculate_slabs(slabs, to_ignore=[]):
             material_ec_perkg, material_density = current_material_ec
             current_ec = material_ec_perkg * material_density * current_quantity
 
-            materials_breakdown.append({"material": current_material, "ec": current_ec})
-
-            slab_elements.append(
-                {"element": "Slab", "ec": current_ec, "materials": materials_breakdown}
+            materials_breakdown.append(
+                {
+                    "material": current_material,
+                    "material_mass": material_density * current_quantity,
+                    "ec": current_ec,
+                }
             )
 
+            slab_elements.append(
+                {
+                    "element": "Slab",
+                    "ec": current_ec,
+                    "material_mass": material_density * current_quantity,
+                    "materials": materials_breakdown,
+                }
+            )
+            for material_item in materials_breakdown:
+                excel_data.append(
+                    [
+                        slab.id(),  # Element ID
+                        slab.is_a(),  # IFC Type
+                        "Slab",  # Element Type
+                        material_item["material"],  # Material
+                        material_item["ec"],  # Material EC
+                        material_item["material_mass"],  # Material mass
+                        "kg",
+                    ]
+                )
             logger.debug(f"EC for {slab.Name} is {current_ec}")
             total_ec += current_ec
             continue
@@ -758,8 +848,25 @@ def calculate_slabs(slabs, to_ignore=[]):
             material_ec_perkg, material_density = current_material_ec
             current_ec = material_ec_perkg * material_density * current_quantity
 
-            materials_breakdown.append({"material": current_material, "ec": current_ec})
-
+            materials_breakdown.append(
+                {
+                    "material": current_material,
+                    "material_mass": material_density * current_quantity,
+                    "ec": current_ec,
+                }
+            )
+            for material_item in materials_breakdown:
+                excel_data.append(
+                    [
+                        slab.id(),  # Element ID
+                        slab.is_a(),  # IFC Type
+                        "Slab",  # Element Type
+                        material_item["material"],  # Material
+                        material_item["ec"],  # Material EC
+                        material_item["material_mass"],  # material mass
+                        "kg",
+                    ]
+                )
             # Add this slab as an element
             slab_elements.append(
                 {"element": "Slab", "ec": current_ec, "materials": materials_breakdown}
@@ -776,6 +883,7 @@ def calculate_walls(walls):
     total_ec = 0
     wall_elements = []
     missing_materials = []
+    excel_data = []
 
     for wall in walls:
         current_volume = None
@@ -896,7 +1004,13 @@ def calculate_walls(walls):
                 )
                 layer_ec = ec_per_kg * density * (thickness / 1000) * current_area
 
-                materials_breakdown.append({"material": mat, "ec": layer_ec})
+                materials_breakdown.append(
+                    {
+                        "material": mat,
+                        "material_mass": density * (thickness / 1000) * current_area,
+                        "ec": layer_ec,
+                    }
+                )
                 logger.debug(f"EC for material '{mat}' in {wall.Name} is {layer_ec}")
                 current_ec += layer_ec
 
@@ -905,6 +1019,18 @@ def calculate_walls(walls):
                 {"element": "Wall", "ec": current_ec, "materials": materials_breakdown}
             )
 
+            for material_item in materials_breakdown:
+                excel_data.append(
+                    [
+                        wall.id(),  # Element ID
+                        wall.is_a(),  # IFC Type
+                        "Wall",  # Element Type
+                        material_item["material"],  # Material
+                        material_item["ec"],  # Material EC
+                        material_item["material_mass"],  # material mass
+                        "kg",
+                    ]
+                )
         elif current_material:
             # Single-material wall
             mat_ec_data = MaterialList.get(current_material)
@@ -953,10 +1079,28 @@ def calculate_walls(walls):
             ec_per_kg, density = mat_ec_data
             current_ec = ec_per_kg * density * current_volume
 
-            materials_breakdown.append({"material": current_material, "ec": current_ec})
+            materials_breakdown.append(
+                {
+                    "material": current_material,
+                    "material_mass": density * current_volume,
+                    "ec": current_ec,
+                }
+            )
             wall_elements.append(
                 {"element": "Wall", "ec": current_ec, "materials": materials_breakdown}
             )
+            for material_item in materials_breakdown:
+                excel_data.append(
+                    [
+                        wall.id(),  # Element ID
+                        wall.is_a(),  # IFC Type
+                        "Wall",  # Element Type
+                        material_item["material"],  # Material
+                        material_item["ec"],  # Material EC
+                        material_item["material_mass"],  # Material mass
+                        "kg",
+                    ]
+                )
 
             logger.debug(f"EC for {wall.Name} is {current_ec}")
             total_ec += current_ec
@@ -1006,7 +1150,11 @@ def calculate_walls(walls):
                 current_ec = ec_per_kg * density * current_volume
 
                 materials_breakdown.append(
-                    {"material": current_material, "ec": current_ec}
+                    {
+                        "material": current_material,
+                        "material_mass": density * current_volume,
+                        "ec": current_ec,
+                    }
                 )
 
                 # Add this wall to elements
@@ -1017,6 +1165,18 @@ def calculate_walls(walls):
                         "materials": materials_breakdown,
                     }
                 )
+                for material_item in materials_breakdown:
+                    excel_data.append(
+                        [
+                            wall.id(),  # Element ID
+                            wall.is_a(),  # IFC Type
+                            "Wall",  # Element Type
+                            material_item["material"],  # Material
+                            material_item["ec"],  # Material EC
+                            material_item["material_mass"],  # material mass
+                            "kg",
+                        ]
+                    )
 
                 logger.debug(f"EC for {wall.Name} is {current_ec}")
                 total_ec += current_ec
@@ -1027,7 +1187,7 @@ def calculate_walls(walls):
                 continue
 
     logger.debug(f"Total EC for walls is {total_ec}")
-    return total_ec, wall_elements, missing_materials
+    return total_ec, wall_elements, missing_materials, excel_data
 
 
 def calculate_windows(windows):
@@ -1035,6 +1195,7 @@ def calculate_windows(windows):
     total_ec = 0
     quantities = {}
     window_elements = []
+    excel_data = []
 
     for window in windows:
         current_quantity = None
@@ -1121,16 +1282,34 @@ def calculate_windows(windows):
                 * current_quantity
             )
 
-        materials_breakdown.append({"material": current_material, "ec": current_ec})
+        materials_breakdown.append(
+            {
+                "material": current_material,
+                "material_mass": current_quantity,
+                "ec": current_ec,
+            }
+        )
         window_elements.append(
             {"element": "Window", "ec": current_ec, "materials": materials_breakdown}
         )
 
         logger.debug(f"EC for {window.Name} is {current_ec}")
         total_ec += current_ec
+        for material_item in materials_breakdown:
+            excel_data.append(
+                [
+                    window.id(),  # Element ID
+                    window.is_a(),  # IFC Type
+                    "Window",  # Element Type
+                    material_item["material"],  # Material
+                    material_item["ec"],  # Material EC
+                    material_item["material_mass"],  # Total Element EC
+                    "m2",
+                ]
+            )
 
     logger.debug(f"Total EC for windows is {total_ec}")
-    return total_ec, window_elements, missing_materials
+    return total_ec, window_elements, missing_materials, excel_data
 
 
 def calculate_doors(doors):
@@ -1139,6 +1318,7 @@ def calculate_doors(doors):
     quantities = {}
     door_elements = []
     missing_materials = []
+    excel_data = []
 
     for door in doors:
         current_quantity = None
@@ -1231,16 +1411,35 @@ def calculate_doors(doors):
                 * current_quantity
             )
 
-        materials_breakdown.append({"material": current_material, "ec": current_ec})
+        materials_breakdown.append(
+            {
+                "material": current_material,
+                "material_mass": material_density
+                * standard_thickness
+                * current_quantity,
+                "ec": current_ec,
+            }
+        )
         door_elements.append(
             {"element": "Door", "ec": current_ec, "materials": materials_breakdown}
         )
-
+        for material_item in materials_breakdown:
+            excel_data.append(
+                [
+                    door.id(),  # Element ID
+                    door.is_a(),  # IFC Type
+                    "Door",  # Element Type
+                    material_item["material"],  # Material
+                    material_item["ec"],  # Material EC
+                    material_item["material_mass"],  # Total Element EC
+                    "m2",
+                ]
+            )
         logger.debug(f"EC for {door.Name} is {current_ec}")
         total_ec += current_ec
 
     logger.debug(f"Total EC for doors is {total_ec}")
-    return total_ec, door_elements, missing_materials
+    return total_ec, door_elements, missing_materials, excel_data
 
 
 def calculate_roofs(roofs):
@@ -1248,6 +1447,7 @@ def calculate_roofs(roofs):
     total_ec = 0
     roof_elements = []
     missing_materials = []
+    excel_data = []
 
     for roof in roofs:
         slabs = []
@@ -1423,7 +1623,15 @@ def calculate_roofs(roofs):
                     )
                     layer_ec = ec_per_kg * density * (thickness / 1000) * current_area
 
-                    slab_materials.append({"material": mat, "ec": layer_ec})
+                    slab_materials.append(
+                        {
+                            "material": mat,
+                            "material_mass": density
+                            * (thickness / 1000)
+                            * current_area,
+                            "ec": layer_ec,
+                        }
+                    )
 
                     logger.debug(
                         f"EC for material '{mat}' in {slab.Name} is {current_ec}"
@@ -1469,7 +1677,13 @@ def calculate_roofs(roofs):
                 material_ec_perkg, material_density = current_material_ec
                 current_ec = material_ec_perkg * material_density * current_quantity
 
-                slab_materials.append({"material": current_material, "ec": current_ec})
+                slab_materials.append(
+                    {
+                        "material": current_material,
+                        "material_mass": material_density * current_quantity,
+                        "ec": current_ec,
+                    }
+                )
 
                 logger.debug(f"EC for {slab.Name} is {current_ec}")
                 roof_ec += current_ec
@@ -1536,7 +1750,13 @@ def calculate_roofs(roofs):
                 material_ec_perkg, material_density = current_material_ec
                 current_ec = material_ec_perkg * material_density * current_quantity
 
-                slab_materials.append({"material": current_material, "ec": current_ec})
+                slab_materials.append(
+                    {
+                        "material": current_material,
+                        "material_mass": material_density * current_quantity,
+                        "ec": current_ec,
+                    }
+                )
 
                 logger.debug(f"EC for {slab.Name} is {current_ec}")
                 roof_ec += current_ec
@@ -1546,11 +1766,23 @@ def calculate_roofs(roofs):
         roof_elements.append(
             {"element": "Roof", "ec": roof_ec, "materials": roof_materials}
         )
+        for material_item in roof_materials:
+            excel_data.append(
+                [
+                    roof.id(),  # Element ID
+                    roof.is_a(),  # IFC Type
+                    "Roof",  # Element Type
+                    material_item["material"],  # Material
+                    material_item["ec"],  # Material EC
+                    material_item["material_mass"],  # material mass
+                    "kg",
+                ]
+            )
         logger.debug(f"EC for {roof.Name} is {roof_ec}")
         total_ec += roof_ec
 
     logger.debug(f"Total EC for roofs is {total_ec}")
-    return total_ec, roof_elements, missing_materials
+    return total_ec, roof_elements, missing_materials, excel_data
 
 
 def calculate_stairs(stairs):
@@ -2482,9 +2714,7 @@ def calculate_piles(piles):
             continue
 
         if current_quantity is None:
-            logger.error(
-                f"Failed to get volume for pile {pile.Name}. Skipping."
-            )
+            logger.error(f"Failed to get volume for pile {pile.Name}. Skipping.")
             missing_elements.append(pile.id())
             continue
         material_ec_perkg, material_density = current_material_ec
@@ -2732,11 +2962,9 @@ def calculate_footings(footings):
         if current_material_ec is None:
             logger.error(f"Could not find Material {current_material}")
             missing_elements.append((footing.id(), current_material))
-            
+
         if current_quantity is None:
-            logger.error(
-                f"Failed to get volume for pile {footing.Name}. Skipping."
-            )
+            logger.error(f"Failed to get volume for pile {footing.Name}. Skipping.")
             missing_elements.append(footing.id())
             continue
         material_ec_perkg, material_density = current_material_ec
@@ -2771,7 +2999,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     MaterialList = calculator_utils.refresh_materials_list()
     slabs_to_ignore = []
     all_missing_materials = {}
-
+    all_excel_data = []
     total_ec = columns_ec = beams_ec = slabs_ec = walls_ec = windows_ec = roofs_ec = (
         doors_ec
     ) = stairs_ec = railings_ec = members_ec = plates_ec = piles_ec = footings_ec = 0
@@ -2868,19 +3096,25 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
         superstructure_columns = [c for c in columns if c.id() not in substructure_ids]
         all_missing_materials["IfcColumn"] = []
         if substructure_columns:
-            sub_columns_ec, sub_columns_elements, missing_mats = calculate_columns(
-                substructure_columns
+            sub_columns_ec, sub_columns_elements, missing_mats, columns_excel_data = (
+                calculate_columns(substructure_columns)
             )
+            all_excel_data.extend(columns_excel_data)
             all_missing_materials["IfcColumn"].extend(missing_mats)
             ec_data["ec_breakdown"][0]["elements"].extend(sub_columns_elements)
             ec_data["ec_breakdown"][0]["total_ec"] += sub_columns_ec
             columns_ec += sub_columns_ec
 
         if superstructure_columns:
-            super_columns_ec, super_columns_elements, missing_mats = calculate_columns(
-                superstructure_columns
-            )
+            (
+                super_columns_ec,
+                super_columns_elements,
+                missing_mats,
+                columns_excel_data,
+            ) = calculate_columns(superstructure_columns)
             all_missing_materials["IfcColumn"].extend(missing_mats)
+            all_excel_data.extend(columns_excel_data)
+
             ec_data["ec_breakdown"][1]["elements"].extend(super_columns_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_columns_ec
             columns_ec += super_columns_ec
@@ -2892,24 +3126,26 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
         all_missing_materials["IfcBeam"] = []
 
         if substructure_beams:
-            sub_beams_ec, sub_beams_elements, missing_mats = calculate_beams(
-                substructure_beams
+            sub_beams_ec, sub_beams_elements, missing_mats, beam_excel_data = (
+                calculate_beams(substructure_beams)
             )
             all_missing_materials["IfcBeam"].extend(missing_mats)
+            all_excel_data.extend(beam_excel_data)
             ec_data["ec_breakdown"][0]["elements"].extend(sub_beams_elements)
             ec_data["ec_breakdown"][0]["total_ec"] += sub_beams_ec
             beams_ec += sub_beams_ec
 
         if superstructure_beams:
-            super_beams_ec, super_beams_elements, missing_mats = calculate_beams(
-                superstructure_beams
+            super_beams_ec, super_beams_elements, missing_mats, beam_excel_data = (
+                calculate_beams(superstructure_beams)
             )
             all_missing_materials["IfcBeam"].extend(missing_mats)
+            all_excel_data.extend(beam_excel_data)
+
             ec_data["ec_breakdown"][1]["elements"].extend(super_beams_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_beams_ec
             beams_ec += super_beams_ec
         ec_by_elements["Beam"] = beams_ec
-
 
     # Slabs
     if slabs:
@@ -2920,19 +3156,22 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
         ]
         all_missing_materials["IfcSlab"] = []
         if substructure_slabs:
-            sub_slabs_ec, sub_slabs_elements, missing_mats = calculate_slabs(
-                substructure_slabs
+            sub_slabs_ec, sub_slabs_elements, missing_mats, slab_excel_data = (
+                calculate_slabs(substructure_slabs)
             )
             all_missing_materials["IfcSlab"].extend(missing_mats)
+            all_excel_data.extend(slab_excel_data)
             ec_data["ec_breakdown"][0]["elements"].extend(sub_slabs_elements)
             ec_data["ec_breakdown"][0]["total_ec"] += sub_slabs_ec
             slabs_ec += sub_slabs_ec
 
         if superstructure_slabs:
-            super_slabs_ec, super_slabs_elements, missing_mats = calculate_slabs(
-                superstructure_slabs
+            super_slabs_ec, super_slabs_elements, missing_mats, slab_excel_data = (
+                calculate_slabs(superstructure_slabs)
             )
             all_missing_materials["IfcSlab"].extend(missing_mats)
+            all_excel_data.extend(slab_excel_data)
+
             ec_data["ec_breakdown"][1]["elements"].extend(super_slabs_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_slabs_ec
             slabs_ec += super_slabs_ec
@@ -2944,43 +3183,51 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
         superstructure_walls = [w for w in walls if w.id() not in substructure_ids]
         all_missing_materials["IfcWall"] = []
         if substructure_walls:
-            sub_walls_ec, sub_walls_elements, missing_mats = calculate_walls(
-                substructure_walls
+            sub_walls_ec, sub_walls_elements, missing_mats, wall_excel_data = (
+                calculate_walls(substructure_walls)
             )
             all_missing_materials["IfcWall"].extend(missing_mats)
+            all_excel_data.extend(wall_excel_data)
             ec_data["ec_breakdown"][0]["elements"].extend(sub_walls_elements)
             ec_data["ec_breakdown"][0]["total_ec"] += sub_walls_ec
             walls_ec += sub_walls_ec
 
         if superstructure_walls:
-            super_walls_ec, super_walls_elements, missing_mats = calculate_walls(
-                superstructure_walls
+            super_walls_ec, super_walls_elements, missing_mats, wall_excel_data = (
+                calculate_walls(superstructure_walls)
             )
             all_missing_materials["IfcWall"].extend(missing_mats)
+            all_excel_data.extend(wall_excel_data)
             ec_data["ec_breakdown"][1]["elements"].extend(super_walls_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_walls_ec
             walls_ec += super_walls_ec
         ec_by_elements["Walls"] = walls_ec
-
+    logger.info(all_excel_data)
+    exit()
     # Windows - can be in both, so check against substructure IDs
     if windows:
         substructure_windows = [w for w in windows if w.id() in substructure_ids]
         superstructure_windows = [w for w in windows if w.id() not in substructure_ids]
         all_missing_materials["IfcWindow"] = []
         if substructure_windows:
-            sub_windows_ec, sub_windows_elements, missing_mats = calculate_windows(
-                substructure_windows
+            sub_windows_ec, sub_windows_elements, missing_mats, window_excel_data = (
+                calculate_windows(substructure_windows)
             )
             all_missing_materials["IfcWindow"].extend(missing_mats)
+            all_excel_data.extend(window_excel_data)
             ec_data["ec_breakdown"][0]["elements"].extend(sub_windows_elements)
             ec_data["ec_breakdown"][0]["total_ec"] += sub_windows_ec
             windows_ec += sub_windows_ec
 
         if superstructure_windows:
-            super_windows_ec, super_windows_elements, missing_mats = calculate_windows(
-                superstructure_windows
-            )
+            (
+                super_windows_ec,
+                super_windows_elements,
+                missing_mats,
+                window_excel_data,
+            ) = calculate_windows(superstructure_windows)
             all_missing_materials["IfcWindow"].extend(missing_mats)
+            all_excel_data.extend(window_excel_data)
             ec_data["ec_breakdown"][1]["elements"].extend(super_windows_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_windows_ec
             windows_ec += super_windows_ec
@@ -2994,19 +3241,22 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
         superstructure_doors = [d for d in doors if d.id() not in substructure_ids]
         all_missing_materials["IfcDoor"] = []
         if substructure_doors:
-            sub_doors_ec, sub_doors_elements, missing_mats = calculate_doors(
-                substructure_doors
+            sub_doors_ec, sub_doors_elements, missing_mats, door_excel_data = (
+                calculate_doors(substructure_doors)
             )
             all_missing_materials["IfcDoor"].extend(missing_mats)
+            all_excel_data.extend(door_excel_data)
             ec_data["ec_breakdown"][0]["elements"].extend(sub_doors_elements)
             ec_data["ec_breakdown"][0]["total_ec"] += sub_doors_ec
             doors_ec += sub_doors_ec
 
         if superstructure_doors:
-            super_doors_ec, super_doors_elements, missing_mats = calculate_doors(
-                superstructure_doors
+            super_doors_ec, super_doors_elements, missing_mats, door_excel_data = (
+                calculate_doors(superstructure_doors)
             )
             all_missing_materials["IfcDoor"].extend(missing_mats)
+            all_excel_data.extend(door_excel_data)
+
             ec_data["ec_breakdown"][1]["elements"].extend(super_doors_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_doors_ec
             doors_ec += super_doors_ec
@@ -3014,9 +3264,10 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
 
     # Roofs are always in superstructure
     if roofs:
-        roofs_ec, roofs_elements, missing_mats = calculate_roofs(roofs)
+        roofs_ec, roofs_elements, missing_mats, roof_excel_data = calculate_roofs(roofs)
         all_missing_materials["IfcRoof"] = missing_mats
         ec_data["ec_breakdown"][1]["elements"].extend(roofs_elements)
+        all_excel_data.extend(roof_excel_data)
         ec_data["ec_breakdown"][1]["total_ec"] += roofs_ec
         total_ec += roofs_ec
         ec_by_elements["Roofs"] = roofs_ec
@@ -3121,7 +3372,6 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             plates_ec += super_plates_ec
         ec_by_elements["Plates"] = plates_ec
 
-
     # Piles and footings are always in substructure by definition
     if piles:
         substructure_piles = [p for p in piles if p.id() in substructure_ids]
@@ -3202,7 +3452,9 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
         f"Breakdown by category: Substructure EC: {ec_data['ec_breakdown'][0]['total_ec']}, Superstructure EC: {ec_data['ec_breakdown'][1]['total_ec']}"
     )
     ec_data["missing_materials"] = all_missing_materials
-    logger.info(f"Elements with missing/unknown materials/missing volume: {all_missing_materials}")
+    logger.info(
+        f"Elements with missing/unknown materials/missing volume: {all_missing_materials}"
+    )
     ec_data["element_type_skipped"] = element_type_skipped
     logger.info(f"Elements skippsed: {element_type_skipped}")
     # print(ec_data)
@@ -3217,7 +3469,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     summary["by_element"] = ec_by_elements
 
     if with_breakdown:
-        return total_ec, ec_data, summary
+        return total_ec, ec_data, summary, all_excel_data
     else:
         return total_ec
 
@@ -3299,15 +3551,16 @@ def calculate_gfa(filepath):
 
 if __name__ == "__main__":
     # Run the calculator on the specified IFC file
-    # ifcpath = input("Enter path to IFC file: ")
-    ifcpath = "/Users/jk/Downloads/z. Complex Models/Complex 4.ifc"
+    ifcpath = "/mnt/c/Users/dczqd/Documents/SUTD/Capstone-calc/Complex 4.ifc"
     logger.info(f"Processing file: {ifcpath}")
 
     if not os.path.exists(ifcpath):
         logger.error(f"File not found: {ifcpath}")
         sys.exit(1)
 
-    total_ec, ec_data, summary = calculate_embodied_carbon(ifcpath, with_breakdown=True)
+    total_ec, ec_data, summary, excel_data = calculate_embodied_carbon(
+        ifcpath, with_breakdown=True
+    )
     total_gfa = calculate_gfa(ifcpath)
     print(summary)
 
