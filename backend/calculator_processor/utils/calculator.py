@@ -2,10 +2,6 @@ import time
 
 start_time = time.time()
 
-import time
-
-start_time = time.time()
-
 import ifcopenshell
 from ifcopenshell.util.element import get_psets
 from loguru import logger
@@ -16,8 +12,8 @@ import numpy as np
 import os
 import math
 
-import calculator_utils
-# from . import calculator_utils
+# import calculator_utils
+from . import calculator_utils
 
 MaterialList = calculator_utils.MaterialList
 MaterialsToIgnore = calculator_utils.MaterialsToIgnore
