@@ -2,10 +2,6 @@ import time
 
 start_time = time.time()
 
-import time
-
-start_time = time.time()
-
 import ifcopenshell
 from ifcopenshell.util.element import get_psets
 from loguru import logger
@@ -16,6 +12,7 @@ import numpy as np
 import os
 import math
 
+# import calculator_utils
 from . import calculator_utils
 
 MaterialList = calculator_utils.MaterialList
@@ -196,6 +193,7 @@ def calculate_beams(beams):
 
         if current_quantity is None:
             logger.error(f"No volume found for beam {beam.Name}. Skipping.")
+            missing_materials.append(beam.id())
             continue
 
         material_ec_perkg, material_density = current_material_ec
@@ -386,6 +384,7 @@ def calculate_columns(columns):
 
         if current_quantity is None:
             logger.error(f"No volume found for column {column.Name}. Skipping.")
+            missing_materials.append(column.id())
             continue
 
         material_ec_perkg, material_density = current_material_ec
@@ -502,12 +501,6 @@ def calculate_slabs(slabs, to_ignore=[]):
                                 f"Found material '{layer.Material.Name}', as IfcMaterialConstituent"
                             )
                             material_layers.append(layer.Material.Name)
-                    if material.is_a("IfcMaterial"):
-                        logger.debug(
-                            f"Found material '{material.Name}', as IfcMaterial"
-                        )
-                        material_layers.append(material.Name)
-                        current_material = material.Name
 
                     elif material.is_a("IfcMaterialLayerSetUsage"):
                         for layer in material.ForLayerSet.MaterialLayers:
@@ -918,7 +911,7 @@ def calculate_walls(walls):
 
             if mat_ec_data is None:
 
-                missing_materials.append((wall.id(), mat))
+                missing_materials.append((wall.id(), current_material))
                 if not MATERIAL_REAPLCE:
                     logger.warning(
                         f"Material '{current_material}' not found. Skipping this element)"
@@ -1109,6 +1102,7 @@ def calculate_windows(windows):
 
         if current_quantity is None:
             logger.error(f"No area found for window {window.Name}. Skipping.")
+            missing_materials.append(window.id())
             continue
 
         # Window EC is per area (m²)
@@ -1218,6 +1212,7 @@ def calculate_doors(doors):
 
         if current_quantity is None:
             logger.error(f"No area found for door {door.Name}. Skipping.")
+            missing_materials.append(door.id())
             continue
 
         # Door EC is per area (m²)
@@ -1703,6 +1698,7 @@ def calculate_stairs(stairs):
                         logger.error(
                             f"Failed to calculate volume for stair {stair.Name}. Skipping."
                         )
+                        missing_elements.append(stair.id())
                         continue
 
                 material_ec_perkg, material_density = mat_ec_data
@@ -1850,6 +1846,7 @@ def calculate_stairs(stairs):
                     logger.error(
                         f"Failed to calculate volume for stair {stair.Name}. Skipping."
                     )
+                    missing_elements.append(stair.id())
                     continue
 
             material_ec_perkg, material_density = current_material_ec
@@ -2022,6 +2019,7 @@ def calculate_railings(railings):
                 logger.error(
                     f"Failed to calculate positive volume for railing {railing.Name}. Skipping."
                 )
+                missing_materials.append(railing.id())
                 continue
 
         material_ec_perkg, material_density = current_material_ec
@@ -2177,6 +2175,7 @@ def calculate_members(members):
                 logger.error(
                     f"Failed to calculate positive volume for member {member.Name}. Skipping."
                 )
+                missing_elements.append(member.id())
                 continue
 
         material_ec_perkg, material_density = current_material_ec
@@ -2364,6 +2363,7 @@ def calculate_plates(plates):
                 logger.error(
                     f"Failed to calculate positive volume for plate {plate.Name}. Skipping."
                 )
+                missing_elements.append(plate.id())
                 continue
 
         material_ec_perkg, material_density = current_material_ec
@@ -2477,8 +2477,16 @@ def calculate_piles(piles):
         )
 
         if current_material_ec is None:
+            logger.error(f"Could not find Material {current_material}")
             missing_elements.append((pile.id(), current_material))
+            continue
 
+        if current_quantity is None:
+            logger.error(
+                f"Failed to get volume for pile {pile.Name}. Skipping."
+            )
+            missing_elements.append(pile.id())
+            continue
         material_ec_perkg, material_density = current_material_ec
         # print(current_quantity)
         if rebar == None:
@@ -2722,8 +2730,15 @@ def calculate_footings(footings):
         )
 
         if current_material_ec is None:
+            logger.error(f"Could not find Material {current_material}")
             missing_elements.append((footing.id(), current_material))
-
+            
+        if current_quantity is None:
+            logger.error(
+                f"Failed to get volume for pile {footing.Name}. Skipping."
+            )
+            missing_elements.append(footing.id())
+            continue
         material_ec_perkg, material_density = current_material_ec
 
         if rebar_set == None:
@@ -2869,7 +2884,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["elements"].extend(super_columns_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_columns_ec
             columns_ec += super_columns_ec
-        ec_by_elements["Column"] = columns_ec
+        ec_by_elements["Columns"] = columns_ec
     # Beams
     if beams:
         substructure_beams = [b for b in beams if b.id() in substructure_ids]
@@ -2894,6 +2909,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["total_ec"] += super_beams_ec
             beams_ec += super_beams_ec
         ec_by_elements["Beam"] = beams_ec
+
 
     # Slabs
     if slabs:
@@ -3103,6 +3119,8 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["elements"].extend(super_plates_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_plates_ec
             plates_ec += super_plates_ec
+        ec_by_elements["Plates"] = plates_ec
+
 
     # Piles and footings are always in substructure by definition
     if piles:
@@ -3127,6 +3145,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["elements"].extend(super_piles_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_piles_ec
             piles_ec += super_piles_ec
+        ec_by_elements["Piles"] = piles_ec
 
     if footings:
         substructure_footings = [f for f in footings if f.id() in substructure_ids]
@@ -3150,6 +3169,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["elements"].extend(super_footings_elements)
             ec_data["ec_breakdown"][1]["total_ec"] += super_footings_ec
             footings_ec += super_footings_ec
+        ec_by_elements["Footings"] = footings_ec
 
     # Calculate total EC by summing individual categories
     total_ec = (
@@ -3182,6 +3202,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
         f"Breakdown by category: Substructure EC: {ec_data['ec_breakdown'][0]['total_ec']}, Superstructure EC: {ec_data['ec_breakdown'][1]['total_ec']}"
     )
     ec_data["missing_materials"] = all_missing_materials
+    logger.info(f"Elements with missing/unknown materials/missing volume: {all_missing_materials}")
     ec_data["element_type_skipped"] = element_type_skipped
     logger.info(f"Elements skippsed: {element_type_skipped}")
     # print(ec_data)
@@ -3207,6 +3228,8 @@ def categorize_material(material_name):
         return "Concrete"
     elif "window" in material_name:
         return "Window"
+    elif "door" in material_name:
+        return "Door"
     elif "wood" in material_name:
         return "Wood"
     elif "aluminium" in material_name:
@@ -3217,6 +3240,8 @@ def categorize_material(material_name):
         return "Plywood"
     elif "steel" in material_name:
         return "Steel"
+    elif "Reinforcement" in material_name:
+        return "Rebar"
     else:
         return "Others"
 
