@@ -11,3 +11,4 @@ pytest
 pandas
 loguru
 ifcopenshell
+openpyxl

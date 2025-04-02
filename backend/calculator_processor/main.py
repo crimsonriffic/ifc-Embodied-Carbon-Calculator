@@ -7,10 +7,8 @@ from datetime import datetime
 from bson.objectid import ObjectId
 import logging
 import time
-import signal
-import sys
 import threading
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI, HTTPException
 import uvicorn
 import dotenv
 
@@ -32,7 +30,6 @@ MONGODB_URI = os.environ.get("MONGODB_URL")
 QUEUE_URL = os.environ.get("SQS_QUEUE_URL")
 
 # Import calculation modules
-from utils import ec_breakdown
 from utils import calculator
 
 # Global variables for worker state
@@ -131,7 +128,7 @@ def process_ifc_file(s3_path):
         if result is None:
             logger.error("calculator.calculate_embodied_carbon returned None")
             raise ValueError("Failed to calculate embodied carbon")
-        total_ec, ec_data, summary_data = result
+        total_ec, ec_data, summary_data, excel_data = result
 
         # summary_data = transform_ec_data(ec_data)
         # if summary_data is None:
@@ -147,7 +144,7 @@ def process_ifc_file(s3_path):
         # Clean up
         os.unlink(temp_path)
 
-        return total_ec, total_gfa, summary_data, ec_data
+        return total_ec, total_gfa, summary_data, ec_data, excel_data
 
     except Exception as e:
         logger.error(f"Error processing IFC file: {str(e)}")
@@ -155,7 +152,7 @@ def process_ifc_file(s3_path):
 
 
 def update_mongodb(
-    db, project_id, ifc_version, total_ec, total_gfa, summary_data, ec_data
+    db, project_id, ifc_version, total_ec, total_gfa, summary_data, ec_data, excel_data
 ):
     """Update MongoDB with EC calculation results"""
     try:
@@ -166,6 +163,7 @@ def update_mongodb(
             "total_ec": total_ec,
             "summary": summary_data,
             "breakdown": ec_data,
+            "excel_data": excel_data,
             "timestamp": datetime.now(),
         }
 
@@ -230,11 +228,20 @@ def process_sqs_message(db, message):
         )
 
         # Calculate EC
-        total_ec, total_gfa, summary_data, ec_data = process_ifc_file(s3_path)
+        total_ec, total_gfa, summary_data, ec_data, excel_data = process_ifc_file(
+            s3_path
+        )
 
         # Update MongoDB with results
         ec_breakdown_id = update_mongodb(
-            db, project_id, ifc_version, total_ec, total_gfa, summary_data, ec_data
+            db,
+            project_id,
+            ifc_version,
+            total_ec,
+            total_gfa,
+            summary_data,
+            ec_data,
+            excel_data,
         )
 
         logger.info(
