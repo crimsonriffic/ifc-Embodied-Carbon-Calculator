@@ -3202,8 +3202,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
             ec_data["ec_breakdown"][1]["total_ec"] += super_walls_ec
             walls_ec += super_walls_ec
         ec_by_elements["Walls"] = walls_ec
-    logger.info(all_excel_data)
-    exit()
+
     # Windows - can be in both, so check against substructure IDs
     if windows:
         substructure_windows = [w for w in windows if w.id() in substructure_ids]
