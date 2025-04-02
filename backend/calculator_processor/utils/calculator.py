@@ -1270,6 +1270,7 @@ def calculate_windows(windows):
         if isinstance(current_material_ec, (int, float)):
             material_ec_per_m2 = current_material_ec
             current_ec = material_ec_per_m2 * current_quantity
+            material_quantity = current_quantity
         else:
             # Handle case where material EC is in standard [EC per kg, density] format
             material_ec_perkg, material_density = current_material_ec
@@ -1281,11 +1282,12 @@ def calculate_windows(windows):
                 * standard_thickness
                 * current_quantity
             )
+            material_quantity = material_density * standard_thickness * current_quantity
 
         materials_breakdown.append(
             {
                 "material": current_material,
-                "material_mass": current_quantity,
+                "material_mass": material_quantity,
                 "ec": current_ec,
             }
         )
@@ -1399,6 +1401,7 @@ def calculate_doors(doors):
         if isinstance(current_material_ec, (int, float)):
             material_ec_per_m2 = current_material_ec
             current_ec = material_ec_per_m2 * current_quantity
+            material_quantity = current_quantity
         else:
             # Handle case where material EC is in standard [EC per kg, density] format
             material_ec_perkg, material_density = current_material_ec
@@ -1410,13 +1413,12 @@ def calculate_doors(doors):
                 * standard_thickness
                 * current_quantity
             )
+            material_quantity = material_density * standard_thickness * current_quantity
 
         materials_breakdown.append(
             {
                 "material": current_material,
-                "material_mass": material_density
-                * standard_thickness
-                * current_quantity,
+                "material_mass": material_quantity,
                 "ec": current_ec,
             }
         )
