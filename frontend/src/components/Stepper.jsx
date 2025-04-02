@@ -9,7 +9,7 @@ function Stepper({ currentStep }) {
     { id: 1, name: "Project Information" },
     { id: 2, name: "Upload Information" },
     { id: 3, name: "Upload Review" },
-    { id: 4, name: "Upload Confirmation" },
+    { id: 4, name: "Error Handling" },
     { id: 5, name: "View Results" },
   ];
   const handleClick = (stepId) => {
@@ -31,7 +31,7 @@ function Stepper({ currentStep }) {
         });
         break;
       case 4:
-        navigate(`/uploadConfirm/${encodeURIComponent(projectName)}`, {
+        navigate(`/errorHandling/${encodeURIComponent(projectName)}`, {
           state: { projectId },
         });
         break;

@@ -9,10 +9,14 @@ import os
 import pandas as pd
 from pprint import pprint
 from pymongo import MongoClient
-
+import boto3
 import dotenv
+import io
+
 dotenv.load_dotenv()
 
+S3_BUCKET_NAME = "material-matching"
+AWS_REGION = os.environ.get("AWS_REGION", "ap-southeast-2")
 
 MONGODB_URI = os.environ.get("MONGODB_URL")
 DB_NAME = os.environ.get("DB_NAME")
@@ -21,6 +25,100 @@ DB_NAME = os.environ.get("DB_NAME")
 MaterialList = {}
 _db_client = None
 _db = None
+
+# File paths for material database
+MATERIAL_CSV_S3_PATH = f"material_database.csv"
+EMBEDDING_NPY_S3_PATH = f"material_embeddings.npy"
+
+
+def get_s3_client():
+    """Get or create S3 client connection"""
+    try:
+        s3_client = boto3.client("s3", region_name=AWS_REGION)
+        return s3_client
+    except Exception as e:
+        logger.error(f"Error creating S3 client: {e}")
+        return None
+
+
+def upload_to_s3(local_data, s3_path, content_type=None):
+    """Upload data to S3 bucket
+
+    Args:
+        local_data: Data to upload (file path or bytes-like object)
+        s3_path: Path in S3 bucket
+        content_type: MIME type of the file (optional)
+    """
+    s3_client = get_s3_client()
+    if not s3_client:
+        return False
+
+    try:
+        extra_args = {}
+        if content_type:
+            extra_args["ContentType"] = content_type
+
+        # If local_data is a string, assume it's a file path
+        if isinstance(local_data, str) and os.path.exists(local_data):
+            s3_client.upload_file(
+                local_data, S3_BUCKET_NAME, s3_path, ExtraArgs=extra_args
+            )
+        else:
+            # Assume it's a bytes-like object
+            s3_client.upload_fileobj(
+                local_data, S3_BUCKET_NAME, s3_path, ExtraArgs=extra_args
+            )
+
+        logger.info(f"Successfully uploaded to s3://{S3_BUCKET_NAME}/{s3_path}")
+        return True
+    except Exception as e:
+        logger.error(f"Error uploading to S3: {e}")
+        return False
+
+
+def download_from_s3(s3_path, local_path=None):
+    """Download data from S3 bucket
+
+    Args:
+        s3_path: Path in S3 bucket
+        local_path: Local path to save the file (optional)
+
+    Returns:
+        If local_path is provided: True/False for success/failure
+        If local_path is not provided: BytesIO object with the data or None
+    """
+    s3_client = get_s3_client()
+    if not s3_client:
+        return None if local_path is None else False
+
+    try:
+        if local_path:
+            s3_client.download_file(S3_BUCKET_NAME, s3_path, local_path)
+            logger.info(f"Downloaded s3://{S3_BUCKET_NAME}/{s3_path} to {local_path}")
+            return True
+        else:
+            # Download to memory
+            buffer = io.BytesIO()
+            s3_client.download_fileobj(S3_BUCKET_NAME, s3_path, buffer)
+            buffer.seek(0)  # Reset the buffer position to the beginning
+            logger.info(f"Downloaded s3://{S3_BUCKET_NAME}/{s3_path} to memory")
+            return buffer
+    except Exception as e:
+        logger.error(f"Error downloading from S3: {e}")
+        return None if local_path is None else False
+
+
+def check_s3_file_exists(s3_path):
+    """Check if a file exists in S3 bucket"""
+    s3_client = get_s3_client()
+    if not s3_client:
+        return False
+
+    try:
+        s3_client.head_object(Bucket=S3_BUCKET_NAME, Key=s3_path)
+        return True
+    except Exception:
+        return False
 
 
 def get_db():
@@ -71,14 +169,11 @@ def refresh_materials_list():
 
 MaterialsToIgnore = ["Travertine", "<Unnamed>"]
 
-# File paths for material database
-MATERIAL_CSV_PATH = "material_database.csv"
-EMBEDDING_NPY_PATH = "material_embeddings.npy"
 
 # Globals for material embedding functionality
 embedding_model = None
-material_embeddings = None  # Will be loaded from NPY file
-material_data_df = None  # Will be loaded from CSV file
+material_embeddings = None
+material_data_df = None
 
 
 def get_element_area(element):
@@ -153,17 +248,20 @@ def initialize_embedding_model():
 
 
 def load_material_database():
-    """Load material database from CSV and NPY files if they exist"""
+    """Load material database from S3 if they exist"""
     global material_embeddings, material_data_df
 
     # Initialize with empty dataframe if nothing exists yet
     if material_data_df is None:
         try:
-            if os.path.exists(MATERIAL_CSV_PATH):
-                material_data_df = pd.read_csv(MATERIAL_CSV_PATH)
-                logger.info(
-                    f"Loaded {len(material_data_df)} material records from {MATERIAL_CSV_PATH}"
-                )
+            if check_s3_file_exists(MATERIAL_CSV_S3_PATH):
+                # Download CSV from S3 to memory
+                csv_buffer = download_from_s3(MATERIAL_CSV_S3_PATH)
+                if csv_buffer:
+                    material_data_df = pd.read_csv(csv_buffer)
+                    logger.info(
+                        f"Loaded {len(material_data_df)} material records from S3: {MATERIAL_CSV_S3_PATH}"
+                    )
             else:
                 # Create an empty DataFrame with the required columns
                 material_data_df = pd.DataFrame(
@@ -179,9 +277,11 @@ def load_material_database():
                         "density",
                     ]
                 )
-                logger.info(f"Created new material database (no existing file found)")
+                logger.info(
+                    f"Created new material database (no existing file found in S3)"
+                )
         except Exception as e:
-            logger.error(f"Error loading material database CSV: {e}")
+            logger.error(f"Error loading material database CSV from S3: {e}")
             material_data_df = pd.DataFrame(
                 columns=[
                     "material_name",
@@ -199,16 +299,19 @@ def load_material_database():
     # Load embeddings if available
     if material_embeddings is None:
         try:
-            if os.path.exists(EMBEDDING_NPY_PATH):
-                material_embeddings = np.load(EMBEDDING_NPY_PATH)
-                logger.info(
-                    f"Loaded {len(material_embeddings)} material embeddings from {EMBEDDING_NPY_PATH}"
-                )
+            if check_s3_file_exists(EMBEDDING_NPY_S3_PATH):
+                # Download NPY from S3 to memory
+                npy_buffer = download_from_s3(EMBEDDING_NPY_S3_PATH)
+                if npy_buffer:
+                    material_embeddings = np.load(npy_buffer)
+                    logger.info(
+                        f"Loaded {len(material_embeddings)} material embeddings from S3: {EMBEDDING_NPY_S3_PATH}"
+                    )
             else:
                 material_embeddings = np.array([])
-                logger.info(f"No existing embeddings found")
+                logger.info(f"No existing embeddings found in S3")
         except Exception as e:
-            logger.error(f"Error loading embeddings: {e}")
+            logger.error(f"Error loading embeddings from S3: {e}")
             material_embeddings = np.array([])
 
     return material_data_df is not None and material_embeddings is not None
@@ -387,7 +490,7 @@ def extract_element_materials(element, element_data=None):
 
 
 def add_material_to_database(element_data):
-    """Add a material to our CSV and embedding database"""
+    """Add a material to our S3-based CSV and embedding database"""
     global embedding_model, material_embeddings, material_data_df
 
     # Load the database if not loaded
@@ -453,12 +556,31 @@ def add_material_to_database(element_data):
         else:
             material_embeddings = np.vstack([material_embeddings, embedding])
 
-        # Save to files
-        material_data_df.to_csv(MATERIAL_CSV_PATH, index=False)
-        np.save(EMBEDDING_NPY_PATH, material_embeddings)
+        # Save to S3
+        # Save DataFrame to CSV in memory
+        csv_buffer = io.BytesIO()
+        material_data_df.to_csv(csv_buffer, index=False, encoding="utf-8")
+        csv_buffer.seek(0)
 
-        logger.info(f"Added material '{material_name}' to database")
-        return True
+        # Save numpy array to NPY in memory
+        npy_buffer = io.BytesIO()
+        np.save(npy_buffer, material_embeddings)
+        npy_buffer.seek(0)
+
+        # Upload both to S3
+        csv_upload_success = upload_to_s3(csv_buffer, MATERIAL_CSV_S3_PATH, "text/csv")
+        npy_upload_success = upload_to_s3(
+            npy_buffer, EMBEDDING_NPY_S3_PATH, "application/octet-stream"
+        )
+
+        if csv_upload_success and npy_upload_success:
+            logger.info(
+                f"Added material '{material_name}' to database and uploaded to S3"
+            )
+            return True
+        else:
+            logger.error(f"Failed to upload material '{material_name}' to S3")
+            return False
     except Exception as e:
         logger.error(f"Error adding material '{material_name}' to database: {e}")
         return False

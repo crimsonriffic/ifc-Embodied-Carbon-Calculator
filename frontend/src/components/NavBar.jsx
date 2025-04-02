@@ -53,7 +53,7 @@ function Navbar() {
                 isActive ? "underline font-semibold" : "hover:underline"
               }
             >
-              Material Info
+              Product Material Database
             </NavLink>
           </nav>
         </div>

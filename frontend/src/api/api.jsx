@@ -209,3 +209,13 @@ export const getElementsDetected = async (ifc_path = null) => {
   console.log("Requesting URL:", url);
   return api.get(url);
 };
+
+export const getMissingElements = async (projectId) => {
+  console.log("getMissingElements API is called with, ", projectId);
+  return api.get(`/projects/${projectId}/missing_elements`);
+};
+
+export const getMissingMaterials = async (projectId) => {
+  console.log("getMissingMaterials API is called with, ", projectId);
+  return api.get(`/projects/${projectId}/missing_materials`);
+};

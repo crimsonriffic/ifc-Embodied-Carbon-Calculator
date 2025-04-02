@@ -83,8 +83,7 @@ function HomePage() {
       </button>
       {projects.length === 0 ? (
         <p className="text-gray-500">
-          No Active projects available for this user, try{" "}
-          <strong>user123</strong>
+          loading... make sure you are logged in as <strong>user123</strong>
         </p>
       ) : (
         /** Active projects table  */
