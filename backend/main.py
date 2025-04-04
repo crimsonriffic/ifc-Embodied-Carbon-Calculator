@@ -19,6 +19,7 @@ import ifcopenshell
 from collections import Counter
 import io
 import openpyxl
+from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from fastapi.responses import Response
 
@@ -323,8 +324,8 @@ async def get_building_elements(
             element_type = row[2]
             material = row[3]
             material_ec = row[4] if row[4] != "" else 0
-            element_ec = row[5] if row[5] != "" else 0
-            building_system = row[6] if len(row) > 6 else "Unknown"
+            material_quantity = row[5] if row[5] != "" else 0
+            units = row[6]
 
             # Find material information from materials_data
             material_info = None
@@ -334,9 +335,9 @@ async def get_building_elements(
                     break
 
             building_material_family = (
-                material_info.get("material_type") if material_info else ""
+                material_info.get("material_type") if material_info else "Rebar"
             )
-            building_material_type = material
+            material = material
 
             building_elements.append(
                 {
@@ -344,10 +345,10 @@ async def get_building_elements(
                     "ifc_type": ifc_type,
                     "element_type": element_type,
                     "building_material_family": building_material_family,
-                    "building_material_type": building_material_type,
+                    "material": material,
                     "material_ec": material_ec,
-                    "element_ec": element_ec,
-                    "building_system": building_system,
+                    "material_quantity": material_quantity,
+                    "units": units,
                 }
             )
 
@@ -356,11 +357,11 @@ async def get_building_elements(
             "Element ID",
             "IFC Type",
             "Element Type",
-            "Material_type",
-            "Building Material Type",
+            "Material Type",
+            "Material",
             "Material EC (kgCO2e)",
-            "Element EC (kgCO2e)",
-            "Building System",
+            "Material Quantity",
+            "Units",
         ]
 
         # Apply headers and formatting
@@ -378,20 +379,20 @@ async def get_building_elements(
             ws1.cell(row=i, column=2, value=element["ifc_type"])
             ws1.cell(row=i, column=3, value=element["element_type"])
             ws1.cell(row=i, column=4, value=element["building_material_family"])
-            ws1.cell(row=i, column=5, value=element["building_material_type"])
+            ws1.cell(row=i, column=5, value=element["material"])
             ws1.cell(row=i, column=6, value=element["material_ec"])
-            ws1.cell(row=i, column=7, value=element["element_ec"])
-            ws1.cell(row=i, column=8, value=element["building_system"])
+            ws1.cell(row=i, column=7, value=element["material_quantity"])
+            ws1.cell(row=i, column=8, value=element["units"])
 
         # Create a second sheet for detected materials
         ws2 = wb.create_sheet(title="Detected Materials")
         # Add headers with formatting for the materials sheet
         material_headers = [
-            "Building Material Family",
-            "Building Material Type",
+            "Material Type",
+            "Material",
             "Density (kg/m3)",
-            "Unit",
             "A1-A3 Embodied Carbon Emission / Unit",
+            "Unit",
             "Data Source",
         ]
         # Apply headers and formatting
@@ -407,11 +408,10 @@ async def get_building_elements(
         # Get unique materials from the building elements
         unique_materials = {}
         for element in building_elements:
-            if (
-                element["building_material_family"]
-                and element["building_material_type"]
-            ):
-                material_key = f"{element['building_material_family']}_{element['building_material_type']}"
+            if element["building_material_family"] and element["material"]:
+                material_key = (
+                    f"{element['building_material_family']}_{element['material']}"
+                )
                 if material_key not in unique_materials:
                     # Find this material in the materials database
                     material_data = None
@@ -419,16 +419,19 @@ async def get_building_elements(
                         if (
                             m.get("material_type")
                             == element["building_material_family"]
-                            and m.get("specified_material")
-                            == element["building_material_type"]
+                            and m.get("specified_material") == element["material"]
                         ):
                             material_data = m
                             break
                     if material_data:
                         unique_materials[material_key] = {
                             "family": element["building_material_family"],
-                            "type": element["building_material_type"],
-                            "density": material_data.get("density"),
+                            "type": element["material"],
+                            "density": (
+                                material_data.get("density")
+                                if material_data.get("density") != None
+                                else "-"
+                            ),
                             "unit": material_data.get("unit", "kg"),
                             "embodied_carbon": material_data.get("embodied_carbon"),
                             "source": material_data.get("database_source", "System"),
@@ -439,10 +442,24 @@ async def get_building_elements(
             ws2.cell(row=i, column=1, value=material["family"])
             ws2.cell(row=i, column=2, value=material["type"])
             ws2.cell(row=i, column=3, value=material["density"])
-            ws2.cell(row=i, column=4, value=material["unit"])
-            ws2.cell(row=i, column=5, value=material["embodied_carbon"])
+            ws2.cell(row=i, column=4, value=material["embodied_carbon"])
+            ws2.cell(row=i, column=5, value=material["unit"])
             ws2.cell(row=i, column=6, value=material["source"])
 
+        for col_num, header in enumerate(element_headers, 1):
+            col_letter = get_column_letter(col_num)
+            # Set width based on header length plus padding
+            width = len(header) + 5  # Add padding
+            width = max(10, min(width, 50))  # Min 10, max 50
+            ws1.column_dimensions[col_letter].width = width
+
+        # For Materials sheet
+        for col_num, header in enumerate(material_headers, 1):
+            col_letter = get_column_letter(col_num)
+            # Set width based on header length plus padding
+            width = len(header) + 5  # Add padding
+            width = max(10, min(width, 50))  # Min 10, max 50
+            ws2.column_dimensions[col_letter].width = width
         # Save to a BytesIO object
         excel_output = io.BytesIO()
         wb.save(excel_output)
