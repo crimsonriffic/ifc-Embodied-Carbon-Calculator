@@ -12,8 +12,8 @@ import numpy as np
 import os
 import math
 
-# import calculator_utils
-from . import calculator_utils
+import calculator_utils
+# from . import calculator_utils
 
 MaterialList = calculator_utils.MaterialList
 MaterialsToIgnore = calculator_utils.MaterialsToIgnore
@@ -351,7 +351,11 @@ def calculate_columns(columns):
         )
 
         if current_material_ec is None and current_material not in MaterialsToIgnore:
+            logger.error(
+                f"Material '{current_material}' not found and no similar material found. Skipping this column."
+            )
             missing_materials.append((column.id(), current_material))
+            continue
 
         # Store this material in our database for future reference
         if current_material and current_material not in MaterialsToIgnore:
@@ -723,7 +727,11 @@ def calculate_slabs(slabs, to_ignore=[]):
                 MaterialList.get(current_material, None) if current_material else None
             )
             if current_material_ec is None:
+                logger.warning(
+                    f"Material '{current_material}' not found and no similar material found. Skipping this slab."
+                )
                 missing_materials.append((slab.id(), current_material))
+                continue
 
             if current_material_ec is None and MATERIAL_REAPLCE:
                 # Try material matching
@@ -747,11 +755,11 @@ def calculate_slabs(slabs, to_ignore=[]):
                     current_material = similar_material
                     current_material_ec = MaterialList.get(current_material)
                 else:
-                    logger.warning(
+                    logger.error(
                         f"Material '{current_material}' not found and no similar material found. Skipping this slab."
                     )
                     continue
-
+                
             material_ec_perkg, material_density = current_material_ec
             current_ec = material_ec_perkg * material_density * current_quantity
 
@@ -3552,7 +3560,8 @@ def calculate_gfa(filepath):
 
 if __name__ == "__main__":
     # Run the calculator on the specified IFC file
-    ifcpath = "/mnt/c/Users/dczqd/Documents/SUTD/Capstone-calc/Complex 4.ifc"
+    # ifcpath = input("Enter path to IFC file: ")
+    ifcpath = "/Users/jk/Downloads/z. Complex Models/Complex 4 Error Test.ifc"
     logger.info(f"Processing file: {ifcpath}")
 
     if not os.path.exists(ifcpath):
