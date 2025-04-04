@@ -64,12 +64,12 @@ function ErrorHandlingPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        //const missingElementsResponse = await getMissingElements(projectId);
+        const missingElementsResponse = await getMissingElements(projectId);
         const missingMaterialsResponse = await getMissingMaterials(projectId);
-        // console.log(
-        //   "Missing elements response: ",
-        //   missingElementsResponse.data
-        // );
+        console.log(
+          "Missing elements response: ",
+          missingElementsResponse.data
+        );
         console.log(
           "Missing materials response: ",
           missingMaterialsResponse.data

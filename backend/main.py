@@ -217,6 +217,30 @@ def temp_ifc_file(content: bytes):
     finally:
         os.unlink(tmp.name)
 
+@app.get("/projects/{project_id}/{version_id}/calculation_status", response_model=str)
+async def get_calculation_status(
+    project_id: str,
+    version_id: str,
+):
+    project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Find the specific version using version_id
+    version = None
+    if "ifc_versions" in project and str(version_id) in project["ifc_versions"]:
+        version = project["ifc_versions"][str(version_id)]
+    
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+    
+    # Return calculation_status or raise error if not found
+    if "calculation_status" in version:
+        return version["calculation_status"]
+    else:
+        raise HTTPException(status_code=404, detail="Calculation status not found for this version")
+
 
 @app.get("/projects/{project_id}/missing_materials", response_model=Dict[str, Any])
 async def get_missing_materials(

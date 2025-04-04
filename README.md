@@ -1,4 +1,4 @@
-# IFC Embodied Carbon Calculator
+# CarbonSmart
 
 ## Introduction
 
