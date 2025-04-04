@@ -12,8 +12,8 @@ import numpy as np
 import os
 import math
 
-import calculator_utils
-# from . import calculator_utils
+# import calculator_utils
+from . import calculator_utils
 
 MaterialList = calculator_utils.MaterialList
 MaterialsToIgnore = calculator_utils.MaterialsToIgnore
@@ -1800,6 +1800,7 @@ def calculate_stairs(stairs):
     total_ec = 0
     stair_elements = []
     missing_elements = []
+    excel_data = []
 
     for stair in stairs:
         current_quantity = None
@@ -1948,7 +1949,7 @@ def calculate_stairs(stairs):
                 volume_per_material = current_quantity / len(material_layers)
                 layer_ec = material_ec_perkg * material_density * volume_per_material
 
-                material_breakdown.append({"material": mat, "ec": layer_ec})
+                material_breakdown.append({"material": mat, "material_mass": material_density * volume_per_material, "ec": layer_ec})
 
                 logger.debug(f"EC for material '{mat}' in {stair.Name} is {layer_ec}")
                 stair_total_ec += layer_ec
@@ -1961,6 +1962,18 @@ def calculate_stairs(stairs):
                 }
             )
             total_ec += stair_total_ec
+            for material_item in material_breakdown:
+                excel_data.append(
+                    [
+                        stair.id(),  # Element ID
+                        stair.is_a(),  # IFC Type
+                        "Stair",  # Element Type
+                        material_item["material"],  # Material
+                        material_item["ec"],  # Material EC
+                        material_item["material_mass"],  # Total Element EC
+                        "kg",
+                    ]
+                )
 
         elif current_material:
             # Single-material stair
@@ -2010,10 +2023,22 @@ def calculate_stairs(stairs):
             material_ec_perkg, material_density = current_material_ec
             current_ec = material_ec_perkg * material_density * current_quantity
 
-            material_breakdown.append({"material": current_material, "ec": current_ec})
+            material_breakdown.append({"material": mat, "material_mass": material_density * current_quantity, "ec": layer_ec})
             stair_elements.append(
                 {"element": "Stair", "ec": current_ec, "materials": material_breakdown}
             )
+            for material_item in material_breakdown:
+                excel_data.append(
+                    [
+                        stair.id(),  # Element ID
+                        stair.is_a(),  # IFC Type
+                        "Stair",  # Element Type
+                        material_item["material"],  # Material
+                        material_item["ec"],  # Material EC
+                        material_item["material_mass"],  # Total Element EC
+                        "kg",
+                    ]
+                )
             logger.debug(f"EC for {stair.Name} is {current_ec}")
             total_ec += current_ec
 
@@ -2094,16 +2119,29 @@ def calculate_stairs(stairs):
             material_ec_perkg, material_density = current_material_ec
             current_ec = material_ec_perkg * material_density * current_quantity
 
-            material_breakdown.append({"material": current_material, "ec": current_ec})
+            material_breakdown.append({"material": mat, "material_mass": material_density * current_quantity, "ec": layer_ec})
             stair_elements.append(
                 {"element": "Stair", "ec": current_ec, "materials": material_breakdown}
             )
+            
+            for material_item in material_breakdown:
+                excel_data.append(
+                    [
+                        stair.id(),  # Element ID
+                        stair.is_a(),  # IFC Type
+                        "Stair",  # Element Type
+                        material_item["material"],  # Material
+                        material_item["ec"],  # Material EC
+                        material_item["material_mass"],  # Total Element EC
+                        "kg",
+                    ]
+                )
 
             logger.debug(f"EC for {stair.Name} is {current_ec}")
             total_ec += current_ec
 
     logger.debug(f"Total EC for stairs is {total_ec}")
-    return total_ec, stair_elements, missing_elements
+    return total_ec, stair_elements, missing_elements, excel_data
 
 
 def calculate_railings(railings):
@@ -3287,24 +3325,26 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
         superstructure_stairs = [s for s in stairs if s.id() not in substructure_ids]
         all_missing_materials["IfcStairFlight"] = []
         if substructure_stairs:
-            sub_stairs_ec, sub_stairs_elements, missing_mats = calculate_stairs(
+            sub_stairs_ec, sub_stairs_elements, missing_mats, stair_excel_data = calculate_stairs(
                 substructure_stairs
             )
             all_missing_materials["IfcStairFlight"].extend(missing_mats)
             ec_data["ec_breakdown"][0]["elements"].extend(sub_stairs_elements)
+            all_excel_data.extend(stair_excel_data)
             ec_data["ec_breakdown"][0]["total_ec"] += sub_stairs_ec
             stairs_ec += sub_stairs_ec
 
         if superstructure_stairs:
-            super_stairs_ec, super_stairs_elements, missing_mats = calculate_stairs(
+            super_stairs_ec, super_stairs_elements, missing_mats, stair_excel_data = calculate_stairs(
                 superstructure_stairs
             )
             all_missing_materials["IfcStairFlight"].extend(missing_mats)
             ec_data["ec_breakdown"][1]["elements"].extend(super_stairs_elements)
+            all_excel_data.extend(stair_excel_data)
             ec_data["ec_breakdown"][1]["total_ec"] += super_stairs_ec
             stairs_ec += super_stairs_ec
         ec_by_elements["Stairs"] = stairs_ec
-
+        
     # Railings
     if railings:
         substructure_railings = [r for r in railings if r.id() in substructure_ids]
