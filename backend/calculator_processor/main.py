@@ -51,7 +51,6 @@ def extract_s3_info(s3_path):
     key = "/".join(path.split("/")[1:])
     return bucket, key
 
-
 def connect_to_mongodb():
     """Connect to MongoDB and return database client"""
     if not MONGODB_URI:

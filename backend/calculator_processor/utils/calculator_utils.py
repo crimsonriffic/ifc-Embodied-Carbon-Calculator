@@ -520,6 +520,8 @@ def add_material_to_database(element_data):
         # Generate embedding
         embedding = embedding_model.encode([description])[0]
 
+        if material_name == "Undefined":
+            return False
         # Create a record for the CSV
         record = {
             "material_name": material_name,
@@ -586,7 +588,7 @@ def add_material_to_database(element_data):
         return False
 
 
-def find_similar_material(element_data, min_similarity=0.7):
+def find_similar_material(element_data, min_similarity=0.5):
     """Find the most similar material in our database with element_type filtering"""
     global embedding_model, material_embeddings, material_data_df
 
@@ -659,6 +661,54 @@ def find_similar_material(element_data, min_similarity=0.7):
     except Exception as e:
         logger.error(f"Error finding similar material: {e}")
         return None, 0
+
+
+def remove_matched_from_missing(all_missing_materials, all_matched_materials):
+    """
+    Remove elements that were successfully matched from the missing materials dictionary.
+
+    Parameters:
+    all_missing_materials (defaultdict): Dictionary of missing materials by element type
+    all_matched_materials (defaultdict): Dictionary of matched materials by element type
+
+    Returns:
+    defaultdict: Updated missing materials dictionary with matched elements removed
+    """
+    from collections import defaultdict
+
+    # Create a copy of the missing materials dictionary to avoid modifying during iteration
+    cleaned_missing_materials = defaultdict(list)
+
+    # For each element type in the missing materials dictionary
+    for element_type, missing_elements in all_missing_materials.items():
+        # Skip if empty list
+        if not missing_elements:
+            cleaned_missing_materials[element_type] = []
+            continue
+
+        # Get the list of matched element IDs for this element type
+        matched_ids = []
+        if element_type in all_matched_materials:
+            matched_ids = [
+                item["element_id"] for item in all_matched_materials[element_type]
+            ]
+
+        # For each missing element, check if its ID is in the matched list
+        for missing_element in missing_elements:
+            # Handle both tuple format (id, reason) and dictionary format
+            if isinstance(missing_element, tuple):
+                element_id = missing_element[0]
+                if element_id not in matched_ids:
+                    cleaned_missing_materials[element_type].append(missing_element)
+            elif isinstance(missing_element, dict) and "element_id" in missing_element:
+                element_id = missing_element["element_id"]
+                if element_id not in matched_ids:
+                    cleaned_missing_materials[element_type].append(missing_element)
+            else:
+                # If format doesn't match expected, keep it
+                cleaned_missing_materials[element_type].append(missing_element)
+
+    return cleaned_missing_materials
 
 
 def initialize_material_database(ifc_file=None):
