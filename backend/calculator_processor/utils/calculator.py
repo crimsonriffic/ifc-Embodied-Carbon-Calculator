@@ -12,13 +12,13 @@ import numpy as np
 import os
 import math
 
-import calculator_utils
-
-logger.remove()
 
 # Add a new handler that only shows INFO level and above
+logger.remove()
 logger.add(sys.stderr, level="INFO")
-# from . import calculator_utils
+
+# import calculator_utils
+from . import calculator_utils
 
 MaterialList = calculator_utils.MaterialList
 MaterialsToIgnore = calculator_utils.MaterialsToIgnore
