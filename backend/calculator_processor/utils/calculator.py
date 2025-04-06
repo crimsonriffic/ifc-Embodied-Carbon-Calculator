@@ -3492,7 +3492,7 @@ from collections import defaultdict
 
 
 def calculate_embodied_carbon(
-    filepath, enable_ai_material_matcher, with_breakdown=False
+    filepath, enable_ai_material_matcher=False, with_breakdown=False
 ):
 
     global MATERIAL_REAPLCE
