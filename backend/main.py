@@ -225,6 +225,154 @@ def temp_ifc_file(content: bytes):
         os.unlink(tmp.name)
 
 
+@app.post("/projects/{project_id}/materials", response_model=Material)
+async def upload_material_and_queue(
+    project_id: str,
+    material: MaterialCreate,
+    user_id: str = Query(..., description="ID of the user adding the material"),
+    version: Optional[str] = Query(
+        None,
+        description="Project version to update. If not provided, uses current version",
+    ),
+):
+    """
+    Add a new material to the database and queue a recalculation of the project's EC values.
+
+    Parameters:
+    - project_id: The ID of the project to update
+    - material: The material data to add
+    - user_id: ID of the user adding the material
+    - version: Optional version number. If not provided, uses current version
+
+    Returns:
+    - The newly created material
+    """
+    # Find the project
+    project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
+    if not project:
+        raise HTTPException(
+            status_code=404, detail=f"Project with ID {project_id} not found"
+        )
+
+    # Determine which version to use
+    version_number = version if version else str(project.get("current_version"))
+    if version_number not in project["ifc_versions"]:
+        raise HTTPException(
+            status_code=404, detail=f"Version {version_number} not found"
+        )
+
+    # Check if a material with the same type and specification already exists
+    existing_material = await app.mongodb.materials.find_one(
+        {
+            "material_type": material.material_type,
+            "specified_material": material.specified_material,
+        }
+    )
+
+    if existing_material:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Material '{material.specified_material}' of type '{material.material_type}' already exists",
+        )
+
+    # Create new material document
+    new_material = Material(
+        material_type=material.material_type,
+        specified_material=material.specified_material,
+        density=material.density,
+        embodied_carbon=material.embodied_carbon,
+        unit=material.unit,
+        database_source=material.database_source,
+        created_by=user_id,
+        created_at=datetime.now(),
+    )
+
+    # Insert into database
+    result = await app.mongodb.materials.insert_one(
+        new_material.dict(by_alias=True, exclude={"id"})
+    )
+
+    # Retrieve created material
+    created_material = await app.mongodb.materials.find_one({"_id": result.inserted_id})
+
+    # Get the S3 path for the current version
+    ifc_data = project["ifc_versions"].get(version_number, {})
+    s3_path = ifc_data.get("file_path", "")
+
+    if not s3_path:
+        raise HTTPException(
+            status_code=400, detail=f"No IFC file found for version {version_number}"
+        )
+
+    # Create a message for the SQS queue to trigger recalculation
+    message = {
+        "project_id": project_id,
+        "ifc_version": version_number,
+        "s3_path": s3_path,
+        "user_id": user_id,
+        "trigger": "material_added",
+        "material_id": str(result.inserted_id),
+        "timestamp": datetime.now().isoformat(),
+    }
+
+    # Send message to SQS queue
+    try:
+        sqs_client = boto3.client(
+            "sqs",
+            aws_access_key_id=AWS_ACCESS_KEY,
+            aws_secret_access_key=AWS_SECRET_KEY,
+            region_name=AWS_REGION,
+        )
+        queue_url = os.environ.get("SQS_QUEUE_URL")
+
+        response = sqs_client.send_message(
+            QueueUrl=queue_url,
+            MessageBody=json.dumps(message),
+            MessageGroupId=project_id,  # Group messages by project ID
+            MessageDeduplicationId=f"{project_id}-{version_number}-material-{result.inserted_id}",  # Ensure idempotency
+        )
+
+        # Update project status to indicate recalculation is queued
+        await app.mongodb.projects.update_one(
+            {"_id": ObjectId(project_id)},
+            {
+                "$set": {
+                    f"ifc_versions.{version_number}.calculation_status": "queued",
+                    "last_edited_date": datetime.now(),
+                    "last_edited_user": user_id,
+                },
+                "$push": {
+                    "edit_history": {
+                        "timestamp": datetime.now(),
+                        "user": user_id,
+                        "action": "material_added",
+                        "description": f"Added material '{material.specified_material}' and queued recalculation for version {version_number}",
+                    }
+                },
+            },
+        )
+
+    except Exception as e:
+        # Even if queue fails, we've already added the material, so log the error but don't fail completely
+        print(f"Error queuing recalculation: {str(e)}")
+        # Add error note to project history
+        await app.mongodb.projects.update_one(
+            {"_id": ObjectId(project_id)},
+            {
+                "$push": {
+                    "edit_history": {
+                        "timestamp": datetime.now(),
+                        "user": user_id,
+                        "action": "error",
+                        "description": f"Failed to queue recalculation after adding material: {str(e)}",
+                    }
+                },
+            },
+        )
+
+    return created_material
+
+
 @app.get("/projects/{project_id}/get_building_elements")
 async def get_building_elements(
     project_id: str,
@@ -569,6 +717,16 @@ async def get_missing_materials(
         print("Get missing materials: ", ifc_type, materials)
         for id, material_data in materials:
             # Check if the material is already in the set
+            if material_data == "Undefined":
+                result.append(
+                    {
+                        "IfcType": ifc_type,
+                        "ElementId": id,
+                        "SpecifiedMaterial": material_data,
+                        "ErrorType": "Material Undefined",
+                    }
+                )
+                continue
             if material_data not in unique_materials:
                 unique_materials.add(material_data)
                 result.append(
@@ -1072,7 +1230,6 @@ async def get_breakdown(project_id: str, version: str = None):
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # TODO: Change this to version number that is specified in the api rather than the current version
     version_number = version if version else str(project.get("current_version"))
     if version_number not in project["ifc_versions"]:
         raise HTTPException(status_code=400, detail="Version not found")
