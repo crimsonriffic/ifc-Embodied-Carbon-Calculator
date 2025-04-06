@@ -25,7 +25,7 @@ MaterialsToIgnore = calculator_utils.MaterialsToIgnore
 material_embeddings = calculator_utils.material_embeddings
 material_data_df = calculator_utils.material_data_df
 
-MATERIAL_REAPLCE = True
+MATERIAL_REAPLCE = False
 
 
 def calculate_beams(beams):
@@ -3491,8 +3491,15 @@ def calculate_footings(footings):
 from collections import defaultdict
 
 
-def calculate_embodied_carbon(filepath, with_breakdown=False):
+def calculate_embodied_carbon(
+    filepath, enable_ai_material_matcher, with_breakdown=False
+):
+
+    global MATERIAL_REAPLCE
     global MaterialList
+
+    MATERIAL_REAPLCE = enable_ai_material_matcher
+
     MaterialList = calculator_utils.refresh_materials_list()
     slabs_to_ignore = []
     all_missing_materials = defaultdict(list)
@@ -4101,7 +4108,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     ec_data["missing_materials"] = all_missing_materials
 
     all_missing_materials = calculator_utils.remove_matched_from_missing(
-        all_missing_materials=all_matched_materials,
+        all_missing_materials=all_missing_materials,
         all_matched_materials=all_matched_materials,
     )
     print("CLEANED THE MISSING MATERIALS")
@@ -4122,7 +4129,7 @@ def calculate_embodied_carbon(filepath, with_breakdown=False):
     summary["by_element"] = ec_by_elements
 
     if with_breakdown:
-        return total_ec, ec_data, summary, all_excel_data
+        return total_ec, ec_data, summary, all_excel_data, all_matched_materials
     else:
         return total_ec
 
@@ -4211,8 +4218,10 @@ if __name__ == "__main__":
         logger.error(f"File not found: {ifcpath}")
         sys.exit(1)
 
-    total_ec, ec_data, summary, excel_data = calculate_embodied_carbon(
-        ifcpath, with_breakdown=True
+    total_ec, ec_data, summary, excel_data, all_matched_materials = (
+        calculate_embodied_carbon(
+            ifcpath, enable_ai_material_matcher=True, with_breakdown=True
+        )
     )
     total_gfa = calculate_gfa(ifcpath)
     print(summary)

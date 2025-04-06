@@ -1116,6 +1116,9 @@ async def upload_ifc(
     user_id: str = Query(..., description="ID of the user uploading the file"),
     comments: str = Form(""),  # Default to empty string if not provided
     status: str = Form(""),
+    enable_ai_material_matcher: bool = Form(
+        False, description="Enable AI material matching"
+    ),
 ):
     if not file.filename.lower().endswith(".ifc"):
         raise HTTPException(
@@ -1161,6 +1164,7 @@ async def upload_ifc(
             "project_id": project_id,
             "ifc_version": new_version,
             "s3_path": f"s3://{S3_BUCKET}/{s3_path}",
+            "enable_ai_material_matcher": enable_ai_material_matcher,
             "user_id": user_id,
             "timestamp": datetime.now().isoformat(),
         }
