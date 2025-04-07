@@ -5,6 +5,7 @@ import { useEffect, useState, version } from "react";
 import { getProjectHistory, getProjectBreakdown } from "../api/api";
 
 import SankeyChart from "../components/SankeyChart";
+import Sankey2 from "../components/Sankey2";
 
 function UploadOverview({ projectId, projectName, projectHistory }) {
   const [loading, setLoading] = useState(true); // Loading state
@@ -163,8 +164,8 @@ function UploadOverview({ projectId, projectName, projectHistory }) {
         {/** Card 2 - Sankey chart  */}
         <SankeyChart
           data={sankeyData}
-          width={700}
-          height={350}
+          width={900}
+          height={700}
           totalEc={Number(totalEc)}
         />
       </div>
