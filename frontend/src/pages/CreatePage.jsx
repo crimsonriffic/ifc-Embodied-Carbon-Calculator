@@ -72,12 +72,19 @@ function CreatePage() {
     if (!typology) {
       return;
     } else {
+      console.log("Available benchmark keys:", Object.keys(benchmarks));
+      console.log("Typology is:", typology);
       if (typology.startsWith("Non-Residential")) {
+        console.log("Non residential benchmark setting with, ", {
+          "Non-Residential (Generic)": benchmarks["Non-Residential (Generic)"],
+          [typology]: benchmarks[typology],
+        });
         setBenchmark({
           "Non-Residential (Generic)": benchmarks["Non-Residential (Generic)"],
           [typology]: benchmarks[typology],
         });
       } else {
+        console.log("Residential benchmark setting");
         setBenchmark({ [typology]: benchmarks[typology] || {} });
       }
     }
@@ -149,17 +156,17 @@ function CreatePage() {
                 className="w-full max-w-xs p-2 border border-gray-200 shadow-md"
               >
                 <option value="Residential">Residential</option>
-                <option value="Non-residential Generic">
-                  Non-residential (Generic)
+                <option value="Non-Residential (Generic)">
+                  Non-Residential (Generic)
                 </option>
-                <option value="Non-residential Office">
-                  Non-residential (Office)
+                <option value="Non-Residential (Office)">
+                  Non-Residential (Office)
                 </option>
-                <option value="Non-residential Education">
-                  Non-residential (Education)
+                <option value="Non-Residential (Education)">
+                  Non-Residential (Education)
                 </option>
-                <option value="Non-residential Retail">
-                  Non-residential (Retail)
+                <option value="Non-Residential (Retail)">
+                  Non-Residential (Retail)
                 </option>
                 <option value="Industrial">Industrial</option>
               </select>
