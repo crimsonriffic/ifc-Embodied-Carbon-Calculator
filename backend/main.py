@@ -119,7 +119,7 @@ class Project(BaseModel):
     last_edited_user: str
     user_job_role: str
     current_version: int
-    benchmark: Dict[str, Dict[str, int]]
+    benchmark: Dict[str, int]
     access_control: Dict[str, UserPermissions]
     edit_history: List[EditHistory]
     ifc_versions: Dict[str, IFCVersion]
@@ -167,7 +167,7 @@ class ProjectBasicInfo(BaseModel):
     client_name: str
     typology: str
     status: str
-    benchmark: Dict[str, Dict[str, float]]  # Allow nested dictionaries
+    benchmark: Dict[str, int]
     latest_version: str
     gfa: float
     file_path: str
@@ -1274,54 +1274,11 @@ async def get_project_info(project_id: str):
     file_path = ifc_data.get("file_path", "")
     print("Project data:", project)
     print("Benchmark data:", project.get("benchmark", "No benchmark field found."))
-    # Extract benchmark values
-    benchmark_values = {}
 
-    # Check if the project is Residential
-    if "Residential" in project.get("benchmark", {}):
-        print("Processing Residential benchmarks...")
-        residential_benchmarks = project.get("benchmark", {}).get("Residential", {})
-        print(f"Residential data found: {residential_benchmarks}")
-        
-        benchmark_values["Residential"] = {
-            "Green Mark": residential_benchmarks.get("Green Mark", 0),
-            "LETI 2030 Design Target": residential_benchmarks.get("LETI 2030 Design Target", 0),
-        }
-        print(f"Residential benchmark values added: {benchmark_values['Residential']}")
-
-    # Otherwise, assume it's Non-Residential
-    else:
-        print("Processing Non-Residential benchmarks...")
-        all_benchmarks = project.get("benchmark", {})
-        print(f"All benchmark data: {all_benchmarks}")
-
-        # Dynamically retrieve all Non-Residential benchmarks
-        non_residential_keys = [
-            key for key in all_benchmarks.keys() if key.startswith("Non-Residential")
-        ]
-        print(f"Non-Residential keys identified: {non_residential_keys}")
-
-        for key in non_residential_keys:
-            print(f"Processing typology: {key}")
-            typology_benchmarks = all_benchmarks.get(key, {})
-            print(f"Data for {key}: {typology_benchmarks}")
-
-            # Get each available value, even if one is missing
-            green_mark = typology_benchmarks.get("Green Mark", 0)
-            leti_target = typology_benchmarks.get("LETI 2030 Design Target", 0)
-            print(f"  Green Mark: {green_mark}, LETI 2030 Design Target: {leti_target}")
-
-            # Add the benchmarks for this Non-Residential typology
-            benchmark_values[key] = {}
-            if green_mark:
-                benchmark_values[key]["Green Mark"] = green_mark
-            if leti_target:
-                benchmark_values[key]["LETI 2030 Design Target"] = leti_target
-
-            print(f"  Benchmark values for {key}: {benchmark_values[key]}")
-
-    # Final output
-    print("Final benchmark values:", benchmark_values)
+    # Extract benchmark values directly from the flat dictionary
+    benchmark_values = project.get("benchmark", {})
+    print("Flat benchmark data extracted:", benchmark_values)
+    
 
     return ProjectBasicInfo(
         _id=project["_id"],

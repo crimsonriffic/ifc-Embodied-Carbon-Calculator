@@ -12,7 +12,7 @@ function CreatePage() {
   const [client, setClient] = useState("");
   const [typology, setTypology] = useState("Residential");
   const [status, setStatus] = useState("");
-  const [benchmark, setBenchmark] = useState({});
+  const [benchmark, setBenchmark] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false); // Loading state
@@ -71,22 +71,28 @@ function CreatePage() {
   useEffect(() => {
     if (!typology) {
       return;
+    }
+
+    console.log("Available benchmark keys:", Object.keys(benchmarks));
+    console.log("Typology is:", typology);
+
+    if (typology.startsWith("Non-Residential")) {
+      console.log("Merging Non-Residential benchmarks:", {
+        generic: benchmarks["Non-Residential (Generic)"],
+        specific: benchmarks[typology],
+        merged: {
+          ...benchmarks["Non-Residential (Generic)"],
+          ...benchmarks[typology],
+        },
+      });
+      setBenchmark({
+        ...benchmarks["Non-Residential (Generic)"],
+        ...benchmarks[typology],
+      });
     } else {
-      console.log("Available benchmark keys:", Object.keys(benchmarks));
-      console.log("Typology is:", typology);
-      if (typology.startsWith("Non-Residential")) {
-        console.log("Non residential benchmark setting with, ", {
-          "Non-Residential (Generic)": benchmarks["Non-Residential (Generic)"],
-          [typology]: benchmarks[typology],
-        });
-        setBenchmark({
-          "Non-Residential (Generic)": benchmarks["Non-Residential (Generic)"],
-          [typology]: benchmarks[typology],
-        });
-      } else {
-        console.log("Residential benchmark setting");
-        setBenchmark({ [typology]: benchmarks[typology] || {} });
-      }
+      console.log("Residential benchmark setting");
+      console.log("Final benchmark being set:", benchmarks[typology]);
+      setBenchmark(benchmarks[typology]);
     }
   }, [typology]);
   return (
