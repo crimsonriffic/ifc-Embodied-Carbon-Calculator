@@ -16,6 +16,12 @@ import json
 from contextlib import contextmanager
 import tempfile
 import ifcopenshell
+from collections import Counter
+import io
+import openpyxl
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from fastapi.responses import Response
 
 dotenv.load_dotenv()
 
@@ -146,7 +152,6 @@ class ECBreakdown(BaseModel):
     ec_breakdown: List[Category]
 
 
-
 class ProjectBreakdown(BaseModel):
     project_id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     gfa: float
@@ -163,9 +168,10 @@ class ProjectBasicInfo(BaseModel):
     typology: str
     status: str
     benchmark: Dict[str, float]  # This will handle the key-value pairs
-    latest_version:str
-    gfa:float
-    file_path:str
+    latest_version: str
+    gfa: float
+    file_path: str
+
 
 class VersionHistory(BaseModel):
     version: str
@@ -174,7 +180,7 @@ class VersionHistory(BaseModel):
     comments: str
     status: str
     total_ec: float
-    gfa:float
+    gfa: float
 
 
 class ProjectHistoryResponse(BaseModel):
@@ -191,6 +197,7 @@ class Material(BaseModel):
     database_source: Literal["Custom", "System"]
     created_by: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.now)
+    count: int = 0
 
     class Config:
         populate_by_name = True
@@ -217,29 +224,435 @@ def temp_ifc_file(content: bytes):
     finally:
         os.unlink(tmp.name)
 
+
+@app.post("/projects/{project_id}/materials", response_model=Material)
+async def upload_material_and_queue(
+    project_id: str,
+    material: MaterialCreate,
+    user_id: str = Query(..., description="ID of the user adding the material"),
+    version: Optional[str] = Query(
+        None,
+        description="Project version to update. If not provided, uses current version",
+    ),
+):
+    """
+    Add a new material to the database and queue a recalculation of the project's EC values.
+
+    Parameters:
+    - project_id: The ID of the project to update
+    - material: The material data to add
+    - user_id: ID of the user adding the material
+    - version: Optional version number. If not provided, uses current version
+
+    Returns:
+    - The newly created material
+    """
+    # Find the project
+    project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
+    if not project:
+        raise HTTPException(
+            status_code=404, detail=f"Project with ID {project_id} not found"
+        )
+
+    # Determine which version to use
+    version_number = version if version else str(project.get("current_version"))
+    if version_number not in project["ifc_versions"]:
+        raise HTTPException(
+            status_code=404, detail=f"Version {version_number} not found"
+        )
+
+    # Check if a material with the same type and specification already exists
+    existing_material = await app.mongodb.materials.find_one(
+        {
+            "material_type": material.material_type,
+            "specified_material": material.specified_material,
+        }
+    )
+
+    if existing_material:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Material '{material.specified_material}' of type '{material.material_type}' already exists",
+        )
+
+    # Create new material document
+    new_material = Material(
+        material_type=material.material_type,
+        specified_material=material.specified_material,
+        density=material.density,
+        embodied_carbon=material.embodied_carbon,
+        unit=material.unit,
+        database_source=material.database_source,
+        created_by=user_id,
+        created_at=datetime.now(),
+    )
+
+    # Insert into database
+    result = await app.mongodb.materials.insert_one(
+        new_material.dict(by_alias=True, exclude={"id"})
+    )
+
+    # Retrieve created material
+    created_material = await app.mongodb.materials.find_one({"_id": result.inserted_id})
+
+    # Get the S3 path for the current version
+    ifc_data = project["ifc_versions"].get(version_number, {})
+    s3_path = ifc_data.get("file_path", "")
+
+    if not s3_path:
+        raise HTTPException(
+            status_code=400, detail=f"No IFC file found for version {version_number}"
+        )
+
+    # Create a message for the SQS queue to trigger recalculation
+    message = {
+        "project_id": project_id,
+        "ifc_version": version_number,
+        "s3_path": s3_path,
+        "user_id": user_id,
+        "trigger": "material_added",
+        "material_id": str(result.inserted_id),
+        "timestamp": datetime.now().isoformat(),
+    }
+
+    # Send message to SQS queue
+    try:
+        sqs_client = boto3.client(
+            "sqs",
+            aws_access_key_id=AWS_ACCESS_KEY,
+            aws_secret_access_key=AWS_SECRET_KEY,
+            region_name=AWS_REGION,
+        )
+        queue_url = os.environ.get("SQS_QUEUE_URL")
+
+        response = sqs_client.send_message(
+            QueueUrl=queue_url,
+            MessageBody=json.dumps(message),
+            MessageGroupId=project_id,  # Group messages by project ID
+            MessageDeduplicationId=f"{project_id}-{version_number}-material-{result.inserted_id}",  # Ensure idempotency
+        )
+
+        # Update project status to indicate recalculation is queued
+        await app.mongodb.projects.update_one(
+            {"_id": ObjectId(project_id)},
+            {
+                "$set": {
+                    f"ifc_versions.{version_number}.calculation_status": "queued",
+                    "last_edited_date": datetime.now(),
+                    "last_edited_user": user_id,
+                },
+                "$push": {
+                    "edit_history": {
+                        "timestamp": datetime.now(),
+                        "user": user_id,
+                        "action": "material_added",
+                        "description": f"Added material '{material.specified_material}' and queued recalculation for version {version_number}",
+                    }
+                },
+            },
+        )
+
+    except Exception as e:
+        # Even if queue fails, we've already added the material, so log the error but don't fail completely
+        print(f"Error queuing recalculation: {str(e)}")
+        # Add error note to project history
+        await app.mongodb.projects.update_one(
+            {"_id": ObjectId(project_id)},
+            {
+                "$push": {
+                    "edit_history": {
+                        "timestamp": datetime.now(),
+                        "user": user_id,
+                        "action": "error",
+                        "description": f"Failed to queue recalculation after adding material: {str(e)}",
+                    }
+                },
+            },
+        )
+
+    return created_material
+
+
+@app.get("/projects/{project_id}/get_building_elements")
+async def get_building_elements(
+    project_id: str,
+    version: Optional[str] = Query(
+        None,
+        description="IFC version to analyze. If not provided, uses current version",
+    ),
+):
+    """
+    Retrieve building elements with their material information and return as Excel file.
+    """
+    try:
+
+        # Find the project
+        project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
+
+        if not project:
+            raise HTTPException(
+                status_code=404, detail=f"Project with ID {project_id} not found"
+            )
+
+        # Determine which version to use
+        version_number = version if version else str(project.get("current_version"))
+        if version_number not in project["ifc_versions"]:
+            raise HTTPException(
+                status_code=404, detail=f"Version {version_number} not found"
+            )
+
+        # Get the EC breakdown ID from the project
+        ifc_version = project["ifc_versions"].get(version_number)
+        ec_breakdown_id = ifc_version.get("ec_breakdown_id")
+        calculation_status = ifc_version.get("calculation_status", "")
+
+        if calculation_status != "completed":
+            raise HTTPException(
+                status_code=400,
+                detail=f"EC calculation for version {version_number} is not completed. Current status: {calculation_status}",
+            )
+
+        if not ec_breakdown_id:
+            raise HTTPException(
+                status_code=404,
+                detail=f"EC breakdown data not found for version {version_number}.",
+            )
+
+        # Get the EC breakdown data from MongoDB
+        ec_breakdown = await app.mongodb.ec_breakdown.find_one({"_id": ec_breakdown_id})
+
+        if not ec_breakdown:
+            raise HTTPException(status_code=404, detail="EC breakdown data not found")
+
+        # Extract the excel_data
+        excel_data_rows = ec_breakdown.get("excel_data", [])
+
+        if (
+            not excel_data_rows or len(excel_data_rows) <= 1
+        ):  # Check if there's data beyond headers
+            raise HTTPException(
+                status_code=404, detail="No building elements data found"
+            )
+
+        # Get headers and content
+        headers = excel_data_rows[0]
+        rows = excel_data_rows[1:]
+
+        # Get materials data
+        materials_data = await app.mongodb.materials.find().to_list(1000)
+
+        # Create a workbook and sheets
+        wb = openpyxl.Workbook()
+        ws1 = wb.active
+        ws1.title = "Building Elements"
+
+        # Define styles
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(
+            start_color="4472C4", end_color="4472C4", fill_type="solid"
+        )
+        center_align = Alignment(horizontal="center", vertical="center")
+        thin_border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
+
+        # Map excel_data columns to our desired output format
+        building_elements = []
+
+        # Process each row and map to desired format
+        for row in rows:
+            if len(row) < 6:  # Make sure row has enough elements
+                continue
+
+            element_id = row[0]
+            ifc_type = row[1]
+            element_type = row[2]
+            material = row[3]
+            material_ec = row[4] if row[4] != "" else 0
+            material_quantity = row[5] if row[5] != "" else 0
+            units = row[6]
+
+            # Find material information from materials_data
+            material_info = None
+            for m in materials_data:
+                if m.get("specified_material") == material:
+                    material_info = m
+                    break
+
+            building_material_family = (
+                material_info.get("material_type") if material_info else "Rebar"
+            )
+            material = material
+
+            building_elements.append(
+                {
+                    "element_id": element_id,
+                    "ifc_type": ifc_type,
+                    "element_type": element_type,
+                    "building_material_family": building_material_family,
+                    "material": material,
+                    "material_ec": material_ec,
+                    "material_quantity": material_quantity,
+                    "units": units,
+                }
+            )
+
+        # Add headers to building elements sheet
+        element_headers = [
+            "Element ID",
+            "IFC Type",
+            "Element Type",
+            "Material Type",
+            "Material",
+            "Material EC (kgCO2e)",
+            "Material Quantity",
+            "Units",
+        ]
+
+        # Apply headers and formatting
+        for col_num, header in enumerate(element_headers, 1):
+            cell = ws1.cell(row=1, column=col_num, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center_align
+            cell.border = thin_border
+            ws1.column_dimensions[chr(64 + col_num)].width = 20  # Set column width
+
+        # Add data rows for building elements
+        for i, element in enumerate(building_elements, 2):
+            ws1.cell(row=i, column=1, value=element["element_id"])
+            ws1.cell(row=i, column=2, value=element["ifc_type"])
+            ws1.cell(row=i, column=3, value=element["element_type"])
+            ws1.cell(row=i, column=4, value=element["building_material_family"])
+            ws1.cell(row=i, column=5, value=element["material"])
+            ws1.cell(row=i, column=6, value=element["material_ec"])
+            ws1.cell(row=i, column=7, value=element["material_quantity"])
+            ws1.cell(row=i, column=8, value=element["units"])
+
+        # Create a second sheet for detected materials
+        ws2 = wb.create_sheet(title="Detected Materials")
+        # Add headers with formatting for the materials sheet
+        material_headers = [
+            "Material Type",
+            "Material",
+            "Density (kg/m3)",
+            "A1-A3 Embodied Carbon Emission / Unit",
+            "Unit",
+            "Data Source",
+        ]
+        # Apply headers and formatting
+        for col_num, header in enumerate(material_headers, 1):
+            cell = ws2.cell(row=1, column=col_num, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center_align
+            ws2.column_dimensions[chr(64 + col_num)].width = (
+                25  # Set wider column width
+            )
+
+        # Get unique materials from the building elements
+        unique_materials = {}
+        for element in building_elements:
+            if element["building_material_family"] and element["material"]:
+                material_key = (
+                    f"{element['building_material_family']}_{element['material']}"
+                )
+                if material_key not in unique_materials:
+                    # Find this material in the materials database
+                    material_data = None
+                    for m in materials_data:
+                        if (
+                            m.get("material_type")
+                            == element["building_material_family"]
+                            and m.get("specified_material") == element["material"]
+                        ):
+                            material_data = m
+                            break
+                    if material_data:
+                        unique_materials[material_key] = {
+                            "family": element["building_material_family"],
+                            "type": element["material"],
+                            "density": (
+                                material_data.get("density")
+                                if material_data.get("density") != None
+                                else "-"
+                            ),
+                            "unit": material_data.get("unit", "kg"),
+                            "embodied_carbon": material_data.get("embodied_carbon"),
+                            "source": material_data.get("database_source", "System"),
+                        }
+
+        # Add material data rows
+        for i, (_, material) in enumerate(unique_materials.items(), 2):
+            ws2.cell(row=i, column=1, value=material["family"])
+            ws2.cell(row=i, column=2, value=material["type"])
+            ws2.cell(row=i, column=3, value=material["density"])
+            ws2.cell(row=i, column=4, value=material["embodied_carbon"])
+            ws2.cell(row=i, column=5, value=material["unit"])
+            ws2.cell(row=i, column=6, value=material["source"])
+
+        for col_num, header in enumerate(element_headers, 1):
+            col_letter = get_column_letter(col_num)
+            # Set width based on header length plus padding
+            width = len(header) + 5  # Add padding
+            width = max(10, min(width, 50))  # Min 10, max 50
+            ws1.column_dimensions[col_letter].width = width
+
+        # For Materials sheet
+        for col_num, header in enumerate(material_headers, 1):
+            col_letter = get_column_letter(col_num)
+            # Set width based on header length plus padding
+            width = len(header) + 5  # Add padding
+            width = max(10, min(width, 50))  # Min 10, max 50
+            ws2.column_dimensions[col_letter].width = width
+        # Save to a BytesIO object
+        excel_output = io.BytesIO()
+        wb.save(excel_output)
+        excel_output.seek(0)
+
+        # Return the Excel file as a response
+        return Response(
+            content=excel_output.getvalue(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename=building_elements_{project_id}_v{version_number}.xlsx"
+            },
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error processing building elements: {str(e)}"
+        )
+
+
 @app.get("/projects/{project_id}/{version_id}/calculation_status", response_model=str)
 async def get_calculation_status(
     project_id: str,
     version_id: str,
 ):
     project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
-    
+
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    
+
     # Find the specific version using version_id
     version = None
     if "ifc_versions" in project and str(version_id) in project["ifc_versions"]:
         version = project["ifc_versions"][str(version_id)]
-    
+
     if not version:
         raise HTTPException(status_code=404, detail="Version not found")
-    
+
     # Return calculation_status or raise error if not found
     if "calculation_status" in version:
         return version["calculation_status"]
     else:
-        raise HTTPException(status_code=404, detail="Calculation status not found for this version")
+        raise HTTPException(
+            status_code=404, detail="Calculation status not found for this version"
+        )
 
 
 @app.get("/projects/{project_id}/missing_materials", response_model=Dict[str, Any])
@@ -293,9 +706,9 @@ async def get_missing_materials(
         raise HTTPException(status_code=404, detail="EC breakdown data not found")
 
     # Extract missing materials from the EC breakdown data
-    breakdown=ec_breakdown.get("breakdown")
+    breakdown = ec_breakdown.get("breakdown")
     missing_materials = breakdown.get("missing_materials", {})
-         
+
     # Format the response
     # Use a set to store unique specified materials
     unique_materials = set()
@@ -304,6 +717,16 @@ async def get_missing_materials(
         print("Get missing materials: ", ifc_type, materials)
         for id, material_data in materials:
             # Check if the material is already in the set
+            if material_data == "Undefined":
+                result.append(
+                    {
+                        "IfcType": ifc_type,
+                        "ElementId": id,
+                        "SpecifiedMaterial": material_data,
+                        "ErrorType": "Material Undefined",
+                    }
+                )
+                continue
             if material_data not in unique_materials:
                 unique_materials.add(material_data)
                 result.append(
@@ -374,7 +797,7 @@ async def get_missing_elements(
         raise HTTPException(status_code=404, detail="EC breakdown data not found")
 
     # Extract missing elements (element_type_skipped) from the EC breakdown data
-    breakdown= ec_breakdown.get("breakdown")
+    breakdown = ec_breakdown.get("breakdown")
     element_type_skipped = breakdown.get("element_type_skipped", [])
 
     # Format the response
@@ -499,50 +922,44 @@ async def get_materials(
     If project_id is provided, returns materials for that specific project.
     If version is provided, it will return materials for that specific version.
     If version is not provided, it will use the current version of the project.
+    The response includes the count of each material's occurrences in the project.
     """
     try:
         print(project_id)
         # If no project_id is provided, return all materials
         if not project_id:
             materials = await app.mongodb.materials.find().to_list(1000)
-
             # Convert ObjectId to string for each material
             for material in materials:
                 material["_id"] = str(material["_id"])
-
+                material["count"] = 0  # No project context, so count is 0
             return materials
-
         # Find the project
         project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
-
         if not project:
             raise HTTPException(
                 status_code=404, detail=f"Project with ID {project_id} not found"
             )
-
         # Determine which version to use
         version_number = version if version else str(project.get("current_version"))
         if version_number not in project["ifc_versions"]:
             raise HTTPException(
                 status_code=404, detail=f"Version {version_number} not found"
             )
-
         # Get the EC breakdown ID from the project
         ifc_version = project["ifc_versions"].get(version_number)
         ec_breakdown_id = ifc_version.get("ec_breakdown_id")
-
         if not ec_breakdown_id:
             return []
-
         # Get the breakdown document
         breakdown = await app.mongodb.ec_breakdown.find_one(
             {"_id": ObjectId(ec_breakdown_id)}
         )
-
         if not breakdown:
             return []  # Breakdown not found
 
-        material_ids = set()
+        # Use Counter to track material frequencies
+        material_counter = Counter()
 
         if "breakdown" in breakdown and "ec_breakdown" in breakdown["breakdown"]:
             for category in breakdown["breakdown"]["ec_breakdown"]:
@@ -551,19 +968,22 @@ async def get_materials(
                         if "materials" in element:
                             for material in element["materials"]:
                                 if "material" in material:
-                                    material_ids.add(material["material"])
+                                    material_counter[material["material"]] += 1
 
-        if not material_ids:
+        if not material_counter:
             return []  # No material IDs found in breakdown
-        print(material_ids)
+
+        print(dict(material_counter))
+
         # Query for materials using the collected IDs
         materials = await app.mongodb.materials.find(
-            {"specified_material": {"$in": list(material_ids)}}
+            {"specified_material": {"$in": list(material_counter.keys())}}
         ).to_list(1000)
 
-        # Convert ObjectId to string for each material
+        # Convert ObjectId to string for each material and add count
         for material in materials:
             material["_id"] = str(material["_id"])
+            material["count"] = material_counter[material["specified_material"]]
 
         return materials
 
@@ -696,6 +1116,9 @@ async def upload_ifc(
     user_id: str = Query(..., description="ID of the user uploading the file"),
     comments: str = Form(""),  # Default to empty string if not provided
     status: str = Form(""),
+    enable_ai_material_matcher: bool = Form(
+        False, description="Enable AI material matching"
+    ),
 ):
     if not file.filename.lower().endswith(".ifc"):
         raise HTTPException(
@@ -741,6 +1164,7 @@ async def upload_ifc(
             "project_id": project_id,
             "ifc_version": new_version,
             "s3_path": f"s3://{S3_BUCKET}/{s3_path}",
+            "enable_ai_material_matcher": enable_ai_material_matcher,
             "user_id": user_id,
             "timestamp": datetime.now().isoformat(),
         }
@@ -810,7 +1234,6 @@ async def get_breakdown(project_id: str, version: str = None):
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # TODO: Change this to version number that is specified in the api rather than the current version
     version_number = version if version else str(project.get("current_version"))
     if version_number not in project["ifc_versions"]:
         raise HTTPException(status_code=400, detail="Version not found")
@@ -848,11 +1271,15 @@ async def get_project_info(project_id: str):
     latest_version = str(project.get("current_version"))
     ifc_data = project["ifc_versions"].get(latest_version, {})
     gfa = ifc_data.get("gfa", 0)
-    file_path=ifc_data.get("file_path", "")
-     # Extract benchmark values
+    file_path = ifc_data.get("file_path", "")
+    # Extract benchmark values
     benchmark_values = {
-        "Green Mark": project.get("benchmark", {}).get("Residential", {}).get("Green Mark", 0),
-        "LETI 2030 Design Target": project.get("benchmark", {}).get("Residential", {}).get("LETI 2030 Design Target", 0)
+        "Green Mark": project.get("benchmark", {})
+        .get("Residential", {})
+        .get("Green Mark", 0),
+        "LETI 2030 Design Target": project.get("benchmark", {})
+        .get("Residential", {})
+        .get("LETI 2030 Design Target", 0),
     }
 
     return ProjectBasicInfo(
@@ -861,10 +1288,10 @@ async def get_project_info(project_id: str):
         client_name=project.get("client_name"),
         typology=project.get("typology", "Not Specified"),
         status=project.get("status", "Not Specified"),
-        benchmark = benchmark_values,
-        latest_version = latest_version,
+        benchmark=benchmark_values,
+        latest_version=latest_version,
         gfa=gfa,
-        file_path=file_path
+        file_path=file_path,
     )
 
 
