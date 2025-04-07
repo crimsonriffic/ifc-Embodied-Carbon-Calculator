@@ -28,6 +28,7 @@ export default {
     "./src/components/MirrorBarChart.jsx",
     "./src/pages/MaterialDialog.jsx",
     "./src/pages/ErrorHandlingPage.jsx",
+    "./src/components/Sankey2.jsx",
   ],
   theme: {
     extend: {},

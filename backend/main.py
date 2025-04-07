@@ -119,7 +119,7 @@ class Project(BaseModel):
     last_edited_user: str
     user_job_role: str
     current_version: int
-    benchmark: Dict[str, Dict[str, int]]
+    benchmark: Dict[str, int]
     access_control: Dict[str, UserPermissions]
     edit_history: List[EditHistory]
     ifc_versions: Dict[str, IFCVersion]
@@ -167,7 +167,7 @@ class ProjectBasicInfo(BaseModel):
     client_name: str
     typology: str
     status: str
-    benchmark: Dict[str, float]  # This will handle the key-value pairs
+    benchmark: Dict[str, int]
     latest_version: str
     gfa: float
     file_path: str
@@ -1272,15 +1272,13 @@ async def get_project_info(project_id: str):
     ifc_data = project["ifc_versions"].get(latest_version, {})
     gfa = ifc_data.get("gfa", 0)
     file_path = ifc_data.get("file_path", "")
-    # Extract benchmark values
-    benchmark_values = {
-        "Green Mark": project.get("benchmark", {})
-        .get("Residential", {})
-        .get("Green Mark", 0),
-        "LETI 2030 Design Target": project.get("benchmark", {})
-        .get("Residential", {})
-        .get("LETI 2030 Design Target", 0),
-    }
+    print("Project data:", project)
+    print("Benchmark data:", project.get("benchmark", "No benchmark field found."))
+
+    # Extract benchmark values directly from the flat dictionary
+    benchmark_values = project.get("benchmark", {})
+    print("Flat benchmark data extracted:", benchmark_values)
+    
 
     return ProjectBasicInfo(
         _id=project["_id"],

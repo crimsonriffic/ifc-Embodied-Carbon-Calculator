@@ -91,6 +91,12 @@ function ProjectProgress({ projectId, projectName, projectHistory }) {
       Object.keys(projectInfo.benchmark).length > 0
     ) {
       const firstBenchmark = Object.keys(projectInfo.benchmark)[0]; // Get first key
+      console.log(
+        "Benchmark standard: ",
+        firstBenchmark,
+        "Benchmark Target: ",
+        projectInfo.benchmark[firstBenchmark]
+      );
       setBenchmarkstandard(firstBenchmark);
       setBenchmarkTarget(projectInfo.benchmark[firstBenchmark]); // Set initial target value
     }
