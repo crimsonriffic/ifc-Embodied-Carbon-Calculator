@@ -985,7 +985,22 @@ async def get_materials(
         )
         if not breakdown:
             return []  # Breakdown not found
-
+        
+        if "material_counts" in breakdown and breakdown["material_counts"]:
+            material_counts = breakdown["material_counts"]
+            
+            # Get all materials that are in the count dictionary
+            materials = await app.mongodb.materials.find(
+                {"specified_material": {"$in": list(material_counts.keys())}}
+            ).to_list(1000)
+            
+            # Add counts to each material
+            for material in materials:
+                material["_id"] = str(material["_id"])
+                material_name = material["specified_material"]
+                material["count"] = material_counts.get(material_name, 0)
+                
+            return materials
         # Use Counter to track material frequencies
         material_counter = Counter()
 
@@ -1317,6 +1332,7 @@ async def get_breakdown(
         gfa=gfa,
         summary=ec_breakdown_data["summary"],
         ec_breakdown=ec_breakdown_data["breakdown"],
+        # maybe add the matched material..
         last_calculated=project.get("last_calculated", datetime.now()),
         version=version_number,
     )

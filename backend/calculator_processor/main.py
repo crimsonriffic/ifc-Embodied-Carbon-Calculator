@@ -11,6 +11,7 @@ import threading
 from fastapi import FastAPI, HTTPException
 import uvicorn
 import dotenv
+from collections import Counter
 
 dotenv.load_dotenv()
 
@@ -173,6 +174,7 @@ def update_mongodb(
     calculation_status_field,
     ec_breakdown_id_field,
     total_ec_field,
+    material_counts,
 ):
     """Update MongoDB with EC calculation results"""
     try:
@@ -185,6 +187,7 @@ def update_mongodb(
             "breakdown": ec_data,
             "excel_data": excel_data,
             "all_matched_materials": all_matched_materials,
+            "material_counts": material_counts,
             "timestamp": datetime.now(),
         }
 
@@ -278,6 +281,22 @@ def process_sqs_message(db, message):
             all_matched_materials,
         ) = process_ifc_file(s3_path, enable_ai_material_matcher)
 
+        material_counts = {}
+
+        # Extract all materials from the EC breakdown
+        if "ec_breakdown" in ec_data:
+            for category in ec_data["ec_breakdown"]:
+                if "elements" in category:
+                    for element in category["elements"]:
+                        if "materials" in element:
+                            for material in element["materials"]:
+                                if "material" in material:
+                                    material_name = material["material"]
+                                    if material_name in material_counts:
+                                        material_counts[material_name] += 1
+                                    else:
+                                        material_counts[material_name] = 1
+
         # Update MongoDB with results
         ec_breakdown_id = update_mongodb(
             db,
@@ -292,6 +311,7 @@ def process_sqs_message(db, message):
             calculation_status_field,
             ec_breakdown_id_field,
             total_ec_field,
+            material_counts,
         )
 
         logger.info(
