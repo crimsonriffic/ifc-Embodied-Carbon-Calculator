@@ -11,6 +11,7 @@ import threading
 from fastapi import FastAPI, HTTPException
 import uvicorn
 import dotenv
+from collections import Counter
 
 dotenv.load_dotenv()
 
@@ -170,6 +171,10 @@ def update_mongodb(
     ec_data,
     excel_data,
     all_matched_materials,
+    calculation_status_field,
+    ec_breakdown_id_field,
+    total_ec_field,
+    material_counts,
 ):
     """Update MongoDB with EC calculation results"""
     try:
@@ -182,6 +187,7 @@ def update_mongodb(
             "breakdown": ec_data,
             "excel_data": excel_data,
             "all_matched_materials": all_matched_materials,
+            "material_counts": material_counts,
             "timestamp": datetime.now(),
         }
 
@@ -196,10 +202,10 @@ def update_mongodb(
             {"_id": ObjectId(project_id)},
             {
                 "$set": {
-                    f"ifc_versions.{ifc_version}.calculation_status": "completed",
-                    f"ifc_versions.{ifc_version}.total_ec": total_ec,
+                    f"ifc_versions.{ifc_version}.{calculation_status_field}": "completed",
+                    f"ifc_versions.{ifc_version}.{total_ec_field}": total_ec,
                     f"ifc_versions.{ifc_version}.gfa": total_gfa,
-                    f"ifc_versions.{ifc_version}.ec_breakdown_id": ec_breakdown_id,
+                    f"ifc_versions.{ifc_version}.{ec_breakdown_id_field}": ec_breakdown_id,
                 }
             },
         )
@@ -214,8 +220,10 @@ def update_mongodb(
             {"_id": ObjectId(project_id)},
             {
                 "$set": {
-                    f"ifc_versions.{ifc_version}.calculation_status": "failed",
-                    f"ifc_versions.{ifc_version}.failure_reason": str(e),
+                    f"ifc_versions.{ifc_version}.{calculation_status_field}": "failed",
+                    f"ifc_versions.{ifc_version}.failure_reason.{calculation_status_field}": str(
+                        e
+                    ),
                 }
             },
         )
@@ -237,13 +245,28 @@ def process_sqs_message(db, message):
         enable_ai_material_matcher = message_body.get(
             "enable_ai_material_matcher", False
         )
-
+        calculation_type = message_body.get(
+            "calculation_type", "standard"
+        )  # Default to standard if not specified
+        calculation_status_field = (
+            "calculation_status"
+            if calculation_type == "standard"
+            else "ai_calculation_status"
+        )
+        ec_breakdown_id_field = (
+            "ec_breakdown_id"
+            if calculation_type == "standard"
+            else "ai_ec_breakdown_id"
+        )
+        total_ec_field = (
+            "total_ec" if calculation_status_field == "standard" else "ai_total_ec"
+        )
         # Update status to 'processing'
         db.projects.update_one(
             {"_id": ObjectId(project_id)},
             {
                 "$set": {
-                    f"ifc_versions.{ifc_version}.calculation_status": "processing",
+                    f"ifc_versions.{ifc_version}.{calculation_status_field}": "processing",
                 }
             },
         )
@@ -258,6 +281,22 @@ def process_sqs_message(db, message):
             all_matched_materials,
         ) = process_ifc_file(s3_path, enable_ai_material_matcher)
 
+        material_counts = {}
+
+        # Extract all materials from the EC breakdown
+        if "ec_breakdown" in ec_data:
+            for category in ec_data["ec_breakdown"]:
+                if "elements" in category:
+                    for element in category["elements"]:
+                        if "materials" in element:
+                            for material in element["materials"]:
+                                if "material" in material:
+                                    material_name = material["material"]
+                                    if material_name in material_counts:
+                                        material_counts[material_name] += 1
+                                    else:
+                                        material_counts[material_name] = 1
+
         # Update MongoDB with results
         ec_breakdown_id = update_mongodb(
             db,
@@ -269,6 +308,10 @@ def process_sqs_message(db, message):
             ec_data,
             excel_data,
             all_matched_materials,
+            calculation_status_field,
+            ec_breakdown_id_field,
+            total_ec_field,
+            material_counts,
         )
 
         logger.info(

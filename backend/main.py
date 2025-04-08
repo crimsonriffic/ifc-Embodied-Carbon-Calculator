@@ -628,10 +628,11 @@ async def get_building_elements(
         )
 
 
-@app.get("/projects/{project_id}/{version_id}/calculation_status", response_model=str)
+@app.get("/projects/{project_id}/{version_id}/calculation_status", response_model=Dict[str, str])
 async def get_calculation_status(
     project_id: str,
     version_id: str,
+    calculation_type: str = Query(None, description="Type of calculation to check: 'standard' or 'ai'. If not provided, returns both.")
 ):
     project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
 
@@ -639,21 +640,48 @@ async def get_calculation_status(
         raise HTTPException(status_code=404, detail="Project not found")
 
     # Find the specific version using version_id
-    version = None
-    if "ifc_versions" in project and str(version_id) in project["ifc_versions"]:
-        version = project["ifc_versions"][str(version_id)]
-
-    if not version:
+    if "ifc_versions" not in project or str(version_id) not in project["ifc_versions"]:
         raise HTTPException(status_code=404, detail="Version not found")
-
-    # Return calculation_status or raise error if not found
-    if "calculation_status" in version:
-        return version["calculation_status"]
+    
+    version = project["ifc_versions"][str(version_id)]
+    
+    # Prepare the response
+    result = {}
+    
+    # Check for specific calculation type if requested
+    if calculation_type == "standard":
+        if "calculation_status" in version:
+            result["standard"] = version["calculation_status"]
+        else:
+            result["standard"] = "unknown"
+            
+    elif calculation_type == "ai":
+        if "ai_calculation_status" in version:
+            result["ai"] = version["ai_calculation_status"]
+        else:
+            result["ai"] = "unknown"
+            
+    # If no specific type requested, return status for both
     else:
+        # Standard calculation status
+        if "calculation_status" in version:
+            result["standard"] = version["calculation_status"]
+        else:
+            result["standard"] = "unknown"
+            
+        # AI calculation status
+        if "ai_calculation_status" in version:
+            result["ai"] = version["ai_calculation_status"]
+        else:
+            result["ai"] = "unknown"
+    
+    if not result:
         raise HTTPException(
-            status_code=404, detail="Calculation status not found for this version"
+            status_code=404, 
+            detail="Calculation status not found for this version"
         )
-
+        
+    return result
 
 @app.get("/projects/{project_id}/missing_materials", response_model=Dict[str, Any])
 async def get_missing_materials(
@@ -957,7 +985,22 @@ async def get_materials(
         )
         if not breakdown:
             return []  # Breakdown not found
-
+        
+        if "material_counts" in breakdown and breakdown["material_counts"]:
+            material_counts = breakdown["material_counts"]
+            
+            # Get all materials that are in the count dictionary
+            materials = await app.mongodb.materials.find(
+                {"specified_material": {"$in": list(material_counts.keys())}}
+            ).to_list(1000)
+            
+            # Add counts to each material
+            for material in materials:
+                material["_id"] = str(material["_id"])
+                material_name = material["specified_material"]
+                material["count"] = material_counts.get(material_name, 0)
+                
+            return materials
         # Use Counter to track material frequencies
         material_counter = Counter()
 
@@ -1116,9 +1159,6 @@ async def upload_ifc(
     user_id: str = Query(..., description="ID of the user uploading the file"),
     comments: str = Form(""),  # Default to empty string if not provided
     status: str = Form(""),
-    enable_ai_material_matcher: bool = Form(
-        False, description="Enable AI material matching"
-    ),
 ):
     if not file.filename.lower().endswith(".ifc"):
         raise HTTPException(
@@ -1160,31 +1200,47 @@ async def upload_ifc(
         )
         print("uploaded the file to s3")
         # Create a message for the SQS queue
-        message = {
+        base_message = {
             "project_id": project_id,
             "ifc_version": new_version,
             "s3_path": f"s3://{S3_BUCKET}/{s3_path}",
-            "enable_ai_material_matcher": enable_ai_material_matcher,
             "user_id": user_id,
             "timestamp": datetime.now().isoformat(),
         }
+
+        standard_message = base_message.copy()
+        standard_message["calculation_type"] = "standard"
+        standard_message["enable_ai_material_matcher"] = False
 
         # Send message to SQS queue
         sqs_client = boto3.client(
             "sqs",
             aws_access_key_id=AWS_ACCESS_KEY,
             aws_secret_access_key=AWS_SECRET_KEY,
-            region_name="ap-southeast-2",  # Make sure this matches your queue's region
+            region_name="ap-southeast-2",
         )
         queue_url = os.environ.get("SQS_QUEUE_URL")
 
-        response = sqs_client.send_message(
+        sqs_client.send_message(
             QueueUrl=queue_url,
-            MessageBody=json.dumps(message),
+            MessageBody=json.dumps(standard_message),
             MessageGroupId=project_id,  # Group messages by project ID
-            MessageDeduplicationId=f"{project_id}-{new_version}",  # Ensure idempotency
+            MessageDeduplicationId=f"{project_id}-{new_version}-standard",  # Ensure idempotency
         )
-        print("uploaded to queue")
+        print("uploaded standard calculation to queue")
+
+        ai_message = base_message.copy()
+        ai_message["enable_ai_material_matcher"] = True
+        ai_message["calculation_type"] = "ai_enhanced"
+
+        sqs_client.send_message(
+            QueueUrl=queue_url,
+            MessageBody=json.dumps(ai_message),
+            MessageGroupId=project_id,  # Group messages by project ID
+            MessageDeduplicationId=f"{project_id}-{new_version}-ai_enhanced",  # Ensure idempotency
+        )
+        print("uploaded both messages to queue")
+
         # Update MongoDB
         update_result = await app.mongodb.projects.update_one(
             {"_id": ObjectId(project_id)},
@@ -1201,7 +1257,9 @@ async def upload_ifc(
                         "file_path": f"s3://{S3_BUCKET}/{s3_path}",
                         "gfa": 0,
                         "total_ec": 0,
+                        "ai_total_ec" : 0
                         "calculation_status": "queued",
+                        "ai_calculation_status": "queued",
                     },
                 },
                 "$push": {
@@ -1228,7 +1286,12 @@ async def upload_ifc(
 
 # Get EC breakdown and ec value
 @app.get("/projects/{project_id}/get_breakdown", response_model=ProjectBreakdown)
-async def get_breakdown(project_id: str, version: str = None):
+async def get_breakdown(
+    project_id: str, 
+    version: str = None,
+    calculation_type: Optional[str] = Query("standard", description="Type of calculation to retrieve: 'standard' or 'ai_enhanced'")
+    ):
+ 
     project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
 
     if not project:
@@ -1241,9 +1304,23 @@ async def get_breakdown(project_id: str, version: str = None):
 
     # Retrieve stored EC values and breakdowns
     total_ec = ifc_data.get("total_ec", 0)
-    ec_breakdown_id = ifc_data.get("ec_breakdown_id")
-    print(ec_breakdown_id)
     gfa = ifc_data.get("gfa", 0)
+
+    ec_breakdown_id = ifc_data.get("ec_breakdown_id") if calculation_type == "standard" else ifc_data.get("ai_ec_breakdown_id")
+    calculation_status = ifc_data.get("calculation_status") if calculation_type == "standard" else ifc_data.get("ai_calculation_status")
+    print(ec_breakdown_id)
+    
+    if not ec_breakdown_id:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"EC breakdown for {calculation_type} calculation not found for version {version_number}"
+        )
+    
+    if calculation_status != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"{calculation_type.capitalize()} calculation for version {version_number} is not completed. Current status: {calculation_status}"
+        )
     ec_breakdown_data = await app.mongodb.ec_breakdown.find_one(
         {"_id": ec_breakdown_id}
     )
@@ -1255,6 +1332,7 @@ async def get_breakdown(project_id: str, version: str = None):
         gfa=gfa,
         summary=ec_breakdown_data["summary"],
         ec_breakdown=ec_breakdown_data["breakdown"],
+        # maybe add the matched material..
         last_calculated=project.get("last_calculated", datetime.now()),
         version=version_number,
     )
@@ -1278,7 +1356,6 @@ async def get_project_info(project_id: str):
     # Extract benchmark values directly from the flat dictionary
     benchmark_values = project.get("benchmark", {})
     print("Flat benchmark data extracted:", benchmark_values)
-    
 
     return ProjectBasicInfo(
         _id=project["_id"],
