@@ -628,11 +628,17 @@ async def get_building_elements(
         )
 
 
-@app.get("/projects/{project_id}/{version_id}/calculation_status", response_model=Dict[str, str])
+@app.get(
+    "/projects/{project_id}/{version_id}/calculation_status",
+    response_model=Dict[str, str],
+)
 async def get_calculation_status(
     project_id: str,
     version_id: str,
-    calculation_type: str = Query(None, description="Type of calculation to check: 'standard' or 'ai'. If not provided, returns both.")
+    calculation_type: str = Query(
+        None,
+        description="Type of calculation to check: 'standard' or 'ai'. If not provided, returns both.",
+    ),
 ):
     project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
 
@@ -642,25 +648,25 @@ async def get_calculation_status(
     # Find the specific version using version_id
     if "ifc_versions" not in project or str(version_id) not in project["ifc_versions"]:
         raise HTTPException(status_code=404, detail="Version not found")
-    
+
     version = project["ifc_versions"][str(version_id)]
-    
+
     # Prepare the response
     result = {}
-    
+
     # Check for specific calculation type if requested
     if calculation_type == "standard":
         if "calculation_status" in version:
             result["standard"] = version["calculation_status"]
         else:
             result["standard"] = "unknown"
-            
+
     elif calculation_type == "ai":
         if "ai_calculation_status" in version:
             result["ai"] = version["ai_calculation_status"]
         else:
             result["ai"] = "unknown"
-            
+
     # If no specific type requested, return status for both
     else:
         # Standard calculation status
@@ -668,20 +674,20 @@ async def get_calculation_status(
             result["standard"] = version["calculation_status"]
         else:
             result["standard"] = "unknown"
-            
+
         # AI calculation status
         if "ai_calculation_status" in version:
             result["ai"] = version["ai_calculation_status"]
         else:
             result["ai"] = "unknown"
-    
+
     if not result:
         raise HTTPException(
-            status_code=404, 
-            detail="Calculation status not found for this version"
+            status_code=404, detail="Calculation status not found for this version"
         )
-        
+
     return result
+
 
 @app.get("/projects/{project_id}/missing_materials", response_model=Dict[str, Any])
 async def get_missing_materials(
@@ -985,21 +991,21 @@ async def get_materials(
         )
         if not breakdown:
             return []  # Breakdown not found
-        
+
         if "material_counts" in breakdown and breakdown["material_counts"]:
             material_counts = breakdown["material_counts"]
-            
+
             # Get all materials that are in the count dictionary
             materials = await app.mongodb.materials.find(
                 {"specified_material": {"$in": list(material_counts.keys())}}
             ).to_list(1000)
-            
+
             # Add counts to each material
             for material in materials:
                 material["_id"] = str(material["_id"])
                 material_name = material["specified_material"]
                 material["count"] = material_counts.get(material_name, 0)
-                
+
             return materials
         # Use Counter to track material frequencies
         material_counter = Counter()
@@ -1257,7 +1263,7 @@ async def upload_ifc(
                         "file_path": f"s3://{S3_BUCKET}/{s3_path}",
                         "gfa": 0,
                         "total_ec": 0,
-                        "ai_total_ec" : 0
+                        "ai_total_ec": 0,
                         "calculation_status": "queued",
                         "ai_calculation_status": "queued",
                     },
@@ -1287,11 +1293,14 @@ async def upload_ifc(
 # Get EC breakdown and ec value
 @app.get("/projects/{project_id}/get_breakdown", response_model=ProjectBreakdown)
 async def get_breakdown(
-    project_id: str, 
+    project_id: str,
     version: str = None,
-    calculation_type: Optional[str] = Query("standard", description="Type of calculation to retrieve: 'standard' or 'ai_enhanced'")
-    ):
- 
+    calculation_type: Optional[str] = Query(
+        "standard",
+        description="Type of calculation to retrieve: 'standard' or 'ai_enhanced'",
+    ),
+):
+
     project = await app.mongodb.projects.find_one({"_id": ObjectId(project_id)})
 
     if not project:
@@ -1306,20 +1315,28 @@ async def get_breakdown(
     total_ec = ifc_data.get("total_ec", 0)
     gfa = ifc_data.get("gfa", 0)
 
-    ec_breakdown_id = ifc_data.get("ec_breakdown_id") if calculation_type == "standard" else ifc_data.get("ai_ec_breakdown_id")
-    calculation_status = ifc_data.get("calculation_status") if calculation_type == "standard" else ifc_data.get("ai_calculation_status")
+    ec_breakdown_id = (
+        ifc_data.get("ec_breakdown_id")
+        if calculation_type == "standard"
+        else ifc_data.get("ai_ec_breakdown_id")
+    )
+    calculation_status = (
+        ifc_data.get("calculation_status")
+        if calculation_type == "standard"
+        else ifc_data.get("ai_calculation_status")
+    )
     print(ec_breakdown_id)
-    
+
     if not ec_breakdown_id:
         raise HTTPException(
-            status_code=404, 
-            detail=f"EC breakdown for {calculation_type} calculation not found for version {version_number}"
+            status_code=404,
+            detail=f"EC breakdown for {calculation_type} calculation not found for version {version_number}",
         )
-    
+
     if calculation_status != "completed":
         raise HTTPException(
             status_code=400,
-            detail=f"{calculation_type.capitalize()} calculation for version {version_number} is not completed. Current status: {calculation_status}"
+            detail=f"{calculation_type.capitalize()} calculation for version {version_number} is not completed. Current status: {calculation_status}",
         )
     ec_breakdown_data = await app.mongodb.ec_breakdown.find_one(
         {"_id": ec_breakdown_id}
