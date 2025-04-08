@@ -258,9 +258,7 @@ def process_sqs_message(db, message):
             if calculation_type == "standard"
             else "ai_ec_breakdown_id"
         )
-        total_ec_field = (
-            "total_ec" if calculation_status_field == "standard" else "ai_total_ec"
-        )
+        total_ec_field = "total_ec" if calculation_type == "standard" else "ai_total_ec"
         # Update status to 'processing'
         db.projects.update_one(
             {"_id": ObjectId(project_id)},
