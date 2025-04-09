@@ -28,7 +28,7 @@ function ErrorHandlingPage() {
   const { projectId } = location.state;
 
   const { projectName } = useParams();
-  const handleReupload = (projectName, projectId) => {
+  const handleReupload = (projectId, projectName) => {
     navigate(`/uploadHistory/${encodeURIComponent(projectName)}`, {
       state: { projectId },
     });
