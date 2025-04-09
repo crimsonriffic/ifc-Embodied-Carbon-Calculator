@@ -20,8 +20,8 @@ function MirrorBarChart({ data, barKeys, colors, width = 500, height = 300 }) {
 
       <ResponsiveContainer width={width} height={height}>
         <div className="flex justify-evenly mb-4 px-4 ">
-          <span className="font-bold text-base ">Upload 5</span>
-          <span className="font-bold text-base ">Upload 4</span>
+          <span className="font-bold text-base ">{barKeys[1]}</span>
+          <span className="font-bold text-base ">{barKeys[0]}</span>
         </div>
         <BarChart
           layout="vertical" // This makes the bars horizontal

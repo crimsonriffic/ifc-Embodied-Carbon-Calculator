@@ -142,14 +142,14 @@ function UploadComparison() {
     setVersionArray(versionArr);
 
     const firstData = projectHistory.find(
-      (item) => item.version === firstVersionNumber
+      (item) => Number(item.version) === Number(firstVersionNumber)
     );
     console.log("Setting firstVersionData:", firstData);
 
     setFirstVersionData(firstData || {});
     console.log("Second version number is:", secondVersionNumber);
     const secondData = projectHistory.find(
-      (item) => item.version === secondVersionNumber
+      (item) => Number(item.version) === Number(secondVersionNumber)
     );
     console.log("Setting secondVersionData:", secondData, secondVersionNumber);
 

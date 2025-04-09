@@ -182,6 +182,57 @@ export const uploadMaterial = async (
   }
 };
 
+export const uploadMaterialAndQueue = async (
+  projectId,
+  userId,
+  material_type,
+  specified_material,
+  density,
+  embodied_carbon,
+  unit,
+  version = null // Optional parameter
+) => {
+  console.log("Calling upload material and queue API");
+
+  // Construct the material data object
+  const materialData = {
+    material_type: material_type,
+    specified_material: specified_material,
+    density: density || null,
+    embodied_carbon: embodied_carbon || "0.00",
+    unit: unit,
+    database_source: "Custom",
+  };
+
+  console.log("Material Data:", materialData);
+
+  try {
+    // Build the query parameters
+    const queryParams = new URLSearchParams({ user_id: userId });
+    if (version) {
+      queryParams.append("version", version); // Add version if provided
+    }
+
+    // Send the material data to the API
+    const response = await api.post(
+      `projects/${projectId}/materials?${queryParams.toString()}`,
+      materialData,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("Material uploaded and queued successfully:", response.data);
+
+    // Return the response data
+    return response.data;
+  } catch (err) {
+    console.error("Failed to upload material and queue recalculation:", err);
+    throw err; // Re-throw the error for handling in the calling function
+  }
+};
 export const getMaterialsDetected = async (
   projectId = null,
   version = null
