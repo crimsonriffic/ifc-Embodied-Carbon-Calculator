@@ -512,22 +512,22 @@ async def get_building_elements(
                     "element_type": element_type,
                     "building_material_family": building_material_family,
                     "material": material,
+                    "units": units,
                     "material_ec": material_ec,
                     "material_quantity": material_quantity,
-                    "units": units,
                 }
             )
 
         # Add headers to building elements sheet
         element_headers = [
             "Element ID",
-            "IFC Type",
+            "IfcBuildingElement",
             "Element Type",
-            "Material Type",
-            "Material",
-            "Material EC (kgCO2e)",
+            "Family",
+            "Type",
             "Material Quantity",
             "Units",
+            "Material EC (kgCO2eq)",
         ]
 
         # Apply headers and formatting
@@ -546,18 +546,19 @@ async def get_building_elements(
             ws1.cell(row=i, column=3, value=element["element_type"])
             ws1.cell(row=i, column=4, value=element["building_material_family"])
             ws1.cell(row=i, column=5, value=element["material"])
-            ws1.cell(row=i, column=6, value=element["material_ec"])
-            ws1.cell(row=i, column=7, value=element["material_quantity"])
-            ws1.cell(row=i, column=8, value=element["units"])
+            ws1.cell(row=i, column=6, value=element["material_quantity"])
+            ws1.cell(row=i, column=7, value=element["units"])
+            ws1.cell(row=i, column=8, value=element["material_ec"])
 
         # Create a second sheet for detected materials
         ws2 = wb.create_sheet(title="Detected Materials")
         # Add headers with formatting for the materials sheet
         material_headers = [
-            "Material Type",
-            "Material",
-            "Density (kg/m3)",
-            "A1-A3 Embodied Carbon Emission / Unit",
+            "Category",
+            "Family",
+            "Type",
+            "Mass Density (kg/m3)",
+            "A1-A3 EC / Unit",
             "Unit",
             "Data Source",
         ]
@@ -590,7 +591,10 @@ async def get_building_elements(
                             material_data = m
                             break
                     if material_data:
+                        unit = material_data.get("unit", "kg")
+                        category = "Material" if unit == "kg" else "Product"
                         unique_materials[material_key] = {
+                            "category": category,
                             "family": element["building_material_family"],
                             "type": element["material"],
                             "density": (
@@ -605,12 +609,13 @@ async def get_building_elements(
 
         # Add material data rows
         for i, (_, material) in enumerate(unique_materials.items(), 2):
-            ws2.cell(row=i, column=1, value=material["family"])
-            ws2.cell(row=i, column=2, value=material["type"])
-            ws2.cell(row=i, column=3, value=material["density"])
-            ws2.cell(row=i, column=4, value=material["embodied_carbon"])
-            ws2.cell(row=i, column=5, value=material["unit"])
-            ws2.cell(row=i, column=6, value=material["source"])
+            ws2.cell(row=i, column=1, value=material["category"])
+            ws2.cell(row=i, column=2, value=material["family"])
+            ws2.cell(row=i, column=3, value=material["type"])
+            ws2.cell(row=i, column=4, value=material["density"])
+            ws2.cell(row=i, column=5, value=material["embodied_carbon"])
+            ws2.cell(row=i, column=6, value=material["unit"])
+            ws2.cell(row=i, column=7, value=material["source"])
 
         for col_num, header in enumerate(element_headers, 1):
             col_letter = get_column_letter(col_num)
