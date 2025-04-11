@@ -136,6 +136,19 @@ export const getProjectBreakdown = async (projectId, versionNumber) => {
   return api.get(`/projects/${projectId}/get_breakdown${versionQuery}`);
 };
 
+export const getAiBreakdown = async (projectId, versionNumber) => {
+  console.log("getAiBreakdown API is called");
+  return api.get(
+    `/projects/${projectId}/get_breakdown`, // Replace with your API base URL if needed
+    {
+      params: {
+        version: versionNumber || null, // Optional, only if you have a version
+        calculation_type: "ai_enhanced", // Specify AI-enhanced calculation
+      },
+    }
+  );
+};
+
 export const getMaterialDatabase = async () => {
   console.log("getMaterialDatabase API is called");
   return api.get("/materials");

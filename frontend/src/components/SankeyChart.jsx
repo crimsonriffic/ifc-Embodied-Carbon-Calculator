@@ -2,7 +2,7 @@ import { Sankey, Tooltip, Layer, Rectangle } from "recharts";
 import { useState } from "react";
 
 const transformDataForSankey = (data) => {
-  // Create nodes first
+  // Create Qnodes first
 
   const nodes = [
     { name: "Total EC" },
@@ -60,33 +60,28 @@ const transformDataForSankey = (data) => {
     {
       source: nodeMap["Substructure"],
       target: nodeMap["Wall"],
-      // value: 4050.28, //TODO: i dont want it to be hardcoded
       value: substructureElements["Wall"] || 0,
     },
     {
       source: nodeMap["Substructure"],
       target: nodeMap["Slab"],
-      // value: 1291.952, //TODO: i dont want it to be hardcoded
-      value: superstructureElements["Wall"] || 0,
+      value: superstructureElements["Slab"] || 0,
     },
 
     // Superstructure to elements
     {
       source: nodeMap["Superstructure"],
       target: nodeMap["Wall"],
-      // value: 4262.4, //TODO: i dont want it to be hardcoded
       value: superstructureElements["Wall"] || 0,
     },
     {
       source: nodeMap["Superstructure"],
       target: nodeMap["Slab"],
-      // value: 645.5215, //TODO: i dont want it to be hardcoded
       value: superstructureElements["Slab"] || 0,
     },
     {
       source: nodeMap["Superstructure"],
       target: nodeMap["Roof"],
-      // value: 481.5187485187485, //TODO: i dont want it to be hardcoded
       value: superstructureElements["Roof"] || 0,
     },
 
@@ -94,7 +89,6 @@ const transformDataForSankey = (data) => {
     {
       source: nodeMap["Wall"],
       target: nodeMap["Concrete"],
-      // value: 8312.68, //TODO: i dont want it to be hardcoded
       value:
         (substructureElements["Wall"] || 0) +
         (superstructureElements["Wall"] || 0),
@@ -102,7 +96,6 @@ const transformDataForSankey = (data) => {
     {
       source: nodeMap["Slab"],
       target: nodeMap["Concrete"],
-      // value: 1937.4735, //TODO: i dont want it to be hardcoded
       value:
         (substructureElements["Slab"] || 0) +
         (superstructureElements["Slab"] || 0),
@@ -110,7 +103,6 @@ const transformDataForSankey = (data) => {
     {
       source: nodeMap["Roof"],
       target: nodeMap["Concrete"],
-      // value: 481.5187485187485, //TODO: i dont want it to be hardcoded
       value: superstructureElements["Roof"] || 0,
     },
   ];
