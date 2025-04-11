@@ -2,11 +2,7 @@ import { Sankey, Tooltip, Layer, Rectangle } from "recharts";
 import { useState } from "react";
 
 const transformDataForSankey = (data) => {
-  // Debug log to see what elements are in the data
-  console.log("Substructure elements:", data.ec_breakdown[0].elements);
-  console.log("Superstructure elements:", data.ec_breakdown[1].elements);
-
-  // Define all building elements
+  // Define all building elements (singular form to match data)
   const buildingElements = [
     "Column",
     "Beam",
@@ -21,12 +17,15 @@ const transformDataForSankey = (data) => {
     "Footing",
   ];
 
-  // Create nodes array with just the main categories and building elements
+  const materials = ["Concrete", "Steel"];
+
+  // Create nodes array
   const nodes = [
     { name: "Total EC" },
     { name: "Substructure" },
     { name: "Superstructure" },
     ...buildingElements.map((element) => ({ name: element })),
+    ...materials.map((material) => ({ name: material })),
   ].map((node, index) => ({
     ...node,
     nodeId: index,
@@ -42,7 +41,7 @@ const transformDataForSankey = (data) => {
   const substructureElements = data.ec_breakdown[0].elements.reduce(
     (acc, element) => {
       if (!acc[element.element]) acc[element.element] = 0;
-      acc[element.element] += element.ec;
+      acc[element.element] += parseFloat(element.ec);
       return acc;
     },
     {}
@@ -51,7 +50,7 @@ const transformDataForSankey = (data) => {
   const superstructureElements = data.ec_breakdown[1].elements.reduce(
     (acc, element) => {
       if (!acc[element.element]) acc[element.element] = 0;
-      acc[element.element] += element.ec;
+      acc[element.element] += parseFloat(element.ec);
       return acc;
     },
     {}
@@ -78,7 +77,7 @@ const transformDataForSankey = (data) => {
       links.push({
         source: nodeMap["Substructure"],
         target: nodeMap[element],
-        value: substructureElements[element] || 0,
+        value: substructureElements[element],
       });
     }
   }
@@ -89,14 +88,35 @@ const transformDataForSankey = (data) => {
       links.push({
         source: nodeMap["Superstructure"],
         target: nodeMap[element],
-        value: superstructureElements[element] || 0,
+        value: superstructureElements[element],
+      });
+    }
+  }
+
+  // Add links from elements to materials
+  for (const element of buildingElements) {
+    const elementTotal =
+      (substructureElements[element] || 0) +
+      (superstructureElements[element] || 0);
+
+    if (elementTotal > 0) {
+      // Assuming a 60-40 split between Concrete and Steel for demonstration
+      // You should replace these with actual proportions from your data
+      links.push({
+        source: nodeMap[element],
+        target: nodeMap["Concrete"],
+        value: elementTotal * 0.6, // 60% to Concrete
+      });
+      links.push({
+        source: nodeMap[element],
+        target: nodeMap["Steel"],
+        value: elementTotal * 0.4, // 40% to Steel
       });
     }
   }
 
   return { nodes, links };
 };
-
 function CustomNode({
   x,
   y,
