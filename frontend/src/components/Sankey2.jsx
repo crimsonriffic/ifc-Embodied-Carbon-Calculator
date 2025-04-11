@@ -2,32 +2,31 @@ import { Sankey, Tooltip, Layer, Rectangle } from "recharts";
 import { useState } from "react";
 
 const transformDataForSankey = (data) => {
-  // Get unique elements and materials
-  const uniqueElements = [
-    ...new Set(
-      data.ec_breakdown.flatMap((category) =>
-        category.elements.map((el) => el.element)
-      )
-    ),
+  // Debug log to see what elements are in the data
+  console.log("Substructure elements:", data.ec_breakdown[0].elements);
+  console.log("Superstructure elements:", data.ec_breakdown[1].elements);
+
+  // Define all building elements
+  const buildingElements = [
+    "Column",
+    "Beam",
+    "Slab",
+    "Wall",
+    "Window",
+    "Door",
+    "Roof",
+    "Stair",
+    "Railing",
+    "Pile",
+    "Footing",
   ];
 
-  const uniqueMaterials = [
-    ...new Set(
-      data.ec_breakdown.flatMap((category) =>
-        category.elements.flatMap((el) =>
-          el.materials.map((mat) => mat.material)
-        )
-      )
-    ),
-  ];
-
-  // Create nodes first
-
+  // Create nodes array with just the main categories and building elements
   const nodes = [
     { name: "Total EC" },
-    ...data.ec_breakdown.map((cat) => ({ name: cat.category })),
-    ...uniqueElements.map((el) => ({ name: el })),
-    ...uniqueMaterials.map((mat) => ({ name: mat })),
+    { name: "Substructure" },
+    { name: "Superstructure" },
+    ...buildingElements.map((element) => ({ name: element })),
   ].map((node, index) => ({
     ...node,
     nodeId: index,
@@ -39,37 +38,61 @@ const transformDataForSankey = (data) => {
     return acc;
   }, {});
 
+  // Calculate sums for different element types in each category
+  const substructureElements = data.ec_breakdown[0].elements.reduce(
+    (acc, element) => {
+      if (!acc[element.element]) acc[element.element] = 0;
+      acc[element.element] += element.ec;
+      return acc;
+    },
+    {}
+  );
+
+  const superstructureElements = data.ec_breakdown[1].elements.reduce(
+    (acc, element) => {
+      if (!acc[element.element]) acc[element.element] = 0;
+      acc[element.element] += element.ec;
+      return acc;
+    },
+    {}
+  );
+
+  // Create links array
   const links = [
-    // Category links
-    ...data.ec_breakdown.map((category) => ({
+    // Total EC to categories
+    {
       source: nodeMap["Total EC"],
-      target: nodeMap[category.category],
-      value: category.total_ec,
-    })),
-
-    // Element links
-    ...data.ec_breakdown.flatMap((category) =>
-      category.elements.map((element) => ({
-        source: nodeMap[category.category],
-        target: nodeMap[element.element],
-        value: element.ec,
-      }))
-    ),
-
-    // Material links
-    ...uniqueElements.flatMap((element) =>
-      uniqueMaterials.map((material) => ({
-        source: nodeMap[element],
-        target: nodeMap[material],
-        value: data.ec_breakdown.reduce(
-          (sum, category) =>
-            sum +
-            (category.elements.find((el) => el.element === element)?.ec || 0),
-          0
-        ),
-      }))
-    ),
+      target: nodeMap["Substructure"],
+      value: data.ec_breakdown[0].total_ec,
+    },
+    {
+      source: nodeMap["Total EC"],
+      target: nodeMap["Superstructure"],
+      value: data.ec_breakdown[1].total_ec,
+    },
   ];
+
+  // Add links from Substructure to elements
+  for (const element of buildingElements) {
+    if (substructureElements[element]) {
+      links.push({
+        source: nodeMap["Substructure"],
+        target: nodeMap[element],
+        value: substructureElements[element] || 0,
+      });
+    }
+  }
+
+  // Add links from Superstructure to elements
+  for (const element of buildingElements) {
+    if (superstructureElements[element]) {
+      links.push({
+        source: nodeMap["Superstructure"],
+        target: nodeMap[element],
+        value: superstructureElements[element] || 0,
+      });
+    }
+  }
 
   return { nodes, links };
 };
