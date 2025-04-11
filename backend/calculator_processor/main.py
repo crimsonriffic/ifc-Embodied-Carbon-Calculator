@@ -186,7 +186,7 @@ def update_mongodb(
             "summary": summary_data,
             "breakdown": ec_data,
             "excel_data": excel_data,
-            "all_matched_materials": all_matched_materials,
+            # "all_matched_materials": all_matched_materials,
             "material_counts": material_counts,
             "timestamp": datetime.now(),
         }

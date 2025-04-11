@@ -33,6 +33,16 @@ function UploadTabs() {
       >
         Project Progress
       </NavLink>
+      <NavLink
+        to="/exportResults"
+        className={({ isActive }) =>
+          isActive
+            ? "pb-2 border-b-2 border-black text-black"
+            : "pb-2 hover:text-gray-800 text-gray-500"
+        }
+      >
+        Export Results
+      </NavLink>
     </nav>
   );
 }
