@@ -2,12 +2,41 @@ import { useUser } from "../context/UserContext";
 
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, version } from "react";
-import { getProjectHistory, getProjectBreakdown } from "../api/api";
+import { getBuildingElements } from "../api/api";
 
 import SankeyChart from "../components/SankeyChart";
 import Sankey2 from "../components/Sankey2";
 import { ArrowDownIcon } from "@heroicons/react/24/solid";
-function ExportResults({ projectId, projectName }) {
+function ExportResults() {
+  const [loading, setLoading] = useState(false);
+  const location = useLocation();
+  const { projectId } = location.state;
+
+  //Test this API later
+  const handleExportCsv = async () => {
+    setLoading(true);
+    const response = await getBuildingElements(projectId);
+    console.log("Except response is: ", response);
+    // Create a Blob from the response data
+    const blob = new Blob([response.data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    // Create a download link for the Blob
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+
+    // Set the desired filename
+    a.download = `building_elements.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+
+    // Cleanup the DOM and revoke the Object URL
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    setLoading(false);
+  };
   if (!projectId) {
     return <p className="text-red-500 mt-16">No project ID provided.</p>;
   }

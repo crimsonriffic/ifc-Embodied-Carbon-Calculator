@@ -270,3 +270,10 @@ export const getMissingMaterials = async (projectId) => {
   console.log("getMissingMaterials API is called with, ", projectId);
   return api.get(`/projects/${projectId}/missing_materials`);
 };
+
+export const getBuildingElements = async (projectId) => {
+  console.log("getBuildingElements API is called");
+  return api.get(`/projects/${projectId}/get_building_elements`, {
+    responseType: "blob", // Important to handle binary data
+  });
+};
