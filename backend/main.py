@@ -304,8 +304,8 @@ async def upload_material_and_queue(
             status_code=400, detail=f"No IFC file found for version {version_number}"
         )
 
-    # Create a message for the SQS queue to trigger recalculation
-    message = {
+    # Create a base message structure for the SQS queue to trigger recalculation
+    base_message = {
         "project_id": project_id,
         "ifc_version": version_number,
         "s3_path": s3_path,
@@ -325,19 +325,38 @@ async def upload_material_and_queue(
         )
         queue_url = os.environ.get("SQS_QUEUE_URL")
 
-        response = sqs_client.send_message(
+        # Create and send message for standard calculation
+        standard_message = base_message.copy()
+        standard_message["enable_ai_material_matcher"] = False
+        standard_message["calculation_type"] = "standard"
+
+        sqs_client.send_message(
             QueueUrl=queue_url,
-            MessageBody=json.dumps(message),
+            MessageBody=json.dumps(standard_message),
             MessageGroupId=project_id,  # Group messages by project ID
-            MessageDeduplicationId=f"{project_id}-{version_number}-material-{result.inserted_id}",  # Ensure idempotency
+            MessageDeduplicationId=f"{project_id}-{version_number}-material-{result.inserted_id}-standard",  # Ensure idempotency
         )
 
-        # Update project status to indicate recalculation is queued
+        # Create and send message for AI-enhanced calculation
+        ai_message = base_message.copy()
+        ai_message["enable_ai_material_matcher"] = True
+        ai_message["calculation_type"] = "ai_enhanced"
+
+        sqs_client.send_message(
+            QueueUrl=queue_url,
+            MessageBody=json.dumps(ai_message),
+            MessageGroupId=project_id,  # Group messages by project ID
+            MessageDeduplicationId=f"{project_id}-{version_number}-material-{result.inserted_id}-ai_enhanced",  # Ensure idempotency
+        )
+
         await app.mongodb.projects.update_one(
             {"_id": ObjectId(project_id)},
             {
                 "$set": {
                     f"ifc_versions.{version_number}.calculation_status": "queued",
+                    f"ifc_versions.{version_number}.ai_calculation_status": "queued",
+                    f"ifc_versions.{version_number}.total_ec": 0,
+                    f"ifc_versions.{version_number}.ai_total_ec": 0,
                     "last_edited_date": datetime.now(),
                     "last_edited_user": user_id,
                 },
@@ -346,7 +365,7 @@ async def upload_material_and_queue(
                         "timestamp": datetime.now(),
                         "user": user_id,
                         "action": "material_added",
-                        "description": f"Added material '{material.specified_material}' and queued recalculation for version {version_number}",
+                        "description": f"Added material '{material.specified_material}' and queued both standard and AI-enhanced recalculations for version {version_number}",
                     }
                 },
             },
@@ -369,7 +388,6 @@ async def upload_material_and_queue(
                 },
             },
         )
-
     return created_material
 
 
@@ -494,22 +512,22 @@ async def get_building_elements(
                     "element_type": element_type,
                     "building_material_family": building_material_family,
                     "material": material,
+                    "units": units,
                     "material_ec": material_ec,
                     "material_quantity": material_quantity,
-                    "units": units,
                 }
             )
 
         # Add headers to building elements sheet
         element_headers = [
             "Element ID",
-            "IFC Type",
+            "IfcBuildingElement",
             "Element Type",
-            "Material Type",
-            "Material",
-            "Material EC (kgCO2e)",
+            "Family",
+            "Type",
             "Material Quantity",
             "Units",
+            "Material EC (kgCO2eq)",
         ]
 
         # Apply headers and formatting
@@ -528,18 +546,19 @@ async def get_building_elements(
             ws1.cell(row=i, column=3, value=element["element_type"])
             ws1.cell(row=i, column=4, value=element["building_material_family"])
             ws1.cell(row=i, column=5, value=element["material"])
-            ws1.cell(row=i, column=6, value=element["material_ec"])
-            ws1.cell(row=i, column=7, value=element["material_quantity"])
-            ws1.cell(row=i, column=8, value=element["units"])
+            ws1.cell(row=i, column=6, value=element["material_quantity"])
+            ws1.cell(row=i, column=7, value=element["units"])
+            ws1.cell(row=i, column=8, value=element["material_ec"])
 
         # Create a second sheet for detected materials
         ws2 = wb.create_sheet(title="Detected Materials")
         # Add headers with formatting for the materials sheet
         material_headers = [
-            "Material Type",
-            "Material",
-            "Density (kg/m3)",
-            "A1-A3 Embodied Carbon Emission / Unit",
+            "Category",
+            "Family",
+            "Type",
+            "Mass Density (kg/m3)",
+            "A1-A3 EC / Unit",
             "Unit",
             "Data Source",
         ]
@@ -572,7 +591,10 @@ async def get_building_elements(
                             material_data = m
                             break
                     if material_data:
+                        unit = material_data.get("unit", "kg")
+                        category = "Material" if unit == "kg" else "Product"
                         unique_materials[material_key] = {
+                            "category": category,
                             "family": element["building_material_family"],
                             "type": element["material"],
                             "density": (
@@ -587,12 +609,13 @@ async def get_building_elements(
 
         # Add material data rows
         for i, (_, material) in enumerate(unique_materials.items(), 2):
-            ws2.cell(row=i, column=1, value=material["family"])
-            ws2.cell(row=i, column=2, value=material["type"])
-            ws2.cell(row=i, column=3, value=material["density"])
-            ws2.cell(row=i, column=4, value=material["embodied_carbon"])
-            ws2.cell(row=i, column=5, value=material["unit"])
-            ws2.cell(row=i, column=6, value=material["source"])
+            ws2.cell(row=i, column=1, value=material["category"])
+            ws2.cell(row=i, column=2, value=material["family"])
+            ws2.cell(row=i, column=3, value=material["type"])
+            ws2.cell(row=i, column=4, value=material["density"])
+            ws2.cell(row=i, column=5, value=material["embodied_carbon"])
+            ws2.cell(row=i, column=6, value=material["unit"])
+            ws2.cell(row=i, column=7, value=material["source"])
 
         for col_num, header in enumerate(element_headers, 1):
             col_letter = get_column_letter(col_num)

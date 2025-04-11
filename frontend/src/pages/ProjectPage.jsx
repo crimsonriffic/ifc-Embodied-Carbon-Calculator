@@ -10,6 +10,7 @@ import Stepper from "../components/Stepper";
 import UploadOverview from "./UploadOverview";
 import UploadComparison from "./UploadComparison";
 import ProjectProgress from "./ProjectProgress";
+import ExportResults from "./ExportResults";
 function ProjectPage() {
   const location = useLocation();
 
@@ -107,6 +108,16 @@ function ProjectPage() {
         >
           Project Progress
         </button>
+        <button
+          onClick={() => setActiveTab("Export Results")}
+          className={`py-2 font-bold ${
+            activeTab === "Project Progress"
+              ? "border-b-2 border-gray-600 text-gray-600"
+              : "text-gray-500"
+          }`}
+        >
+          Export Results
+        </button>
       </div>
       {activeTab === "Upload Overview" && (
         <UploadOverview
@@ -124,6 +135,9 @@ function ProjectPage() {
           projectName={projectName}
           projectHistory={projectHistory}
         />
+      )}
+      {activeTab === "Export Results" && (
+        <ExportResults projectId={projectId} projectName={projectName} />
       )}
     </div>
   );

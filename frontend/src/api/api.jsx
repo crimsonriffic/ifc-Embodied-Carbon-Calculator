@@ -136,6 +136,19 @@ export const getProjectBreakdown = async (projectId, versionNumber) => {
   return api.get(`/projects/${projectId}/get_breakdown${versionQuery}`);
 };
 
+export const getAiBreakdown = async (projectId, versionNumber) => {
+  console.log("getAiBreakdown API is called");
+  return api.get(
+    `/projects/${projectId}/get_breakdown`, // Replace with your API base URL if needed
+    {
+      params: {
+        version: versionNumber || null, // Optional, only if you have a version
+        calculation_type: "ai_enhanced", // Specify AI-enhanced calculation
+      },
+    }
+  );
+};
+
 export const getMaterialDatabase = async () => {
   console.log("getMaterialDatabase API is called");
   return api.get("/materials");
@@ -182,6 +195,57 @@ export const uploadMaterial = async (
   }
 };
 
+export const uploadMaterialAndQueue = async (
+  projectId,
+  userId,
+  material_type,
+  specified_material,
+  density,
+  embodied_carbon,
+  unit,
+  version = null // Optional parameter
+) => {
+  console.log("Calling upload material and queue API");
+
+  // Construct the material data object
+  const materialData = {
+    material_type: material_type,
+    specified_material: specified_material,
+    density: density || null,
+    embodied_carbon: embodied_carbon || "0.00",
+    unit: unit,
+    database_source: "Custom",
+  };
+
+  console.log("Material Data:", materialData);
+
+  try {
+    // Build the query parameters
+    const queryParams = new URLSearchParams({ user_id: userId });
+    if (version) {
+      queryParams.append("version", version); // Add version if provided
+    }
+
+    // Send the material data to the API
+    const response = await api.post(
+      `projects/${projectId}/materials?${queryParams.toString()}`,
+      materialData,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("Material uploaded and queued successfully:", response.data);
+
+    // Return the response data
+    return response.data;
+  } catch (err) {
+    console.error("Failed to upload material and queue recalculation:", err);
+    throw err; // Re-throw the error for handling in the calling function
+  }
+};
 export const getMaterialsDetected = async (
   projectId = null,
   version = null
@@ -218,4 +282,11 @@ export const getMissingElements = async (projectId) => {
 export const getMissingMaterials = async (projectId) => {
   console.log("getMissingMaterials API is called with, ", projectId);
   return api.get(`/projects/${projectId}/missing_materials`);
+};
+
+export const getBuildingElements = async (projectId) => {
+  console.log("getBuildingElements API is called");
+  return api.get(`/projects/${projectId}/get_building_elements`, {
+    responseType: "blob", // Important to handle binary data
+  });
 };

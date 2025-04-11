@@ -1,51 +1,36 @@
 import { Sankey, Tooltip, Layer, Rectangle } from "recharts";
 import { useState } from "react";
 
-const transformDataForSankey = (data, totalEc) => {
-  //Unique elements
-  const allElements = new Set();
-  data.ec_breakdown.forEach((category) => {
-    category.elements.forEach((element) => {
-      allElements.add(element.element); // Add the element name to the Set
-    });
-  });
-  const uniqueElements = Array.from(allElements); // Convert Set to Array
+const transformDataForSankey = (data) => {
+  // Debug log to see what elements are in the data
+  console.log("Substructure elements:", data.ec_breakdown[0].elements);
+  console.log("Superstructure elements:", data.ec_breakdown[1].elements);
 
-  //Uniqe materials
-  const allMaterials = new Set();
-  data.ec_breakdown.forEach((category) => {
-    category.elements.forEach((element) => {
-      element.materials.forEach((material) => {
-        allMaterials.add(material.material); // Add material name to the Set
-      });
-    });
-  });
-  const uniqueMaterials = Array.from(allMaterials); // Convert Set to Array
+  // Define all building elements
+  const buildingElements = [
+    "Column",
+    "Beam",
+    "Slab",
+    "Wall",
+    "Window",
+    "Door",
+    "Roof",
+    "Stair",
+    "Railing",
+    "Pile",
+    "Footing",
+  ];
 
-  // Create nodes first
+  // Create nodes array with just the main categories and building elements
   const nodes = [
     { name: "Total EC" },
-    ...data.ec_breakdown.map((category) => ({ name: category.category })),
-    ...uniqueElements.map((element) => ({ name: element })), // Add elements
-    ...uniqueMaterials.map((material) => ({ name: material })), // Add materials
-    { name: "Others" },
+    { name: "Substructure" },
+    { name: "Superstructure" },
+    ...buildingElements.map((element) => ({ name: element })),
   ].map((node, index) => ({
     ...node,
-    nodeId: index, // Assign a unique node ID
+    nodeId: index,
   }));
-
-  // const nodes = [
-  //   { name: "Total EC" },
-  //   { name: "Substructure" },
-  //   { name: "Superstructure" },
-  //   { name: "Wall" },
-  //   { name: "Slab" },
-  //   { name: "Roof" },
-  //   { name: "Concrete" },
-  // ].map((node, index) => ({
-  //   ...node,
-  //   nodeId: index,
-  // }));
 
   // Create a map for easy node lookup
   const nodeMap = nodes.reduce((acc, node, index) => {
@@ -53,35 +38,61 @@ const transformDataForSankey = (data, totalEc) => {
     return acc;
   }, {});
 
-  // Create links
-  const links = [];
+  // Calculate sums for different element types in each category
+  const substructureElements = data.ec_breakdown[0].elements.reduce(
+    (acc, element) => {
+      if (!acc[element.element]) acc[element.element] = 0;
+      acc[element.element] += element.ec;
+      return acc;
+    },
+    {}
+  );
 
-  // Total EC to categories
-  data.ec_breakdown.forEach((category) => {
-    links.push({
+  const superstructureElements = data.ec_breakdown[1].elements.reduce(
+    (acc, element) => {
+      if (!acc[element.element]) acc[element.element] = 0;
+      acc[element.element] += element.ec;
+      return acc;
+    },
+    {}
+  );
+
+  // Create links array
+  const links = [
+    // Total EC to categories
+    {
       source: nodeMap["Total EC"],
-      target: nodeMap[category.category],
-      value: category.total_ec,
-    });
+      target: nodeMap["Substructure"],
+      value: data.ec_breakdown[0].total_ec,
+    },
+    {
+      source: nodeMap["Total EC"],
+      target: nodeMap["Superstructure"],
+      value: data.ec_breakdown[1].total_ec,
+    },
+  ];
 
-    // Categories to elements
-    category.elements.forEach((element) => {
+  // Add links from Substructure to elements
+  for (const element of buildingElements) {
+    if (substructureElements[element]) {
       links.push({
-        source: nodeMap[category.category],
-        target: nodeMap[element.element],
-        value: element.ec,
+        source: nodeMap["Substructure"],
+        target: nodeMap[element],
+        value: substructureElements[element] || 0,
       });
+    }
+  }
 
-      // Elements to materials
-      element.materials.forEach((material) => {
-        links.push({
-          source: nodeMap[element.element],
-          target: nodeMap[material.material],
-          value: material.ec,
-        });
+  // Add links from Superstructure to elements
+  for (const element of buildingElements) {
+    if (superstructureElements[element]) {
+      links.push({
+        source: nodeMap["Superstructure"],
+        target: nodeMap[element],
+        value: superstructureElements[element] || 0,
       });
-    });
-  });
+    }
+  }
 
   return { nodes, links };
 };
