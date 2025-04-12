@@ -30,6 +30,7 @@ export default {
     "./src/pages/ErrorHandlingPage.jsx",
     "./src/components/Sankey2.jsx",
     "./src/pages/ExportResults.jsx",
+    "./src/pages/LoadingPage.jsx",
   ],
   theme: {
     extend: {},
