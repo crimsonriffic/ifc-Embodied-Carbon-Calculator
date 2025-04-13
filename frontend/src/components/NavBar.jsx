@@ -15,7 +15,7 @@ function Navbar() {
   };
 
   const handleSettingsClick = () => {
-    setIsOpen(true);
+    setIsOpen((prev) => !prev);
   };
   return (
     <div className="bg-white text-gray-500 fixed top-0 left-0 w-full z-10 border-b border-gray-300 ">

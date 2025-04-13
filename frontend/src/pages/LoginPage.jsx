@@ -14,7 +14,7 @@ function LoginPage() {
       setUsername(inputUsername);
       console.log("inputUsername:", inputUsername);
       console.log("Password:", password);
-      navigate("/home");
+      navigate("/activeProjects");
     } else {
       alert("Please enter a username");
     }

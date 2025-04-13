@@ -31,6 +31,8 @@ export default {
     "./src/components/Sankey2.jsx",
     "./src/pages/ExportResults.jsx",
     "./src/pages/LoadingPage.jsx",
+    "./src/pages/ActiveProjectsPage.jsx",
+    "./src/components/LoginTab.jsx",
   ],
   theme: {
     extend: {},
