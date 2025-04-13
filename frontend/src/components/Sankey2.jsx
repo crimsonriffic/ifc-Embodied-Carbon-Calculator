@@ -93,28 +93,33 @@ const transformDataForSankey = (data) => {
     }
   }
 
-  // Add links from elements to materials
-  for (const element of buildingElements) {
-    const elementTotal =
-      (substructureElements[element] || 0) +
-      (superstructureElements[element] || 0);
+  // Add links from elements to materials based on actual material breakdowns
+  for (const category of data.ec_breakdown) {
+    for (const element of category.elements) {
+      const elementName = element.element;
+      const elementIndex = nodeMap[elementName];
+      if (!element.materials || !Array.isArray(element.materials)) continue;
 
-    if (elementTotal > 0) {
-      // Assuming a 60-40 split between Concrete and Steel for demonstration
-      // You should replace these with actual proportions from your data
-      links.push({
-        source: nodeMap[element],
-        target: nodeMap["Concrete"],
-        value: elementTotal * 0.6, // 60% to Concrete
-      });
-      links.push({
-        source: nodeMap[element],
-        target: nodeMap["Steel"],
-        value: elementTotal * 0.4, // 40% to Steel
-      });
+      for (const material of element.materials) {
+        if (["Window", "Door"].includes(material.material)) continue;
+        const materialName = material.material.includes("Concrete")
+          ? "Concrete"
+          : material.material.includes("Rebar") ||
+            material.material.includes("Steel")
+          ? "Steel"
+          : null;
+
+        if (!materialName || !nodeMap[materialName]) continue;
+
+        links.push({
+          source: elementIndex,
+          target: nodeMap[materialName],
+          value: material.ec,
+        });
+      }
     }
   }
-
+  console.log("Nodes are ", nodes);
   return { nodes, links };
 };
 function CustomNode({

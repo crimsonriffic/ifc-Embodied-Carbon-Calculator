@@ -43,7 +43,6 @@ function ExportResults() {
 
   return (
     <div className="flex flex-col">
-      <h1 className="text-2xl font-bold">Upload xx</h1>
       <div className="border border-gray-300 rounded-md shadow max-w-lg p-4 mt-4">
         <button
           onClick={() => handleExportCsv()}

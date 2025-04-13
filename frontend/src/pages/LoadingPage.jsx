@@ -27,6 +27,7 @@ function LoadingPage() {
     // Cleanup interval on component unmount
     return () => clearInterval(interval);
   }, []);
+
   return (
     // Full-screen background container
     <div

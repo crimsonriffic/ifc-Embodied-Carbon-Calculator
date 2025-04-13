@@ -175,7 +175,13 @@ function UploadOverview({ projectId, projectName, projectHistory }) {
 
           <div>
             <h1 className="text-sm">A1-A3 Embodied Carbon per floor area</h1>
-            <p className=" text-xl font-bold">-</p>
+            <p className=" text-xl font-bold">
+              {" "}
+              {(Number(totalEc) / Number(currentVersionData.gfa)).toFixed(
+                0
+              )}{" "}
+              kgCO2eq/m2
+            </p>
           </div>
 
           <div>
@@ -188,11 +194,6 @@ function UploadOverview({ projectId, projectName, projectHistory }) {
           <div>
             <h1 className="text-sm">Status</h1>
             <p className="text-xl font-bold">{currentVersionData.status}</p>
-          </div>
-
-          <div>
-            <h1 className="text-sm">File Name</h1>
-            <p className="text-sm font-bold">-</p>
           </div>
 
           <div>

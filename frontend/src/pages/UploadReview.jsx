@@ -10,19 +10,27 @@ import {
 
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import LoadingPage from "./LoadingPage";
 
 function UploadReview() {
   const [versionNumber, setVersionNumber] = useState("");
   const [materialsDetected, setMaterialsDetected] = useState([]);
   const [elementsDetected, setElementsDetected] = useState({});
   const [loading, setLoading] = useState(true); // Loading state
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [projectInfo, setProjectInfo] = useState({});
   const location = useLocation();
   const navigate = useNavigate();
   const { projectId } = location.state;
   const { projectName } = useParams();
-
+  useEffect(() => {
+    // 7-second loading screen
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, []);
   /* Initial API calls to fetch project history and breakdown data */
   useEffect(() => {
     const fetchData = async () => {
@@ -78,7 +86,10 @@ function UploadReview() {
     };
     if (projectInfo) fetchDetected();
   }, [projectInfo]);
-
+  if (isLoading) {
+    // Show loading page while loading
+    return <LoadingPage />;
+  }
   return (
     <div className="px-6">
       <Navbar />

@@ -32,7 +32,7 @@ function Navbar() {
           {/* Navigation links */}
           <nav className="flex space-x-6">
             <NavLink
-              to="/home"
+              to="/activeProjects"
               className={({ isActive }) =>
                 isActive ? "underline font-semibold" : "hover:underline"
               }
