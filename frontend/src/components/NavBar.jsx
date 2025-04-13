@@ -37,7 +37,7 @@ function Navbar() {
                 isActive ? "underline font-semibold" : "hover:underline"
               }
             >
-              Home
+              Projects
             </NavLink>
             <NavLink
               to="/createProject"

@@ -16,10 +16,10 @@ function UploadReview() {
   const [versionNumber, setVersionNumber] = useState("");
   const [materialsDetected, setMaterialsDetected] = useState([]);
   const [elementsDetected, setElementsDetected] = useState({});
-  const [loading, setLoading] = useState(true); // Loading state
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Single loading state
+
   const [error, setError] = useState(null);
-  const [projectInfo, setProjectInfo] = useState({});
+  const [projectInfo, setProjectInfo] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { projectId } = location.state;
@@ -27,7 +27,7 @@ function UploadReview() {
   useEffect(() => {
     // 7-second loading screen
     const timer = setTimeout(() => {
-      setIsLoading(false);
+      setLoading(false);
     }, 10000);
     return () => clearTimeout(timer);
   }, []);
@@ -42,7 +42,6 @@ function UploadReview() {
 
         setProjectInfo(projectResponse.data);
         setError(null);
-        setLoading(false);
       } catch (err) {
         console.error("Failed to data: ", err);
         setError("Failed to fetch data."); // Set error message
@@ -56,7 +55,7 @@ function UploadReview() {
     if (!projectInfo) return;
 
     console.log("Project Info state is ", projectInfo.file_path);
-    setLoading(true);
+    // setLoading(true);
     const fetchDetected = async () => {
       try {
         const versionedMaterialResponse = await getMaterialsDetected(
@@ -78,15 +77,16 @@ function UploadReview() {
         setMaterialsDetected(versionedMaterialResponse.data);
         setElementsDetected(elementsDetectedResponse.data.elements);
         setError(null);
-        setLoading(false);
       } catch (err) {
         console.error("Failed to data: ", err);
         setError("Failed to fetch data."); // Set error message
+      } finally {
+        setLoading(false); // Set loading to false after data is fetched
       }
     };
     if (projectInfo) fetchDetected();
   }, [projectInfo]);
-  if (isLoading) {
+  if (loading) {
     // Show loading page while loading
     return <LoadingPage />;
   }

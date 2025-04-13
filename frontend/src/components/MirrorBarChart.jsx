@@ -13,7 +13,7 @@ import {
   Cell,
 } from "recharts";
 
-function MirrorBarChart({ data, barKeys, colors, width = 500, height = 300 }) {
+function MirrorBarChart({ data, barKeys, colors, width = 1000, height = 600 }) {
   return (
     <div className="justify-center">
       {/* Titles for Upload 5 and Upload 4 */}
@@ -29,13 +29,15 @@ function MirrorBarChart({ data, barKeys, colors, width = 500, height = 300 }) {
           height={height}
           data={data}
           stackOffset="sign"
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis type="number" /> {/* X-axis now shows numerical values */}
+          <XAxis
+            type="number"
+            tickFormatter={(value) => Math.abs(value)}
+          />{" "}
           <YAxis type="category" dataKey="name" />{" "}
           {/* Y-axis shows categories */}
-          <Tooltip />
           <ReferenceLine x={0} stroke="#000" />
           {barKeys.map((key, index) => (
             <Bar key={key} dataKey={key} stackId="stack">
@@ -47,8 +49,8 @@ function MirrorBarChart({ data, barKeys, colors, width = 500, height = 300 }) {
                 const fillColor =
                   (key === barKeys[0] && value1 < value2) ||
                   (key === barKeys[1] && value2 < value1)
-                    ? "#FCECEC"
-                    : "#5B9130";
+                    ? "#A9C0A0"
+                    : "#FCECEC";
                 return <Cell key={`cell-${i}`} fill={fillColor} />;
               })}
             </Bar>

@@ -137,7 +137,11 @@ function ProjectPage() {
         />
       )}
       {activeTab === "Export Results" && (
-        <ExportResults projectId={projectId} projectName={projectName} />
+        <ExportResults
+          projectId={projectId}
+          projectName={projectName}
+          projectHistory={projectHistory}
+        />
       )}
     </div>
   );

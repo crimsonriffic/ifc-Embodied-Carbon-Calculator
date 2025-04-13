@@ -17,8 +17,10 @@ import ErrorHandlingPage from "./pages/ErrorHandlingPage";
 import ExportResults from "./pages/ExportResults";
 import LoadingPage from "./pages/LoadingPage";
 import HomePage from "./pages/HomePage";
+import ReportPage from "./pages/ReportPage";
 const routes = [
   { path: "/", element: <HomePage /> },
+  { path: "/report", element: <ReportPage /> },
 
   {
     path: "/",

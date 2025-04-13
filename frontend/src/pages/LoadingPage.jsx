@@ -97,9 +97,7 @@ function LoadingPage() {
               style={{ width: `${progress}%` }}
             ></div>
           </div>
-          <p className="text-white text-base transition-all">
-            Calculating... {progress}%
-          </p>
+          <p className="text-white text-base transition-all">Calculating...</p>
         </div>
       </div>
     </div>

@@ -33,6 +33,7 @@ export default {
     "./src/pages/LoadingPage.jsx",
     "./src/pages/ActiveProjectsPage.jsx",
     "./src/components/LoginTab.jsx",
+    "./src/pages/ReportPage.jsx",
   ],
   theme: {
     extend: {},

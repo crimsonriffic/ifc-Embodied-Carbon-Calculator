@@ -284,9 +284,12 @@ export const getMissingMaterials = async (projectId) => {
   return api.get(`/projects/${projectId}/missing_materials`);
 };
 
-export const getBuildingElements = async (projectId) => {
+export const getBuildingElements = async (projectId, version) => {
   console.log("getBuildingElements API is called");
   return api.get(`/projects/${projectId}/get_building_elements`, {
-    responseType: "blob", // Important to handle binary data
+    responseType: "blob",
+    params: {
+      version, // adds ?version=YourVersionNumber to the URL
+    },
   });
 };

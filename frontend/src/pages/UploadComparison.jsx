@@ -24,17 +24,6 @@ function UploadComparison() {
   const { projectId } = location.state;
   const { projectName } = useParams();
 
-  // const sampleData = [
-  //   { name: "Concrete", Upload4: -3400, Upload5: 2400 },
-  //   { name: "Steel", Upload4: -3000, Upload5: 1398 },
-  //   { name: "Wood", Upload4: -2000, Upload5: 2800 },
-  //   { name: "Window", Upload4: -2780, Upload5: 3908 },
-  // ];
-  // const sampleData = [
-  //   { name: "Substructure", Upload9: -266610.32, Upload8: 403693.3424 },
-  //   { name: "Superstructure", Upload9: -252272.2341, Upload8: 93314.412 },
-  // ];
-  // const barKeys = ["Upload5", "Upload4"];
   const colors = ["#8884d8", "#82ca9d"];
   const transformData = (
     firstSummary,
@@ -68,15 +57,16 @@ function UploadComparison() {
       },
     ];
 
-    //TODO: make sample data for materials , and another one for elements. i want the name to be dynamic
-    // Extract `by_material` objects
     const firstMaterial = firstSummary.by_material;
     const secondMaterial = secondSummary.by_material;
 
     // Map the material keys dynamically
     const transformedMaterial = Object.keys(firstMaterial).map((key) => ({
       name: key.replace(/_/g, " "), // Replace underscores with spaces
-      [`Upload${firstVersionNumber}`]: -Number(firstMaterial[key]),
+      [`Upload${firstVersionNumber}`]:
+        firstMaterial[key] < 0
+          ? firstMaterial[key]
+          : -Number(firstMaterial[key]),
       [`Upload${secondVersionNumber}`]: Number(secondMaterial[key]),
     }));
 
@@ -87,7 +77,8 @@ function UploadComparison() {
     // Map the element keys dynamically
     const transformedElement = Object.keys(firstElement).map((key) => ({
       name: key.replace(/_/g, " "), // Replace underscores with spaces
-      [`Upload${firstVersionNumber}`]: -Number(firstElement[key]),
+      [`Upload${firstVersionNumber}`]:
+        firstElement[key] < 0 ? firstElement[key] : -Number(firstElement[key]),
       [`Upload${secondVersionNumber}`]: Number(secondElement[key]),
     }));
 
@@ -110,7 +101,7 @@ function UploadComparison() {
           setFirstVersionNumber(latestVersion);
         }
         if (!secondVersionNumber && latestVersion) {
-          setSecondVersionNumber(latestVersion - 1);
+          setSecondVersionNumber(1);
         }
 
         setError(null);
@@ -230,7 +221,7 @@ function UploadComparison() {
   }
   return (
     <div>
-      <div className="flex flex-row">
+      <div className="flex justify-center ml-12 space-x-12">
         {/*Dropdown of first version number*/}
         <div className="flex flex-col ">
           <div className="mb-4">
@@ -249,15 +240,15 @@ function UploadComparison() {
               ))}
             </select>
           </div>
-          <div className="flex justify-between py-1">
-            <span className="text-gray-700">Total Embodied Carbon</span>
+          <div className="flex justify-between space-x-12 py-1">
+            <span className="text-gray-700">Total A1-A3 Embodied Carbon</span>
             <span className="font-bold text-black">
               {Number(firstVersionData.total_ec).toLocaleString()} kgCO2eq
             </span>
           </div>
-          <div className="flex justify-between py-1">
+          <div className="flex justify-between space-x-12 py-1">
             <span className="text-gray-700">
-              Embodied Carbon per Floor Area
+              A1-A3 Embodied Carbon per Floor Area
             </span>
             <span className="font-bold text-black">
               {(
@@ -266,27 +257,29 @@ function UploadComparison() {
               kgCO2eq/m2
             </span>
           </div>
-          <div className="flex justify-between py-1">
+          <div className="flex justify-between space-x-12 py-1">
             <span className="text-gray-700">Computed Floor Area</span>
             <span className="font-bold text-black">
               {Number(firstVersionData.gfa).toFixed(0)} m2
             </span>
           </div>
-          <div className="flex justify-between py-1">
+          <div className="flex justify-between space-x-12 *:py-1">
             <span className="text-gray-700">Status</span>
             <span className="font-bold text-black">
               {firstVersionData.status}
             </span>
           </div>
-          <div className="flex justify-between py-1">
+          <div className="flex justify-between space-x-12 py-1">
             <span className="text-gray-700">Comments</span>
             <span className="font-bold text-black">
               {firstVersionData.comments}
             </span>
           </div>
         </div>
+        <div className="border-l border-gray-500 h-full"></div>{" "}
+        {/* Vertical separator */}
         {/*Dropdown of second version number*/}
-        <div className="flex flex-col p-4 max-w-md mx-auto">
+        <div className="flex flex-col ">
           <div className="mb-4">
             <select
               id="secondVersionNumber"
@@ -303,15 +296,15 @@ function UploadComparison() {
               ))}
             </select>
           </div>
-          <div className="flex justify-between py-1">
-            <span className="text-gray-700">Total Embodied Carbon</span>
+          <div className="flex justify-between space-x-12 py-1">
+            <span className="text-gray-700">Total A1-A3 Embodied Carbon</span>
             <span className="font-bold text-black">
               {Number(secondVersionData.total_ec).toLocaleString()} kgCO2eq
             </span>
           </div>
-          <div className="flex justify-between py-1">
+          <div className="flex justify-between space-x-12 py-1">
             <span className="text-gray-700">
-              Embodied Carbon per Floor Area
+              A1-A3 Embodied Carbon per Floor Area
             </span>
             <span className="font-bold text-black">
               {(
@@ -321,19 +314,19 @@ function UploadComparison() {
               kgCO2eq/m2
             </span>
           </div>
-          <div className="flex justify-between py-1">
+          <div className="flex justify-between space-x-12 py-1">
             <span className="text-gray-700">Computed Floor Area</span>
             <span className="font-bold text-black">
               {Number(secondVersionData.gfa).toFixed(0)} m2
             </span>
           </div>
-          <div className="flex justify-between py-1">
+          <div className="flex justify-between space-x-12 py-1">
             <span className="text-gray-700">Status</span>
             <span className="font-bold text-black">
               {secondVersionData.status}
             </span>
           </div>
-          <div className="flex justify-between py-1">
+          <div className="flex justify-between space-x-12 py-1">
             <span className="text-gray-700">Comments</span>
             <span className="font-bold text-black">
               {secondVersionData.comments}
@@ -344,33 +337,48 @@ function UploadComparison() {
 
       <div className="w-full space-y-10">
         <div>
-          <h1 className="text-2xl font-bold"> System Hotspot Comparison </h1>
+          <h1 className="text-2xl font-bold text-[#5B9130]">
+            {" "}
+            System Hotspot Comparison{" "}
+          </h1>
           {systemData && (
-            <MirrorBarChart
-              data={systemData}
-              barKeys={barKeys}
-              colors={colors}
-            />
+            <div className="w-full flex justify-center">
+              <MirrorBarChart
+                data={systemData}
+                barKeys={barKeys}
+                colors={colors}
+              />
+            </div>
           )}
         </div>
         <div>
-          <h1 className="text-2xl font-bold"> Material Hotspot Comparison </h1>
-          {materialData && (
-            <MirrorBarChart
-              data={materialData}
-              barKeys={barKeys}
-              colors={colors}
-            />
-          )}
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold"> Elements Hotspot Comparison </h1>
+          <h1 className="text-2xl font-bold text-[#5B9130]">
+            {" "}
+            Elements Hotspot Comparison{" "}
+          </h1>
           {elementData && (
-            <MirrorBarChart
-              data={elementData}
-              barKeys={barKeys}
-              colors={colors}
-            />
+            <div className="w-full flex justify-center">
+              <MirrorBarChart
+                data={elementData}
+                barKeys={barKeys}
+                colors={colors}
+              />
+            </div>
+          )}
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-[#5B9130]">
+            {" "}
+            Material Hotspot Comparison{" "}
+          </h1>
+          {materialData && (
+            <div className="w-full flex justify-center">
+              <MirrorBarChart
+                data={materialData}
+                barKeys={barKeys}
+                colors={colors}
+              />
+            </div>
           )}
         </div>
       </div>

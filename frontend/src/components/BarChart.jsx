@@ -19,6 +19,8 @@ ChartJS.register(
 
 const options = (benchmark) => ({
   responsive: true,
+  devicePixelRatio: 3, // Increase this value for better resolution
+
   maintainAspectRatio: false,
 
   scales: {
@@ -28,6 +30,9 @@ const options = (benchmark) => ({
         drawBorder: true,
         borderColor: "black",
         borderWidth: 2,
+        font: {
+          size: 12, // Increase font size for better legibility
+        },
       },
     },
     x: {
@@ -36,6 +41,9 @@ const options = (benchmark) => ({
         borderColor: "black", // Set border color
         borderWidth: 2, // Set border thickness
         display: false,
+        font: {
+          size: 12, // Increase font size for better legibility
+        },
       },
     },
   },
