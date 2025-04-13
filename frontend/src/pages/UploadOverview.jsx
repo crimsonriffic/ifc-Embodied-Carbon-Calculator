@@ -17,10 +17,12 @@ function UploadOverview({ projectId, projectName, projectHistory }) {
   const [sankeyData, setSankeyData] = useState([]);
   const [currentVersionData, setCurrentVersionData] = useState({});
   const [totalEc, setTotalEc] = useState("");
-  const [summaryData, setSummaryData] = useState([]);
+  const [summaryData, setSummaryData] = useState(null);
   const [versionNumber, setVersionNumber] = useState("");
   const [versionArray, setVersionArray] = useState([]);
   const [isEnabled, setIsEnabled] = useState(false);
+  const [buildingList, setBuildingList] = useState([]);
+  const [materialList, setMaterialList] = useState([]);
 
   const handleVersionClick = (e) => {
     setVersionNumber(e.target.value);
@@ -38,6 +40,26 @@ function UploadOverview({ projectId, projectName, projectHistory }) {
       return newState;
     });
   };
+
+  const convertToSingular = (str) => {
+    // Check if the word ends with "s" and remove it if present
+    if (str.endsWith("s")) {
+      return str.slice(0, -1); // Remove the last character ("s")
+    }
+    return str; // Return the original string if it doesn't end with "s"
+  };
+
+  const extractKeysFromSummaryData = (summaryData) => {
+    // Extract keys from the summaryData for building elements and materials
+    console.log("Checking..", summaryData.by_element, summaryData.by_material);
+    const buildingElements = Object.entries(summaryData.by_element)
+      .filter(([_, value]) => value !== 0) // Only include non-zero values
+      .map(([key]) => convertToSingular(key));
+    const materials = Object.keys(summaryData.by_material).filter(
+      (key) => key !== "Others"
+    );
+    return { buildingElements, materials };
+  };
   const fetchData = async () => {
     try {
       const latestVersion = projectHistory[0]?.version || "";
@@ -54,10 +76,15 @@ function UploadOverview({ projectId, projectName, projectHistory }) {
         breakdownResponse.data.ec_breakdown
       );
       console.log("Total ec is", breakdownResponse.data.ec_breakdown.total_ec);
-
+      console.log("Sumary data is", breakdownResponse.data.summary);
       setTotalEc(breakdownResponse.data.ec_breakdown.total_ec.toFixed(0));
       setSummaryData(breakdownResponse.data.summary);
       setSankeyData(breakdownResponse.data.ec_breakdown);
+      const { buildingElements, materials } = extractKeysFromSummaryData(
+        breakdownResponse.data.summary
+      );
+      setBuildingList(buildingElements);
+      setMaterialList(materials);
 
       if (!versionNumber && latestVersion) {
         setVersionNumber(latestVersion);
@@ -88,6 +115,11 @@ function UploadOverview({ projectId, projectName, projectHistory }) {
       setTotalEc(breakdownResponse.data.ec_breakdown.total_ec.toFixed(0));
       setSummaryData(breakdownResponse.data.summary);
       setSankeyData(breakdownResponse.data.ec_breakdown);
+      const { buildingElements, materials } = extractKeysFromSummaryData(
+        breakdownResponse.data.summary
+      );
+      setBuildingList(buildingElements);
+      setMaterialList(materials);
 
       if (!versionNumber && latestVersion) {
         setVersionNumber(latestVersion);
@@ -129,6 +161,7 @@ function UploadOverview({ projectId, projectName, projectHistory }) {
 
     setCurrentVersionData(currentData || {});
   }, [projectHistory, versionNumber]);
+
   if (!projectId) {
     return <p className="text-red-500 mt-16">No project ID provided.</p>;
   }
@@ -255,6 +288,8 @@ function UploadOverview({ projectId, projectName, projectHistory }) {
             width={900}
             height={700}
             totalEc={Number(totalEc)}
+            buildingElements={buildingList}
+            materials={materialList}
           />
         </div>
       </div>

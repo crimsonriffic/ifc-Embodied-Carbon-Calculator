@@ -1,23 +1,11 @@
 import { Sankey, Tooltip, Layer, Rectangle } from "recharts";
 import { useState } from "react";
 
-const transformDataForSankey = (data) => {
-  // Define all building elements (singular form to match data)
-  const buildingElements = [
-    "Column",
-    "Beam",
-    "Slab",
-    "Wall",
-    "Window",
-    "Door",
-    "Roof",
-    "Stair",
-    "Railing",
-    "Pile",
-    "Footing",
-  ];
-
-  const materials = ["Concrete", "Steel"];
+const transformDataForSankey = (data, buildingElements, materials) => {
+  // Step 1: Remove 'Window' and 'Door' from materials
+  const filteredMaterials = materials.filter(
+    (mat) => mat !== "Window" && mat !== "Door"
+  );
 
   // Create nodes array
   const nodes = [
@@ -25,7 +13,7 @@ const transformDataForSankey = (data) => {
     { name: "Substructure" },
     { name: "Superstructure" },
     ...buildingElements.map((element) => ({ name: element })),
-    ...materials.map((material) => ({ name: material })),
+    ...filteredMaterials.map((material) => ({ name: material })),
   ].map((node, index) => ({
     ...node,
     nodeId: index,
@@ -102,10 +90,10 @@ const transformDataForSankey = (data) => {
 
       for (const material of element.materials) {
         if (["Window", "Door"].includes(material.material)) continue;
-        const materialName = material.material.includes("Concrete")
+        const rawMaterial = material.material;
+        const materialName = rawMaterial.includes("Concrete")
           ? "Concrete"
-          : material.material.includes("Rebar") ||
-            material.material.includes("Steel")
+          : rawMaterial.includes("Rebar") || rawMaterial.includes("Steel")
           ? "Steel"
           : null;
 
@@ -176,8 +164,19 @@ function CustomNode({
   );
 }
 
-export default function Sankey2({ data, width, height, totalEc }) {
-  const { nodes, links } = transformDataForSankey(data);
+export default function Sankey2({
+  data,
+  width,
+  height,
+  totalEc,
+  buildingElements,
+  materials,
+}) {
+  const { nodes, links } = transformDataForSankey(
+    data,
+    buildingElements,
+    materials
+  );
   const [activeNode, setActiveNode] = useState(null);
   // Determine dimensions based on size prop
 
