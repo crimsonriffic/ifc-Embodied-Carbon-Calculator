@@ -83,7 +83,5 @@ const options = (benchmark) => ({
   },
 });
 export default function BarChart({ data, benchmark = null }) {
-  console.log("Benchmark value:", benchmark);
-  console.log("Chart options:", options(benchmark));
   return <Bar data={data} options={options(benchmark)} />;
 }

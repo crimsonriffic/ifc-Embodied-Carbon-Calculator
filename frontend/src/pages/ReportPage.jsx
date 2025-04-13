@@ -2,30 +2,15 @@ import { useRef } from "react";
 import html2pdf from "html2pdf.js";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import Navbar from "../components/NavBar";
-import {
-  Link,
-  useParams,
-  useLocation,
-  useNavigate,
-  useSearchParams,
-} from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { useEffect, useState, version } from "react";
 import {
-  getProjectHistory,
   getProjectBreakdown,
   getMissingMaterials,
   getProjectInfo,
 } from "../api/api";
 import BarChart from "../components/BarChart";
-import HistoryTable from "../components/HistoryTable";
-import UploadInfoCard from "../components/UploadInfoCard";
-import SankeyChart from "../components/SankeyChart";
-import Stepper from "../components/Stepper";
-import UploadOverview from "./UploadOverview";
-import UploadComparison from "./UploadComparison";
-import ProjectProgress from "./ProjectProgress";
-import ExportResults from "./ExportResults";
+
 import Sankey2 from "../components/Sankey2";
 import { ArrowDownIcon } from "@heroicons/react/24/solid";
 function ReportPage() {
@@ -62,6 +47,8 @@ function ReportPage() {
     labels: [],
     datasets: [],
   });
+  const [isChartReady, setIsChartReady] = useState(false);
+
   const [projectId, setProjectId] = useState(null);
   const [projectName, setProjectName] = useState("");
   const [versionNumber, setVersionNumber] = useState("");
@@ -69,9 +56,6 @@ function ReportPage() {
   const reportRef = useRef();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  // const projectId = searchParams.get("projectId");
-  // const projectName = searchParams.get("projectName");
-  // const versionNumber = searchParams.get("version");
 
   const [generatedAt, setGeneratedAt] = useState("");
   const handleDownload = async () => {
@@ -81,7 +65,7 @@ function ReportPage() {
       margin: 0,
       filename: "page.pdf",
       image: { type: "jpeg", quality: 1 },
-      html2canvas: { scale: 4 }, // increase for better quality (e.g., 2–4)
+      html2canvas: { scale: 3 }, // increase for better quality (e.g., 2–4)
       jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
     };
 
@@ -138,6 +122,7 @@ function ReportPage() {
 
       setError(null);
       setLoading(false);
+      console.log("Loading state set to false");
     } catch (err) {
       console.error("Failed to data: ", err);
       setError("Failed to fetch data."); // Set error message
@@ -163,10 +148,12 @@ function ReportPage() {
   }, [loading, isInIframe]);
 
   useEffect(() => {
-    if (isReadyToDownload) {
-      handleDownload(); // your existing download logic
+    if (isReadyToDownload && isChartReady) {
+      setTimeout(() => {
+        handleDownload(); // Trigger the download with a slight delay
+      }, 500); // 500ms delay (adjust as needed)
     }
-  }, [isReadyToDownload]);
+  }, [isReadyToDownload, isChartReady]);
   useEffect(() => {
     const now = new Date();
     const formatted = now.toLocaleString("en-GB", {
@@ -257,38 +244,33 @@ function ReportPage() {
         ],
       };
     };
-    try {
-      setLoading(true);
-      console.log("Full SummaryData: ", summaryData);
-      if (
-        !summaryData ||
-        !summaryData["by_material"] ||
-        !summaryData["by_element"] ||
-        !summaryData["by_building_system"]
-      ) {
-        console.log("SummaryData is not ready yet");
-        return;
-      }
-      console.log("SummaryData is: ", summaryData);
-      const materialValues = summaryData["by_material"];
-      const elementValues = summaryData["by_element"];
-      const systemValues = summaryData["by_building_system"];
-      console.log(
-        "Const values are",
-        materialValues,
-        elementValues,
-        systemValues
-      );
 
-      // Set state for all three bar charts
-      setMaterialBar(generateBarData(materialValues, "Material"));
-      setElementBar(generateBarData(elementValues, "Element"));
-      setBuildingSystemBar(generateBarData(systemValues, "Building System"));
-    } catch (error) {
-      console.log("error generating hotspot charts", error);
-    } finally {
-      setLoading(false);
+    console.log("Full SummaryData: ", summaryData);
+    if (
+      !summaryData ||
+      !summaryData["by_material"] ||
+      !summaryData["by_element"] ||
+      !summaryData["by_building_system"]
+    ) {
+      console.log("SummaryData is not ready yet");
+      return;
     }
+    console.log("SummaryData is: ", summaryData);
+    const materialValues = summaryData["by_material"];
+    const elementValues = summaryData["by_element"];
+    const systemValues = summaryData["by_building_system"];
+    console.log(
+      "Const values are",
+      materialValues,
+      elementValues,
+      systemValues
+    );
+
+    // Set state for all three bar charts
+    setMaterialBar(generateBarData(materialValues, "Material"));
+    setElementBar(generateBarData(elementValues, "Element"));
+    setBuildingSystemBar(generateBarData(systemValues, "Building System"));
+    setIsChartReady(true);
   }, [summaryData]);
   useEffect(() => {
     if (!projectHistory) {
@@ -344,20 +326,14 @@ function ReportPage() {
         <img src="/reportLogo.png" alt="CarbonSmart Logo" className="w-1/2" />
 
         {/* Banner Section */}
-        <div className="bg-[#5B9130] text-white mx-8 mt-2 w-full mr-4 py-4 px-6 rounded-lg shadow-md text-left ml-0">
+        <div className="bg-[#5B9130] text-white mx-8 mt-2 w-full mr-4 py-2 px-4 rounded-lg shadow-md text-left ml-0">
           <div className="flex flex-row gap-x-2">
-            <h1 className="text-3xl font-bold">Embodied Carbon Report</h1>
-            <button
-              className="text-gray-600 hover:text-blue-500"
-              onClick={() => handleDownload()}
-            >
-              <ArrowDownIcon className="w-6 h-6 text-white font-bold" />
-            </button>
+            <h1 className="text-2xl font-bold">Embodied Carbon Report</h1>
           </div>
           {/**add a button here with the arrowdownicon */}
-          <p>Generated on {generatedAt}</p>
+          <p className="text-sm">Generated on {generatedAt}</p>
         </div>
-        <div className="flex flex-row mt-4 gap-x-12">
+        <div className="flex flex-row mt-2 gap-x-12">
           {/**Project Info left side */}
           <div className="flex flex-col gap-y-4">
             <div>
@@ -374,7 +350,7 @@ function ReportPage() {
           </div>
 
           {/**Right side upload info */}
-          <div className="flex flex-col gap-y-4">
+          <div className="flex flex-col ">
             <div>
               <h1 className="text-base font-bold"> Upload {versionNumber} </h1>
             </div>

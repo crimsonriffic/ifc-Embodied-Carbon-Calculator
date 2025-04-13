@@ -111,7 +111,7 @@ function ProjectPage() {
         <button
           onClick={() => setActiveTab("Export Results")}
           className={`py-2 font-bold ${
-            activeTab === "Project Progress"
+            activeTab === "Export Results"
               ? "border-b-2 border-gray-600 text-gray-600"
               : "text-gray-500"
           }`}
