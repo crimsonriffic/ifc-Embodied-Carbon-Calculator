@@ -1,4 +1,4 @@
-import HomePage from "./pages/HomePage";
+import ActiveProjectsPage from "./pages/ActiveProjectsPage";
 import LoginPage from "./pages/LoginPage";
 import ProjectPage from "./pages/ProjectPage";
 import IfcDialog from "./pages/IfcDialog";
@@ -15,13 +15,16 @@ import ProjectProgress from "./pages/ProjectProgress";
 import UploadReview from "./pages/UploadReview";
 import ErrorHandlingPage from "./pages/ErrorHandlingPage";
 import ExportResults from "./pages/ExportResults";
+import LoadingPage from "./pages/LoadingPage";
+import HomePage from "./pages/HomePage";
 const routes = [
-  { path: "/", element: <LoginPage /> },
+  { path: "/", element: <HomePage /> },
+
   {
     path: "/",
     element: <Layout />,
     children: [
-      { path: "/home", element: <HomePage /> },
+      { path: "/activeProjects", element: <ActiveProjectsPage /> },
       { path: "/createProject", element: <CreatePage /> },
       { path: "/projectInfo/:projectName?", element: <ProjectInfoPage /> },
       { path: "/uploadHistory/:projectName?", element: <UploadHistory /> },
@@ -40,6 +43,7 @@ const routes = [
       { path: "/projectProgress/:projectName?", element: <ProjectProgress /> },
       { path: "/exportResults/:projectName?", element: <ExportResults /> },
       { path: "/ifc", element: <IfcDialog /> },
+      { path: "/loading/:projectName?", element: <LoadingPage /> },
     ],
   },
 ];
