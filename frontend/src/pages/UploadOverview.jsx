@@ -6,6 +6,7 @@ import {
   getProjectHistory,
   getProjectBreakdown,
   getAiBreakdown,
+  getMissingMaterials,
 } from "../api/api";
 
 import SankeyChart from "../components/SankeyChart";
@@ -23,7 +24,7 @@ function UploadOverview({ projectId, projectName, projectHistory }) {
   const [isEnabled, setIsEnabled] = useState(false);
   const [buildingList, setBuildingList] = useState([]);
   const [materialList, setMaterialList] = useState([]);
-
+  const [isErrorDetected, setIsErrorDetected] = useState(false);
   const handleVersionClick = (e) => {
     setVersionNumber(e.target.value);
   };
@@ -132,6 +133,35 @@ function UploadOverview({ projectId, projectName, projectHistory }) {
       setError("Failed to fetch data."); // Set error message
     }
   };
+  useEffect(() => {
+    const fetchErrorData = async () => {
+      try {
+        setLoading(true);
+        const missingMaterialsResponse = await getMissingMaterials(projectId);
+
+        console.log(
+          "Missing materials response: ",
+          missingMaterialsResponse.data
+        );
+        console.log(
+          Number(missingMaterialsResponse.data.total_missing_materials)
+        );
+        if (Number(missingMaterialsResponse.data.total_missing_materials) > 0) {
+          console.log("Errors detected");
+          setIsErrorDetected(true);
+          return;
+        } else {
+          setIsErrorDetected(false);
+          console.log("Errors not detected -No materials data found!");
+        }
+      } catch (err) {
+        console.error("Failed to fetch data: ", err);
+      }
+    };
+    if (projectId) {
+      fetchErrorData();
+    }
+  }, [projectId]);
   useEffect(() => {
     if (projectId) {
       isEnabled ? fetchAiData() : fetchData();
@@ -246,43 +276,50 @@ function UploadOverview({ projectId, projectName, projectHistory }) {
           <h1 className="text-2xl font-bold text-[#5B9130]">
             Total A1-A3 Embodied Carbon
           </h1>
-          <div className="flex flex-row space-x-10">
-            {isEnabled && (
-              <p className="text-base text-[#6C71D1]">
-                Calculation completed with AI Material Filler
-              </p>
-            )}
-            {!isEnabled && (
-              <p className="text-base text-red-600">
-                Calculation completed with errors ignored
-              </p>
-            )}
-            <div className="flex items-center space-x-4">
-              {isEnabled && (
-                <span className="text-[#6C71D1] text-base font-bold">
-                  AI Material Filler: On
-                </span>
-              )}
-              {!isEnabled && (
-                <span className="text-gray-500 text-base font-bold">
-                  AI Material Filler: Off
-                </span>
+          {!isErrorDetected ? (
+            <p className="text-base text-[#6C71D1]">
+              Calculation completed with no errors
+            </p>
+          ) : (
+            <div className="flex flex-row space-x-10">
+              {/* Status message */}
+              {isEnabled ? (
+                <p className="text-base text-[#6C71D1]">
+                  Calculation completed with AI Material Filler
+                </p>
+              ) : (
+                <p className="text-base text-red-600">
+                  Calculation completed with errors ignored
+                </p>
               )}
 
-              <button
-                onClick={toggleHandler}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  isEnabled ? "bg-[#6C71D1]" : "bg-gray-300"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    isEnabled ? "translate-x-6" : "translate-x-1"
+              {/* Toggle section */}
+              <div className="flex items-center space-x-4">
+                {isEnabled ? (
+                  <span className="text-[#6C71D1] text-base font-bold">
+                    AI Material Filler: On
+                  </span>
+                ) : (
+                  <span className="text-gray-500 text-base font-bold">
+                    AI Material Filler: Off
+                  </span>
+                )}
+
+                <button
+                  onClick={toggleHandler}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    isEnabled ? "bg-[#6C71D1]" : "bg-gray-300"
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      isEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
           <Sankey2
             data={sankeyData}
             width={900}
